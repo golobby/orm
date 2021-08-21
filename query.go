@@ -25,6 +25,31 @@ func (q *Query) Select(columns ...string) *selectClause {
 	return q.projected
 }
 
+func (q *Query) Max(column string) *Query {
+	q.projected.columns = append(q.projected.columns, fmt.Sprintf("MAX(%s)", column))
+	return q
+}
+
+func (q *Query) Min(column string) *Query {
+	q.projected.columns = append(q.projected.columns, fmt.Sprintf("MIN(%s)", column))
+	return q
+}
+
+func (q *Query) Count(column string) *Query {
+	q.projected.columns = append(q.projected.columns, fmt.Sprintf("COUNT(%s)", column))
+	return q
+}
+
+func (q *Query) Avg(column string) *Query {
+	q.projected.columns = append(q.projected.columns, fmt.Sprintf("AVG(%s)", column))
+	return q
+}
+
+func (q *Query) Sum(column string) *Query {
+	q.projected.columns = append(q.projected.columns, fmt.Sprintf("SUM(%s)", column))
+	return q
+}
+
 func (q *Query) Where(parts ...string) *whereClause {
 	w := &whereClause{conds: []string{strings.Join(parts, "")}, parent: q}
 	q.filters = append(q.filters, w)

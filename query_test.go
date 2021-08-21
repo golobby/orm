@@ -9,9 +9,9 @@ import (
 func TestQueryBuilding(t *testing.T) {
 
 	t.Run("select should be ok", func(t *testing.T) {
-		sql, err := New().Table("users").Select("id", "name").Query().SQL()
+		sql, err := New().Table("users").Select("id", "name").Query().Max("age").Min("weight").Sum("balance").Avg("height").Count("name").SQL()
 		assert.NoError(t, err)
-		assert.Equal(t, `SELECT id, name FROM users`, sql)
+		assert.Equal(t, `SELECT id, name, MAX(age), MIN(weight), SUM(balance), AVG(height), COUNT(name) FROM users`, sql)
 	})
 	t.Run("select with where", func(t *testing.T) {
 		sql, err := New().Table("users").Select("id", "name").Query().Where("id", "=", "$1").Query().SQL()
