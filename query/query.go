@@ -1,8 +1,12 @@
 package query
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+
+	"github.com/golobby/sql/bind"
 )
 
 type Query struct {
@@ -83,6 +87,46 @@ func (q *Query) SQL() (string, error) {
 	}
 
 	return strings.Join(sections, " "), nil
+}
+
+func (q *Query) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+	s, err := q.SQL()
+	if err != nil {
+		return nil, err
+	}
+	return db.Exec(s, args...)
+}
+
+func (q *Query) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
+	s, err := q.SQL()
+	if err != nil {
+		return nil, err
+	}
+	return db.ExecContext(ctx, s, args...)
+}
+
+func (q *Query) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
+	s, err := q.SQL()
+	if err != nil {
+		return err
+	}
+	rows, err := db.Query(s, args...)
+	if err != nil {
+		return err
+	}
+	return bind.Bind(rows, v)
+}
+
+func (q *Query) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
+	s, err := q.SQL()
+	if err != nil {
+		return err
+	}
+	rows, err := db.Query(s, args...)
+	if err != nil {
+		return err
+	}
+	return bind.Bind(rows, v)
 }
 
 func New() *Query {

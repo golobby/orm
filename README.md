@@ -19,23 +19,34 @@ go get github.com/golobby/sql
 ```
 
 ### Quick Start
+
 The following example demonstrates how to build a query and bind it to a struct.
 ```go
     var db *sql.DB
-    q, err := query.New().Table("users").
+    u := User{}
+    _ = query.New().Table("users").
 			Select("id", "name").Query().
 			Where("id", "=", "$1").
-			Query().
-			SQL()
-    rows, err := db.Query(q, 1)
-    if err != nil {
-        panic(err)
+			Query().Bind(db, u)
     }
-    u := User{}
-    err = bind.Bind(rows, u)
-    if err != nil {
-        panic(err)
-    }
+```
+of course you can use each sub-package seperately as well as combined usage like above.
+for example just building a query:
+```go
+    q, _ := query.New().Table("users").
+			Select("id", "name").Query().
+			Where("id", "=", "$1").
+			Query().SQL()
+    rows, _ := db.Query(q, args...)
+    //do smth with rows
+
+```
+
+or usage of bind seperately:
+```go
+    u := &User{}
+    rows, _ := db.Query(`SELECT * FROM users WHERE id = $1`, 1)
+    _ = bind.Bind(rows, u)
 ```
 
 ## License
