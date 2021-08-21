@@ -18,7 +18,7 @@ func (s *orderbyClause) Query() *Query {
 }
 
 func (s *orderbyClause) String() string {
-	output := strings.Join(s.columns, ",")
+	output := strings.Join(s.columns, ", ")
 	if s.desc {
 		output = output + " DESC"
 	}

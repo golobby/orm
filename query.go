@@ -10,6 +10,7 @@ type Query struct {
 	projected *selectClause
 	filters   []*whereClause
 	orderBy   *orderbyClause
+	groupBy   *groupByClause
 }
 
 func (q *Query) Table(t string) *Query {
@@ -25,29 +26,12 @@ func (q *Query) Select(columns ...string) *selectClause {
 	return q.projected
 }
 
-func (q *Query) Max(column string) *Query {
-	q.projected.columns = append(q.projected.columns, fmt.Sprintf("MAX(%s)", column))
-	return q
-}
-
-func (q *Query) Min(column string) *Query {
-	q.projected.columns = append(q.projected.columns, fmt.Sprintf("MIN(%s)", column))
-	return q
-}
-
-func (q *Query) Count(column string) *Query {
-	q.projected.columns = append(q.projected.columns, fmt.Sprintf("COUNT(%s)", column))
-	return q
-}
-
-func (q *Query) Avg(column string) *Query {
-	q.projected.columns = append(q.projected.columns, fmt.Sprintf("AVG(%s)", column))
-	return q
-}
-
-func (q *Query) Sum(column string) *Query {
-	q.projected.columns = append(q.projected.columns, fmt.Sprintf("SUM(%s)", column))
-	return q
+func (q *Query) GroupBy(columns ...string) *groupByClause {
+	q.groupBy = &groupByClause{
+		parent:  q,
+		columns: columns,
+	}
+	return q.groupBy
 }
 
 func (q *Query) Where(parts ...string) *whereClause {
@@ -105,6 +89,10 @@ func (q *Query) SQL() (string, error) {
 
 	if q.orderBy != nil {
 		sections = append(sections, "ORDER BY", q.orderBy.String())
+	}
+
+	if q.groupBy != nil {
+		sections = append(sections, "GROUP BY", q.groupBy.String())
 	}
 
 	return strings.Join(sections, " "), nil

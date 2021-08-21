@@ -1,12 +1,27 @@
 package query
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type selectClause struct {
 	parent   *Query
 	distinct bool
 	columns  []string
 }
+
+func makeFormatter(function string) func(string) string {
+	return func(column string) string {
+		return fmt.Sprintf("%s(%s)", function, column)
+	}
+}
+
+var Min = makeFormatter("MIN")
+var Max = makeFormatter("MAX")
+var Count = makeFormatter("COUNT")
+var Avg = makeFormatter("AVG")
+var Sum = makeFormatter("SUM")
 
 func (s *selectClause) Distinct() *selectClause {
 	s.distinct = true
