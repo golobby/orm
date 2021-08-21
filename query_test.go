@@ -19,10 +19,11 @@ func TestQueryBuilding(t *testing.T) {
 			Where("id", "=", "$1").And(Like("name", "a%")).
 			Or(In("name", "'jafar'", "'khadije'")).
 			And(In("name", PostgresPlaceholder(2))).
+			And(Between("age", "10", "18")).
 			Query().
 			SQL()
 		assert.NoError(t, err)
-		assert.Equal(t, `SELECT id, name FROM users WHERE id=$1 AND name LIKE a% OR name IN ('jafar', 'khadije') AND name IN ($1, $2)`, sql)
+		assert.Equal(t, `SELECT id, name FROM users WHERE id=$1 AND name LIKE a% OR name IN ('jafar', 'khadije') AND name IN ($1, $2) AND age BETWEEN 10 AND 18`, sql)
 	})
 	t.Run("select orderby desc", func(t *testing.T) {
 		sql, err := New().Table("users").Select("id", "name").Query().OrderBy("created_at").Desc().Query().SQL()

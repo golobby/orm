@@ -18,6 +18,10 @@ func In(column string, values ...string) string {
 	return fmt.Sprintf("%s IN (%s)", column, strings.Join(values, ", "))
 }
 
+func Between(column string, lower string, higher string) string {
+	return fmt.Sprintf("%s BETWEEN %s AND %s", column, lower, higher)
+}
+
 func (w *whereClause) And(parts ...string) *whereClause {
 	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
 	return w
