@@ -13,10 +13,16 @@ func TestQueryBuilding(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name, MAX(age), MIN(weight), SUM(balance), AVG(height), COUNT(name) FROM users`, sql)
 	})
-	t.Run("select with where", func(t *testing.T) {
-		sql, err := New().Table("users").Select("id", "name").Query().Where("id", "=", "$1").Query().SQL()
+	t.Run("select with where with like", func(t *testing.T) {
+		sql, err := New().Table("users").
+			Select("id", "name").Query().
+			Where("id", "=", "$1").And(Like("name", "a%")).
+			Or(In("name", "'jafar'", "'khadije'")).
+			And(In("name", PostgresPlaceholder(2))).
+			Query().
+			SQL()
 		assert.NoError(t, err)
-		assert.Equal(t, `SELECT id, name FROM users WHERE id=$1`, sql)
+		assert.Equal(t, `SELECT id, name FROM users WHERE id=$1 AND name LIKE a% OR name IN ('jafar', 'khadije') AND name IN ($1, $2)`, sql)
 	})
 	t.Run("select orderby desc", func(t *testing.T) {
 		sql, err := New().Table("users").Select("id", "name").Query().OrderBy("created_at").Desc().Query().SQL()

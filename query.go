@@ -62,6 +62,13 @@ func (q *Query) WhereNot(parts ...string) *whereClause {
 	return w
 }
 
+func (q *Query) WhereLike(col string, pattern string) *whereClause {
+	w := &whereClause{conds: []string{col + " LIKE ", pattern}, parent: q}
+	q.filters = append(q.filters, w)
+	return w
+
+}
+
 func (q *Query) OrderBy(columns ...string) *orderbyClause {
 	q.orderBy = &orderbyClause{
 		parent:  q,
@@ -79,7 +86,7 @@ func (q *Query) SQL() (string, error) {
 		q.projected = &selectClause{parent: q, distinct: false, columns: []string{"*"}}
 	}
 
-	sections = append(sections, q.projected.SQL())
+	sections = append(sections, "SELECT", q.projected.String())
 
 	if q.table == "" {
 		return "", fmt.Errorf("table name cannot be empty")
@@ -90,13 +97,14 @@ func (q *Query) SQL() (string, error) {
 
 	// handle where
 	if q.filters != nil {
+		sections = append(sections, "WHERE")
 		for _, f := range q.filters {
-			sections = append(sections, f.SQL())
+			sections = append(sections, f.String())
 		}
 	}
 
 	if q.orderBy != nil {
-		sections = append(sections, q.orderBy.SQL())
+		sections = append(sections, "ORDER BY", q.orderBy.String())
 	}
 
 	return strings.Join(sections, " "), nil

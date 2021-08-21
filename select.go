@@ -17,10 +17,10 @@ func (s *selectClause) Query() *Query {
 	return s.parent
 }
 
-func (s *selectClause) SQL() string {
+func (s *selectClause) String() string {
 	output := strings.Join(s.columns, ", ")
 	if s.distinct {
 		output = "DISTINCT " + output
 	}
-	return "SELECT " + output
+	return output
 }

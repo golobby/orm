@@ -1,10 +1,21 @@
 package query
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type whereClause struct {
 	parent *Query
 	conds  []string
+}
+
+func Like(column string, pattern string) string {
+	return fmt.Sprintf("%s LIKE %s", column, pattern)
+}
+
+func In(column string, values ...string) string {
+	return fmt.Sprintf("%s IN (%s)", column, strings.Join(values, ", "))
 }
 
 func (w *whereClause) And(parts ...string) *whereClause {
@@ -23,6 +34,6 @@ func (w *whereClause) Not(parts ...string) *whereClause {
 	return w
 }
 
-func (w *whereClause) SQL() string {
-	return "WHERE " + strings.Join(w.conds, " ")
+func (w *whereClause) String() string {
+	return strings.Join(w.conds, " ")
 }

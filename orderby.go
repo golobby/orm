@@ -17,10 +17,10 @@ func (s *orderbyClause) Query() *Query {
 	return s.parent
 }
 
-func (s *orderbyClause) SQL() string {
+func (s *orderbyClause) String() string {
 	output := strings.Join(s.columns, ",")
 	if s.desc {
 		output = output + " DESC"
 	}
-	return "ORDER BY " + output
+	return output
 }
