@@ -42,11 +42,11 @@ for example just building a query:
 
 ```
 
-or usage of bind seperately:
+or usage of bind seperately in this example we are binding result of query which contains multiple rows into slice.
 ```go
-    u := &User{}
-    rows, _ := db.Query(`SELECT * FROM users WHERE id = $1`, 1)
-    _ = bind.Bind(rows, u)
+    users := []interface{}{&User{}, &User{}}
+    rows, _ := db.Query(`SELECT * FROM users`)
+    _ = bind.Bind(rows, users)
 ```
 
 ## License
