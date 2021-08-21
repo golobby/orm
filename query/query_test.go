@@ -90,4 +90,20 @@ func TestQueryBuilding(t *testing.T) {
 		assert.Equal(t, `SELECT id FROM users GROUP BY name, age`, sql)
 	})
 
+	t.Run("select with join", func(t *testing.T) {
+		sql, err := New().Table("users").Select("id", "name").Query().RightJoin("addresses").On("users.id", "=", "addresses.user_id").Query().SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT id, name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id`, sql)
+	})
+
+	t.Run("select with multiple joins", func(t *testing.T) {
+		sql, err := New().Table("users").Select("id", "name").Query().
+			RightJoin("addresses").On("users.id", "=", "addresses.user_id").
+			Query().
+			LeftJoin("user_credits").On("users.id", "=", "user_credits.user_id").Query().
+			SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT id, name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id LEFT JOIN user_credits ON users.id = user_credits.user_id`, sql)
+	})
+
 }

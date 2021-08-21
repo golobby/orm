@@ -13,6 +13,16 @@ type User struct {
 	Name string `bind:"name"`
 }
 
+type ComplexUser struct {
+	User
+	Adrress Address
+}
+
+type Address struct {
+	ID   int    `bind:"id"`
+	Path string `bind:"path"`
+}
+
 func TestBind(t *testing.T) {
 	t.Run("single result", func(t *testing.T) {
 		db, err := sql.Open("postgres", "host=127.0.0.1 port=5432 user=connect password=connect dbname=connect sslmode=disable")

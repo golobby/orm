@@ -15,6 +15,7 @@ type Query struct {
 	filters   []*whereClause
 	orderBy   *orderbyClause
 	groupBy   *groupByClause
+	joins     []*joinClause
 }
 
 func (q *Query) Table(t string) *Query {
@@ -29,7 +30,30 @@ func (q *Query) Select(columns ...string) *selectClause {
 	}
 	return q.projected
 }
+func (q *Query) InnerJoin(table string) *joinClause {
+	j := &joinClause{parent: q, table: table, joinType: "INNER"}
+	q.joins = append(q.joins, j)
+	return j
+}
 
+func (q *Query) RightJoin(table string) *joinClause {
+	j := &joinClause{parent: q, table: table, joinType: "RIGHT"}
+	q.joins = append(q.joins, j)
+	return j
+
+}
+func (q *Query) LeftJoin(table string) *joinClause {
+	j := &joinClause{parent: q, table: table, joinType: "LEFT"}
+	q.joins = append(q.joins, j)
+	return j
+
+}
+func (q *Query) FullOuterJoin(table string) *joinClause {
+	j := &joinClause{parent: q, table: table, joinType: "FULL OUTER"}
+	q.joins = append(q.joins, j)
+	return j
+
+}
 func (q *Query) GroupBy(columns ...string) *groupByClause {
 	q.groupBy = &groupByClause{
 		parent:  q,
@@ -84,6 +108,12 @@ func (q *Query) SQL() (string, error) {
 
 	if q.groupBy != nil {
 		sections = append(sections, "GROUP BY", q.groupBy.String())
+	}
+
+	if q.joins != nil {
+		for _, join := range q.joins {
+			sections = append(sections, join.String())
+		}
 	}
 
 	return strings.Join(sections, " "), nil
