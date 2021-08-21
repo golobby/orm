@@ -21,7 +21,30 @@ func TestQueryBuilding(t *testing.T) {
 			Query().
 			SQL()
 		assert.NoError(t, err)
-		assert.Equal(t, `SELECT id, name FROM users WHERE id=$1`, sql)
+		assert.Equal(t, `SELECT id, name FROM users WHERE id = $1`, sql)
+	})
+
+	t.Run("select with not operator", func(t *testing.T) {
+		sql, err := New().Table("users").
+			Select("id", "name").Query().
+			Where(Not("id", "=", "$1")).
+			Query().
+			SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT id, name FROM users WHERE NOT id = $1`, sql)
+	})
+
+	t.Run("select with multiple AND, OR", func(t *testing.T) {
+		sql, err := New().Table("users").
+			Select("id", "name").Query().
+			Where("id", "=", "$1").
+			Or("age", "<", "10").
+			And("name", "=", "'asghar'").
+			Query().
+			SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT id, name FROM users WHERE id = $1 OR age < 10 AND name = 'asghar'`, sql)
+
 	})
 
 	t.Run("select with Like", func(t *testing.T) {

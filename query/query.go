@@ -35,22 +35,9 @@ func (q *Query) GroupBy(columns ...string) *groupByClause {
 }
 
 func (q *Query) Where(parts ...string) *whereClause {
-	w := &whereClause{conds: []string{strings.Join(parts, "")}, parent: q}
+	w := &whereClause{conds: []string{strings.Join(parts, " ")}, parent: q}
 	q.filters = append(q.filters, w)
 	return w
-}
-
-func (q *Query) WhereNot(parts ...string) *whereClause {
-	w := &whereClause{conds: []string{"NOT " + strings.Join(parts, "")}, parent: q}
-	q.filters = append(q.filters, w)
-	return w
-}
-
-func (q *Query) WhereLike(col string, pattern string) *whereClause {
-	w := &whereClause{conds: []string{col + " LIKE ", pattern}, parent: q}
-	q.filters = append(q.filters, w)
-	return w
-
 }
 
 func (q *Query) OrderBy(columns ...string) *orderbyClause {

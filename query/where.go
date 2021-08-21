@@ -22,6 +22,10 @@ func Between(column string, lower string, higher string) string {
 	return fmt.Sprintf("%s BETWEEN %s AND %s", column, lower, higher)
 }
 
+func Not(cond ...string) string {
+	return fmt.Sprintf("NOT %s", strings.Join(cond, " "))
+}
+
 func (w *whereClause) And(parts ...string) *whereClause {
 	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
 	return w
