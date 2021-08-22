@@ -19,6 +19,8 @@ go get github.com/golobby/sql
 ```
 
 ### Quick Start
+#### Query
+Query package contains a powerful SQL query builder.
 
 The following example demonstrates how to build a query and bind it to a struct.
 ```go
@@ -41,8 +43,9 @@ for example just building a query:
     //do smth with rows
 
 ```
-
-or usage of bind seperately in this example we are binding result of query which contains multiple rows into slice.
+#### Bind
+Bind package contains functionallity to bind sql.Rows to a struct.
+In this example we are binding result of query which contains multiple rows into slice.
 ```go
     users := []User{&User{}, &User{}}
     rows, _ := db.Query(`SELECT * FROM users`)
@@ -70,6 +73,7 @@ milad := &ComplexUser{}
 
 err = Bind(rows, []*ComplexUser{amirreza, milad})
 ```
+for more info on `bind` see [bind\_test.go](https://github.com/golobby/sql/tree/master/bind/bind_test.go)
 
 ## License
 GoLobby Sql is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
