@@ -15,8 +15,7 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	}
 
 	scanInto := []interface{}{}
-	here:
-	for index := 0;index<len(cts);index++ {
+	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
 			ft := t.Field(i)
@@ -31,8 +30,8 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
 						actualPtr := ptr.Elem().Addr().Interface()
 						scanInto = append(scanInto, actualPtr)
-						cts = append(cts[:index], cts[index+1:]...)
-						goto here
+						newcts := append(cts[:index], cts[index+1:]...)
+						return append(scanInto, makePtrsOf(v, newcts)...)
 					}
 				}
 			}
@@ -67,7 +66,10 @@ func Bind(rows *sql.Rows, v interface{}) error {
 			if p.Type().Kind() == reflect.Ptr {
 				p = p.Elem()
 			}
-			inputs = append(inputs, makePtrsOf(p, cts))
+			newCts := make([]*sql.ColumnType, len(cts))
+			copy(newCts, cts)
+			ptrs :=  makePtrsOf(p, newCts)
+			inputs = append(inputs, ptrs)
 		}
 	}
 
