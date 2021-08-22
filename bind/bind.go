@@ -6,28 +6,37 @@ import (
 	"unsafe"
 )
 
-func makeScanIntoList(v interface{}, cts []*sql.ColumnType) []interface{} {
-	t := reflect.TypeOf(v)
+func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+	t := v.Type()
 
-	vt := reflect.ValueOf(v)
 	if t.Kind() == reflect.Ptr {
-		vt = vt.Elem()
+		v = v.Elem()
 		t = t.Elem()
 	}
 
 	scanInto := []interface{}{}
-
-	for _, ct := range cts {
+	here:
+	for index := 0;index<len(cts);index++ {
+		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
 			ft := t.Field(i)
-			name, exists := ft.Tag.Lookup("bind")
-			if exists {
-				if ct.Name() == name {
-					ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(vt.Field(i).UnsafeAddr()))
-					actualPtr := ptr.Interface()
-					scanInto = append(scanInto, actualPtr)
+			if ft.Type.Kind() == reflect.Ptr {
+				scanInto = append(scanInto, makePtrsOf(v.Field(i).Elem(), cts)...)
+			} else if ft.Type.Kind() == reflect.Struct {
+				scanInto = append(scanInto, makePtrsOf(v.Field(i), cts)...)
+			} else {
+				name, exists := ft.Tag.Lookup("bind")
+				if exists {
+					if ct.Name() == name {
+						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
+						actualPtr := ptr.Elem().Addr().Interface()
+						scanInto = append(scanInto, actualPtr)
+						cts = append(cts[:index], cts[index+1:]...)
+						goto here
+					}
 				}
 			}
+
 		}
 	}
 	return scanInto
@@ -51,14 +60,14 @@ func Bind(rows *sql.Rows, v interface{}) error {
 
 	inputs := [][]interface{}{}
 	if t.Kind() != reflect.Slice {
-		inputs = append(inputs, makeScanIntoList(v, cts))
+		inputs = append(inputs, makePtrsOf(reflect.ValueOf(v), cts))
 	} else {
 		for i := 0; i < vt.Len(); i++ {
-			p := vt.Index(i)
+			p := vt.Index(i).Elem()
 			if p.Type().Kind() == reflect.Ptr {
 				p = p.Elem()
 			}
-			inputs = append(inputs, makeScanIntoList(p.Interface(), cts))
+			inputs = append(inputs, makePtrsOf(p, cts))
 		}
 	}
 
