@@ -66,12 +66,23 @@ type Address struct {
 	Path string `bind:"path"`
 }
 
-rows, err := db.Query(`SELECT users.id, users.name, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
+rows, err := db.Query(`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
 
 amirreza := &ComplexUser{}
 milad := &ComplexUser{}
 
 err = Bind(rows, []*ComplexUser{amirreza, milad})
+
+
+assert.Equal(t, "amirreza", amirreza.Name)
+assert.Equal(t, "milad", milad.Name)
+
+//Nested struct also has filled
+assert.Equal(t, "kianpars", amirreza.Address.Path)
+assert.Equal(t, "delfan", milad.Address.Path)
+assert.Equal(t, 2, milad.Address.ID)
+assert.Equal(t, 1, amirreza.Address.ID)
+
 ```
 for more info on `bind` see [bind\_test.go](https://github.com/golobby/sql/tree/master/bind/bind_test.go)
 
