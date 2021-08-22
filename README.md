@@ -44,9 +44,31 @@ for example just building a query:
 
 or usage of bind seperately in this example we are binding result of query which contains multiple rows into slice.
 ```go
-    users := []interface{}{&User{}, &User{}}
+    users := []User{&User{}, &User{}}
     rows, _ := db.Query(`SELECT * FROM users`)
     _ = bind.Bind(rows, users)
+```
+
+bind also supports nested structs.
+```go
+
+type ComplexUser struct {
+	ID      int    `bind:"id"`
+	Name    string `bind:"name"`
+	Address Address
+}
+
+type Address struct {
+	ID   int    `bind:"id"`
+	Path string `bind:"path"`
+}
+
+rows, err := db.Query(`SELECT users.id, users.name, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
+
+amirreza := &ComplexUser{}
+milad := &ComplexUser{}
+
+err = Bind(rows, []*ComplexUser{amirreza, milad})
 ```
 
 ## License
