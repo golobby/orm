@@ -20,7 +20,7 @@ type ComplexUser struct {
 }
 
 type Address struct {
-	ID   int    `bind:"id"`
+	ID   int    `bind:"address_id"`
 	Path string `bind:"path"`
 }
 
@@ -175,7 +175,7 @@ func TestBindNested(t *testing.T) {
 		_, err = db.Exec("INSERT INTO addresses (path, user_id) VALUES ('delfan', 2)")
 		assert.NoError(t, err)
 
-		rows, err := db.Query(`SELECT users.id, users.name, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
+		rows, err := db.Query(`SELECT users.id, users.name, addresses.id AS address_id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
 		assert.NoError(t, err)
 
 		amirreza := &ComplexUser{}
@@ -188,5 +188,7 @@ func TestBindNested(t *testing.T) {
 		assert.Equal(t, "milad", milad.Name)
 		assert.Equal(t, "kianpars", amirreza.Address.Path)
 		assert.Equal(t, "delfan", milad.Address.Path)
+		assert.Equal(t, 2, milad.Address.ID)
+		assert.Equal(t, 1, amirreza.Address.ID)
 	})
 }

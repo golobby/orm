@@ -20,9 +20,9 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 		for i := 0; i < t.NumField(); i++ {
 			ft := t.Field(i)
 			if ft.Type.Kind() == reflect.Ptr {
-				scanInto = append(scanInto, makePtrsOf(v.Field(i).Elem(), cts)...)
+				return append(scanInto, makePtrsOf(v.Field(i).Elem(), cts)...)
 			} else if ft.Type.Kind() == reflect.Struct {
-				scanInto = append(scanInto, makePtrsOf(v.Field(i), cts)...)
+				return append(scanInto, makePtrsOf(v.Field(i), cts)...)
 			} else {
 				name, exists := ft.Tag.Lookup("bind")
 				if exists {
