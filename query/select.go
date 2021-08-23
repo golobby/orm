@@ -11,17 +11,17 @@ type selectClause struct {
 	columns  []string
 }
 
-func makeFormatter(function string) func(string) string {
+func makeFunctionFormatter(function string) func(string) string {
 	return func(column string) string {
 		return fmt.Sprintf("%s(%s)", function, column)
 	}
 }
 
-var Min = makeFormatter("MIN")
-var Max = makeFormatter("MAX")
-var Count = makeFormatter("COUNT")
-var Avg = makeFormatter("AVG")
-var Sum = makeFormatter("SUM")
+var Min = makeFunctionFormatter("MIN")
+var Max = makeFunctionFormatter("MAX")
+var Count = makeFunctionFormatter("COUNT")
+var Avg = makeFunctionFormatter("AVG")
+var Sum = makeFunctionFormatter("SUM")
 
 func (s *selectClause) Distinct() *selectClause {
 	s.distinct = true
