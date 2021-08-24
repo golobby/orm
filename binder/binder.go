@@ -1,4 +1,4 @@
-package bind
+package binder
 
 import (
 	"database/sql"
@@ -68,7 +68,7 @@ func Bind(rows *sql.Rows, v interface{}) error {
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs :=  makePtrsOf(p, newCts)
+			ptrs := makePtrsOf(p, newCts)
 			inputs = append(inputs, ptrs)
 		}
 	}

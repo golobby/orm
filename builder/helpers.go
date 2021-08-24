@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/golobby/sql/binder"
@@ -40,4 +41,24 @@ func _bind(ctx context.Context, db *sql.DB, v interface{}, query string, args ..
 
 func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sql.Result, error) {
 	return db.ExecContext(ctx, stmt, args...)
+}
+
+//Returns a list of string which are the columns that a struct repreasent based on binder tags.
+//Best usage would be to generate these column names in startup.
+func ColumnsOf(v interface{}) []string {
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	columns := []string{}
+
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if tag, exists := f.Tag.Lookup("bind"); exists {
+			columns = append(columns, tag)
+		} else {
+			columns = append(columns, f.Name)
+		}
+	}
+	return columns
 }
