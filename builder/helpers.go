@@ -92,3 +92,15 @@ func columnsOf(v interface{}) []string {
 	}
 	return columns
 }
+
+type objectMetadata struct {
+	Table   string
+	Columns []string
+}
+
+func ObjectMetadataFrom(v interface{}) *objectMetadata {
+	return &objectMetadata{
+		Table:   ObjectHelpers.TableName(v),
+		Columns: ObjectHelpers.ColumnsOf(v),
+	}
+}
