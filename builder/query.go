@@ -133,6 +133,8 @@ type whereHelpers struct {
 	In      func(column string, values ...string) string
 	Between func(column string, lower string, higher string) string
 	Not     func(cond ...string) string
+	Equal   func(column, value string) string
+	EqualID func(value string) string
 }
 
 var WhereHelpers = &whereHelpers{
@@ -140,8 +142,15 @@ var WhereHelpers = &whereHelpers{
 	In:      in,
 	Between: between,
 	Not:     not,
+	Equal:   equal,
+	EqualID: func(value string) string {
+		return equal("id", value)
+	},
 }
 
+func equal(column, value string) string {
+	return fmt.Sprintf("%s=%s", column, value)
+}
 func like(column string, pattern string) string {
 	return fmt.Sprintf("%s LIKE %s", column, pattern)
 }

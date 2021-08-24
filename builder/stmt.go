@@ -51,7 +51,7 @@ func (i *insertStmt) ExecContext(ctx context.Context, db *sql.DB) (sql.Result, e
 
 func (i *insertStmt) SQL() (string, error) {
 	if i.placeholdersGenerator == nil {
-		i.placeholdersGenerator = PostgresPlaceholder
+		i.placeholdersGenerator = PlaceHolderGenerators.Postgres
 	}
 	return fmt.Sprintf(`INSERT INTO %s (%s) VALUES (%s)`, i.table, strings.Join(i.columns, ", "), i.placeholdersGenerator(len(i.values))), nil
 }
