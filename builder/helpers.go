@@ -95,12 +95,22 @@ func columnsOf(v interface{}) []string {
 
 type objectMetadata struct {
 	Table   string
-	Columns []string
+	Columns func(...string) []string
 }
 
 func ObjectMetadataFrom(v interface{}) *objectMetadata {
 	return &objectMetadata{
-		Table:   ObjectHelpers.TableName(v),
-		Columns: ObjectHelpers.ColumnsOf(v),
+		Table: ObjectHelpers.TableName(v),
+		Columns: func(blacklist ...string) []string {
+			allColumns := ObjectHelpers.ColumnsOf(v)
+			blacklisted := strings.Join(blacklist, ";")
+			columns := []string{}
+			for _, col := range allColumns {
+				if !strings.Contains(blacklisted, col) {
+					columns = append(columns, col)
+				}
+			}
+			return columns
+		},
 	}
 }
