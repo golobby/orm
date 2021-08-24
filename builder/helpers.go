@@ -54,16 +54,30 @@ func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sq
 }
 
 type objectHelpers struct {
+	//Returns a list of string which are the columns that a struct repreasent based on binder tags.
+	//Best usage would be to generate these column names in startup.
 	ColumnsOf func(v interface{}) []string
+	// Returns a string which is the table name ( by convention is TYPEs ) of given object
 	TableName func(v interface{}) string
+	// Returns a list of values of the given object, usefull for passing as args of sql exec or query
+	ValuesOf func(v interface{}) []interface{}
 }
 
 var ObjectHelpers = &objectHelpers{
-	//Returns a list of string which are the columns that a struct repreasent based on binder tags.
-	//Best usage would be to generate these column names in startup.
 	ColumnsOf: columnsOf,
-	// Returns a string which is the table name ( by convention is TYPEs ) of given object
 	TableName: tableName,
+
+	ValuesOf: func(o interface{}) []interface{} {
+		v := reflect.ValueOf(o)
+		if v.Type().Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
+		values := []interface{}{}
+		for i := 0; i < v.NumField(); i++ {
+			values = append(values, v.Field(i).Interface())
+		}
+		return values
+	},
 }
 
 func tableName(v interface{}) string {
