@@ -1,4 +1,4 @@
-package query
+package builder
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 type whereClause struct {
-	parent *Query
+	parent *query
 	conds  []string
 }
 
@@ -30,7 +30,7 @@ func (w *whereClause) And(parts ...string) *whereClause {
 	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
 	return w
 }
-func (w *whereClause) Query() *Query {
+func (w *whereClause) Query() *query {
 	return w.parent
 }
 func (w *whereClause) Or(parts ...string) *whereClause {

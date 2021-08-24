@@ -1,4 +1,4 @@
-package query
+package builder
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 type joinClause struct {
-	parent *Query
+	parent *query
 	// INNER LEFT RIGHT FULL
 	joinType string
 
@@ -24,6 +24,6 @@ func (j *joinClause) String() string {
 	return fmt.Sprintf("%s JOIN %s ON %s", j.joinType, j.table, j.conds)
 }
 
-func (j *joinClause) Query() *Query {
+func (j *joinClause) Query() *query {
 	return j.parent
 }

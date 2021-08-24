@@ -1,13 +1,13 @@
-package query
+package builder
 
 import "strings"
 
 type groupByClause struct {
-	parent  *Query
+	parent  *query
 	columns []string
 }
 
-func (g *groupByClause) Query() *Query {
+func (g *groupByClause) Query() *query {
 	return g.parent
 }
 

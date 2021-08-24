@@ -1,15 +1,13 @@
-package query
+package builder
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 	"strings"
-
-	"github.com/golobby/sql/bind"
 )
 
-type Query struct {
+type query struct {
 	table     string
 	projected *selectClause
 	filters   []*whereClause
@@ -18,11 +16,11 @@ type Query struct {
 	joins     []*joinClause
 }
 
-func (q *Query) Table(t string) *Query {
+func (q *query) Table(t string) *query {
 	q.table = t
 	return q
 }
-func (q *Query) Select(columns ...string) *selectClause {
+func (q *query) Select(columns ...string) *selectClause {
 	q.projected = &selectClause{
 		parent:   q,
 		distinct: false,
@@ -30,31 +28,31 @@ func (q *Query) Select(columns ...string) *selectClause {
 	}
 	return q.projected
 }
-func (q *Query) InnerJoin(table string) *joinClause {
+func (q *query) InnerJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "INNER"}
 	q.joins = append(q.joins, j)
 	return j
 }
 
-func (q *Query) RightJoin(table string) *joinClause {
+func (q *query) RightJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "RIGHT"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *Query) LeftJoin(table string) *joinClause {
+func (q *query) LeftJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "LEFT"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *Query) FullOuterJoin(table string) *joinClause {
+func (q *query) FullOuterJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "FULL OUTER"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *Query) GroupBy(columns ...string) *groupByClause {
+func (q *query) GroupBy(columns ...string) *groupByClause {
 	q.groupBy = &groupByClause{
 		parent:  q,
 		columns: columns,
@@ -62,13 +60,13 @@ func (q *Query) GroupBy(columns ...string) *groupByClause {
 	return q.groupBy
 }
 
-func (q *Query) Where(parts ...string) *whereClause {
+func (q *query) Where(parts ...string) *whereClause {
 	w := &whereClause{conds: []string{strings.Join(parts, " ")}, parent: q}
 	q.filters = append(q.filters, w)
 	return w
 }
 
-func (q *Query) OrderBy(columns ...string) *orderbyClause {
+func (q *query) OrderBy(columns ...string) *orderbyClause {
 	q.orderBy = &orderbyClause{
 		parent:  q,
 		columns: columns,
@@ -78,7 +76,7 @@ func (q *Query) OrderBy(columns ...string) *orderbyClause {
 	return q.orderBy
 }
 
-func (q *Query) SQL() (string, error) {
+func (q *query) SQL() (string, error) {
 	sections := []string{}
 	// handle select
 	if q.projected == nil {
@@ -119,46 +117,39 @@ func (q *Query) SQL() (string, error) {
 	return strings.Join(sections, " "), nil
 }
 
-func (q *Query) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (q *query) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+	query, err := q.SQL()
+	if err != nil {
+		return nil, err
+	}
+	return exec(context.Background(), db, query, args)
+
+}
+
+func (q *query) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
 	s, err := q.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return db.Exec(s, args...)
+	return exec(context.Background(), db, s, args)
 }
 
-func (q *Query) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
-	s, err := q.SQL()
-	if err != nil {
-		return nil, err
-	}
-	return db.ExecContext(ctx, s, args...)
-}
-
-func (q *Query) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *query) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
 	}
-	rows, err := db.Query(s, args...)
-	if err != nil {
-		return err
-	}
-	return bind.Bind(rows, v)
+	return _bind(context.Background(), db, v, s, args)
 }
 
-func (q *Query) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *query) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
 	}
-	rows, err := db.Query(s, args...)
-	if err != nil {
-		return err
-	}
-	return bind.Bind(rows, v)
+	return _bind(ctx, db, v, s, args)
 }
 
-func New() *Query {
-	return &Query{}
+func NewQuery() *query {
+	return &query{}
 }

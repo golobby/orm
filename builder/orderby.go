@@ -1,9 +1,9 @@
-package query
+package builder
 
 import "strings"
 
 type orderbyClause struct {
-	parent  *Query
+	parent  *query
 	columns []string
 	desc    bool
 }
@@ -13,7 +13,7 @@ func (s *orderbyClause) Desc() *orderbyClause {
 	return s
 }
 
-func (s *orderbyClause) Query() *Query {
+func (s *orderbyClause) Query() *query {
 	return s.parent
 }
 

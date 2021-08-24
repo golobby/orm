@@ -1,4 +1,4 @@
-package query
+package builder
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 type selectClause struct {
-	parent   *Query
+	parent   *query
 	distinct bool
 	columns  []string
 }
@@ -28,7 +28,7 @@ func (s *selectClause) Distinct() *selectClause {
 	return s
 }
 
-func (s *selectClause) Query() *Query {
+func (s *selectClause) Query() *query {
 	return s.parent
 }
 
