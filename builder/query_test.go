@@ -9,7 +9,7 @@ import (
 func TestQueryBuilding(t *testing.T) {
 
 	t.Run("select with all aggregator functions", func(t *testing.T) {
-		sql, err := NewQuery().Table("users").Select("id", "name", Max("age"), Min("weight"), Sum("balance"), Avg("height"), Count("name")).Query().SQL()
+		sql, err := NewQuery().Table("users").Select("id", "name", SelectHelpers.Max("age"), SelectHelpers.Min("weight"), SelectHelpers.Sum("balance"), SelectHelpers.Avg("height"), SelectHelpers.Count("name")).Query().SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name, MAX(age), MIN(weight), SUM(balance), AVG(height), COUNT(name) FROM users`, sql)
 	})

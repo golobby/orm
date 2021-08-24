@@ -16,6 +16,60 @@ type query struct {
 	joins     []*joinClause
 }
 
+type whereClause struct {
+	parent *query
+	conds  []string
+}
+
+type whereHelpers struct {
+	Like    func(column string, pattern string) string
+	In      func(column string, values ...string) string
+	Between func(column string, lower string, higher string) string
+	Not     func(cond ...string) string
+}
+
+var WhereHelpers = &whereHelpers{
+	Like:    like,
+	In:      in,
+	Between: between,
+	Not:     not,
+}
+
+func like(column string, pattern string) string {
+	return fmt.Sprintf("%s LIKE %s", column, pattern)
+}
+
+func in(column string, values ...string) string {
+	return fmt.Sprintf("%s IN (%s)", column, strings.Join(values, ", "))
+}
+
+func between(column string, lower string, higher string) string {
+	return fmt.Sprintf("%s BETWEEN %s AND %s", column, lower, higher)
+}
+
+func not(cond ...string) string {
+	return fmt.Sprintf("NOT %s", strings.Join(cond, " "))
+}
+
+func (w *whereClause) And(parts ...string) *whereClause {
+	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
+	return w
+}
+func (w *whereClause) Query() *query {
+	return w.parent
+}
+func (w *whereClause) Or(parts ...string) *whereClause {
+	w.conds = append(w.conds, "OR "+strings.Join(parts, " "))
+	return w
+}
+func (w *whereClause) Not(parts ...string) *whereClause {
+	w.conds = append(w.conds, "NOT "+strings.Join(parts, " "))
+	return w
+}
+
+func (w *whereClause) String() string {
+	return strings.Join(w.conds, " ")
+}
 func (q *query) Table(t string) *query {
 	q.table = t
 	return q

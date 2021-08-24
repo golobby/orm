@@ -17,11 +17,23 @@ func makeFunctionFormatter(function string) func(string) string {
 	}
 }
 
-var Min = makeFunctionFormatter("MIN")
-var Max = makeFunctionFormatter("MAX")
-var Count = makeFunctionFormatter("COUNT")
-var Avg = makeFunctionFormatter("AVG")
-var Sum = makeFunctionFormatter("SUM")
+type functionCall func(string) string
+
+type selectHelpers struct {
+	Min   functionCall
+	Max   functionCall
+	Count functionCall
+	Avg   functionCall
+	Sum   functionCall
+}
+
+var SelectHelpers = &selectHelpers{
+	Min:   makeFunctionFormatter("MIN"),
+	Max:   makeFunctionFormatter("MAX"),
+	Count: makeFunctionFormatter("COUNT"),
+	Avg:   makeFunctionFormatter("AVG"),
+	Sum:   makeFunctionFormatter("SUM"),
+}
 
 func (s *selectClause) Distinct() *selectClause {
 	s.distinct = true
