@@ -19,14 +19,14 @@ go get github.com/golobby/sql
 ```
 
 ### Quick Start
-#### Query
-Query package contains a powerful SQL query builder.
+#### Builder
+Builder package contains a powerful SQL query builder.
 
 The following example demonstrates how to build a query and bind it to a struct.
 ```go
     var db *sql.DB
     u := User{}
-    _ = query.New().Table("users").
+    _ = builder.NewQuery().Table("users").
 			Select("id", "name").Query().
 			Where("id", "=", "$1").
 			Query().Bind(db, u)
@@ -35,7 +35,7 @@ The following example demonstrates how to build a query and bind it to a struct.
 of course you can use each sub-package seperately as well as combined usage like above.
 for example just building a query:
 ```go
-    q, _ := query.New().Table("users").
+    q, _ := builder.NewQuery().Table("users").
 			Select("id", "name").Query().
 			Where("id", "=", "$1").
 			Query().SQL()
@@ -43,8 +43,8 @@ for example just building a query:
     //do smth with rows
 
 ```
-#### Bind
-Bind package contains functionallity to bind sql.Rows to a struct.
+#### Binder
+Binder package contains functionallity to bind sql.Rows to a struct.
 In this example we are binding result of query which contains multiple rows into slice.
 ```go
     users := []User{&User{}, &User{}}
