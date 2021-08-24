@@ -16,6 +16,113 @@ type query struct {
 	joins     []*joinClause
 }
 
+type joinClause struct {
+	parent *query
+	// INNER LEFT RIGHT FULL
+	joinType string
+
+	conds string
+
+	table string
+}
+
+func (j *joinClause) On(parts ...string) *joinClause {
+	j.conds = strings.Join(parts, " ")
+	return j
+}
+
+func (j *joinClause) String() string {
+	return fmt.Sprintf("%s JOIN %s ON %s", j.joinType, j.table, j.conds)
+}
+
+func (j *joinClause) Query() *query {
+	return j.parent
+}
+
+type orderbyClause struct {
+	parent  *query
+	columns []string
+	desc    bool
+}
+
+func (s *orderbyClause) Desc() *orderbyClause {
+	s.desc = true
+	return s
+}
+
+func (s *orderbyClause) Query() *query {
+	return s.parent
+}
+
+func (s *orderbyClause) String() string {
+	output := strings.Join(s.columns, ", ")
+	if s.desc {
+		output = output + " DESC"
+	}
+	return output
+}
+
+type selectClause struct {
+	parent   *query
+	distinct bool
+	columns  []string
+}
+
+func makeFunctionFormatter(function string) func(string) string {
+	return func(column string) string {
+		return fmt.Sprintf("%s(%s)", function, column)
+	}
+}
+
+type functionCall func(string) string
+
+type selectHelpers struct {
+	Min   functionCall
+	Max   functionCall
+	Count functionCall
+	Avg   functionCall
+	Sum   functionCall
+}
+
+var SelectHelpers = &selectHelpers{
+	Min:   makeFunctionFormatter("MIN"),
+	Max:   makeFunctionFormatter("MAX"),
+	Count: makeFunctionFormatter("COUNT"),
+	Avg:   makeFunctionFormatter("AVG"),
+	Sum:   makeFunctionFormatter("SUM"),
+}
+
+func (s *selectClause) Distinct() *selectClause {
+	s.distinct = true
+	return s
+}
+
+func (s *selectClause) Query() *query {
+	return s.parent
+}
+
+func (s *selectClause) String() string {
+	output := strings.Join(s.columns, ", ")
+	if s.distinct {
+		output = "DISTINCT " + output
+	}
+	return output
+}
+
+type groupByClause struct {
+	parent  *query
+	columns []string
+}
+
+func (g *groupByClause) Query() *query {
+	return g.parent
+}
+
+func (g *groupByClause) String() string {
+	output := strings.Join(g.columns, ", ")
+	return output
+}
+
 type whereClause struct {
 	parent *query
 	conds  []string

@@ -10,7 +10,17 @@ import (
 	"github.com/golobby/sql/binder"
 )
 
-func PostgresPlaceholder(n int) string {
+type placeHolderGenerators struct {
+	Postgres func(n int) string
+	MySQL    func(n int) string
+}
+
+var PlaceHolderGenerators = &placeHolderGenerators{
+	Postgres: postgresPlaceholder,
+	MySQL:    mySQLPlaceHolder,
+}
+
+func postgresPlaceholder(n int) string {
 	output := []string{}
 	for i := 1; i < n+1; i++ {
 		output = append(output, fmt.Sprintf("$%d", i))
@@ -18,7 +28,7 @@ func PostgresPlaceholder(n int) string {
 	return strings.Join(output, ", ")
 }
 
-func MySQLPlaceHolder(n int) string {
+func mySQLPlaceHolder(n int) string {
 	output := []string{}
 	for i := 0; i < n; i++ {
 		output = append(output, "?")
@@ -43,9 +53,29 @@ func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sq
 	return db.ExecContext(ctx, stmt, args...)
 }
 
-//Returns a list of string which are the columns that a struct repreasent based on binder tags.
-//Best usage would be to generate these column names in startup.
-func ColumnsOf(v interface{}) []string {
+type objectHelpers struct {
+	ColumnsOf func(v interface{}) []string
+	TableName func(v interface{}) string
+}
+
+var ObjectHelpers = &objectHelpers{
+	//Returns a list of string which are the columns that a struct repreasent based on binder tags.
+	//Best usage would be to generate these column names in startup.
+	ColumnsOf: columnsOf,
+	// Returns a string which is the table name ( by convention is TYPEs ) of given object
+	TableName: tableName,
+}
+
+func tableName(v interface{}) string {
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	parts := strings.Split(t.Name(), ".")
+	return parts[len(parts)-1] + "s"
+}
+
+func columnsOf(v interface{}) []string {
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
