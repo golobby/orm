@@ -27,18 +27,17 @@ The following example demonstrates how to build a query and bind it to a struct.
     var db *sql.DB
     u := User{}
     _ = builder.NewQuery().Table("users").
-			Select("id", "name").Query().
-			Where("id", "=", "$1").
-			Query().Bind(db, u)
+			Select("id", "name").
+			Where("id", "=", "$1").Bind(db, u)
     }
 ```
 of course you can use each sub-package seperately as well as combined usage like above.
 for example just building a query:
 ```go
     q, _ := builder.NewQuery().Table("users").
-			Select("id", "name").Query().
+			Select("id", "name").
 			Where("id", "=", "$1").
-			Query().SQL()
+			SQL()
     rows, _ := db.Query(q, args...)
     //do smth with rows
 
