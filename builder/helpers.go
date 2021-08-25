@@ -36,6 +36,7 @@ func mySQLPlaceHolder(n int) string {
 
 	return strings.Join(output, ", ")
 }
+
 func _query(ctx context.Context, db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
 	return db.QueryContext(ctx, query, args...)
 }
@@ -54,8 +55,8 @@ func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sq
 }
 
 type objectHelpers struct {
-	//Returns a list of string which are the columns that a struct repreasent based on binder tags.
-	//Best usage would be to generate these column names in startup.
+	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
+	// Best usage would be to generate these column names in startup.
 	ColumnsOf func(v interface{}) []string
 	// Returns a string which is the table name ( by convention is TYPEs ) of given object
 	TableName func(v interface{}) string
@@ -110,6 +111,10 @@ func columnsOf(v interface{}) []string {
 type objectMetadata struct {
 	Table   string
 	Columns func(...string) []string
+	// primary key of this struct
+	PrimaryKey string
+	// index of the relation fields
+	RelationField map[string]int
 }
 
 func ObjectMetadataFrom(v interface{}) *objectMetadata {

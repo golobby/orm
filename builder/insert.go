@@ -48,7 +48,6 @@ func (i *InsertStmt) ExecContext(ctx context.Context, db *sql.DB) (sql.Result, e
 	return db.ExecContext(ctx, s, i.values...)
 
 }
-
 func (i *InsertStmt) SQL() (string, error) {
 	if i.placeholdersGenerator == nil {
 		i.placeholdersGenerator = PlaceHolderGenerators.Postgres
