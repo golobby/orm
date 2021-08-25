@@ -120,12 +120,7 @@ func (s *selectClause) String() string {
 }
 
 type groupByClause struct {
-	parent  *query
 	columns []string
-}
-
-func (g *groupByClause) Query() *query {
-	return g.parent
 }
 
 func (g *groupByClause) String() string {
@@ -162,12 +157,16 @@ func (q *query) FullOuterJoin(table string) *joinClause {
 	return j
 
 }
-func (q *query) GroupBy(columns ...string) *groupByClause {
-	q.groupBy = &groupByClause{
-		parent:  q,
-		columns: columns,
+func (q *query) GroupBy(columns ...string) *query {
+	if q.groupBy == nil {
+		q.groupBy = &groupByClause{
+			columns: columns,
+		}
+		return q
 	}
-	return q.groupBy
+	q.groupBy.columns = append(q.groupBy.columns, columns...)
+
+	return q
 }
 
 func (q *query) Where(parts ...string) *query {

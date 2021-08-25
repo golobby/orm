@@ -89,7 +89,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with groupby", func(t *testing.T) {
-		sql, err := NewQuery().Table("users").Select("id").GroupBy("name", "age").Query().SQL()
+		sql, err := NewQuery().Table("users").Select("id").GroupBy("name", "age").SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id FROM users GROUP BY name, age`, sql)
 	})
