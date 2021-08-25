@@ -25,6 +25,16 @@ type query struct {
 	joins    []*joinClause
 	limit    *cursorClause
 	offset   *cursorClause
+	having   string
+}
+
+func (q *query) Having(cond ...string) *query {
+	if q.having == "" {
+		q.having = strings.Join(cond, " ")
+		return q
+	}
+	q.having = fmt.Sprintf("%s AND %s", q.having, strings.Join(cond, " "))
+	return q
 }
 
 func (q *query) Limit(n int) *query {
@@ -124,7 +134,7 @@ func makeFunctionFormatter(function string) func(string) string {
 
 type functionCall func(string) string
 
-type selectHelpers struct {
+type aggregators struct {
 	Min   functionCall
 	Max   functionCall
 	Count functionCall
@@ -132,7 +142,7 @@ type selectHelpers struct {
 	Sum   functionCall
 }
 
-var SelectHelpers = &selectHelpers{
+var Aggregators = &aggregators{
 	Min:   makeFunctionFormatter("MIN"),
 	Max:   makeFunctionFormatter("MAX"),
 	Count: makeFunctionFormatter("COUNT"),
@@ -258,6 +268,10 @@ func (q *query) SQL() (string, error) {
 
 	if q.offset != nil {
 		sections = append(sections, q.offset.String())
+	}
+
+	if q.having != "" {
+		sections = append(sections, "HAVING", q.having)
 	}
 
 	return strings.Join(sections, " "), nil

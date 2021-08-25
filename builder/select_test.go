@@ -9,7 +9,7 @@ import (
 func TestQueryBuilding(t *testing.T) {
 
 	t.Run("select with all aggregator functions", func(t *testing.T) {
-		sql, err := NewQuery().Table("users").Select("id", "name", SelectHelpers.Max("age"), SelectHelpers.Min("weight"), SelectHelpers.Sum("balance"), SelectHelpers.Avg("height"), SelectHelpers.Count("name")).SQL()
+		sql, err := NewQuery().Table("users").Select("id", "name", Aggregators.Max("age"), Aggregators.Min("weight"), Aggregators.Sum("balance"), Aggregators.Avg("height"), Aggregators.Count("name")).SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name, MAX(age), MIN(weight), SUM(balance), AVG(height), COUNT(name) FROM users`, sql)
 	})
@@ -115,6 +115,12 @@ func TestQueryBuilding(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT * FROM users LIMIT 10 OFFSET 10`, sql)
 
+	})
+
+	t.Run("select with having", func(t *testing.T) {
+		sql, err := NewQuery().Table("users").Having("COUNT(users) > 10").SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT * FROM users HAVING COUNT(users) > 10`, sql)
 	})
 
 }
