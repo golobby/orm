@@ -9,43 +9,30 @@ import (
 
 type updateStmt struct {
 	table string
-	where *updateWhere
+	where string
+	set   string
 }
 
-type updateWhere struct {
-	parent *updateStmt
-	conds  []string
+func (u *updateStmt) Where(parts ...string) *updateStmt {
+	w := strings.Join(parts, " ")
+	u.where = w
+	return u
 }
 
-func (w *updateWhere) And(parts ...string) *updateWhere {
-	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
-	return w
+type KV map[string]string
+
+func (u *updateStmt) Set(kv KV) *updateStmt {
+	pairs := []string{}
+	for k, v := range kv {
+		pairs = append(pairs, fmt.Sprintf("%s = %s", k, v))
+	}
+
+	u.set = strings.Join(pairs, ", ")
+	return u
 }
 
-func (w *updateWhere) Stmt() *updateStmt {
-	return w.parent
-}
-func (w *updateWhere) Or(parts ...string) *updateWhere {
-	w.conds = append(w.conds, "OR "+strings.Join(parts, " "))
-	return w
-}
-func (w *updateWhere) Not(parts ...string) *updateWhere {
-	w.conds = append(w.conds, "NOT "+strings.Join(parts, " "))
-	return w
-}
-
-func (w *updateWhere) String() string {
-	return strings.Join(w.conds, " ")
-}
-
-func (d *updateStmt) Where(parts ...string) *updateWhere {
-	w := &updateWhere{conds: []string{strings.Join(parts, " ")}, parent: d}
-	d.where = w
-	return w
-}
-
-func (d *updateStmt) SQL() (string, error) {
-	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where.String()), nil
+func (u *updateStmt) SQL() (string, error) {
+	return fmt.Sprintf("UPDATE %s WHERE %s SET %s", u.table, u.where, u.set), nil
 }
 
 func (d *updateStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {

@@ -37,7 +37,7 @@ func TestQueryBuilding(t *testing.T) {
 			Select("id", "name").Query().
 			Where(WhereHelpers.And(
 				WhereHelpers.Or(
-					WhereHelpers.Equal("id", "$1"),
+					"id = $1",
 					WhereHelpers.Less("age", "10")),
 				WhereHelpers.Equal("name", "'asghar'"))).
 			SQL()
