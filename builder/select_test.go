@@ -95,16 +95,15 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with join", func(t *testing.T) {
-		sql, err := NewQuery().Table("users").Select("id", "name").RightJoin("addresses").On("users.id", "=", "addresses.user_id").Query().SQL()
+		sql, err := NewQuery().Table("users").Select("id", "name").RightJoin("addresses", "users.id", "=", "addresses.user_id").SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id`, sql)
 	})
 
 	t.Run("select with multiple joins", func(t *testing.T) {
 		sql, err := NewQuery().Table("users").Select("id", "name").
-			RightJoin("addresses").On("users.id", "=", "addresses.user_id").
-			Query().
-			LeftJoin("user_credits").On("users.id", "=", "user_credits.user_id").Query().
+			RightJoin("addresses", "users.id", "=", "addresses.user_id").
+			LeftJoin("user_credits", "users.id", "=", "user_credits.user_id").
 			SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id LEFT JOIN user_credits ON users.id = user_credits.user_id`, sql)
