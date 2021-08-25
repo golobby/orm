@@ -137,30 +137,6 @@ func (s *SelectStmt) Distinct() *SelectStmt {
 	return s
 }
 
-func makeFunctionFormatter(function string) func(string) string {
-	return func(column string) string {
-		return fmt.Sprintf("%s(%s)", function, column)
-	}
-}
-
-type functionCall func(string) string
-
-type aggregators struct {
-	Min   functionCall
-	Max   functionCall
-	Count functionCall
-	Avg   functionCall
-	Sum   functionCall
-}
-
-var Aggregators = &aggregators{
-	Min:   makeFunctionFormatter("MIN"),
-	Max:   makeFunctionFormatter("MAX"),
-	Count: makeFunctionFormatter("COUNT"),
-	Avg:   makeFunctionFormatter("AVG"),
-	Sum:   makeFunctionFormatter("SUM"),
-}
-
 func (s *selectClause) String() string {
 	output := strings.Join(s.columns, ", ")
 	if s.distinct {
