@@ -16,7 +16,7 @@ func (c *cursorClause) String() string {
 	return fmt.Sprintf("%s %d", c.typ, c.n)
 }
 
-type query struct {
+type QueryStmt struct {
 	table    string
 	selected *selectClause
 	where    string
@@ -28,7 +28,7 @@ type query struct {
 	having   string
 }
 
-func (q *query) Having(cond ...string) *query {
+func (q *QueryStmt) Having(cond ...string) *QueryStmt {
 	if q.having == "" {
 		q.having = strings.Join(cond, " ")
 		return q
@@ -37,26 +37,26 @@ func (q *query) Having(cond ...string) *query {
 	return q
 }
 
-func (q *query) Limit(n int) *query {
+func (q *QueryStmt) Limit(n int) *QueryStmt {
 	q.limit = &cursorClause{typ: "LIMIT", n: n}
 	return q
 }
 
-func (q *query) Offset(n int) *query {
+func (q *QueryStmt) Offset(n int) *QueryStmt {
 	q.offset = &cursorClause{typ: "OFFSET", n: n}
 	return q
 }
 
-func (q *query) Skip(n int) *query {
+func (q *QueryStmt) Skip(n int) *QueryStmt {
 	return q.Offset(n)
 }
 
-func (q *query) Take(n int) *query {
+func (q *QueryStmt) Take(n int) *QueryStmt {
 	return q.Limit(n)
 }
 
 type joinClause struct {
-	parent *query
+	parent *QueryStmt
 	// INNER LEFT RIGHT FULL
 	joinType string
 
@@ -74,16 +74,16 @@ func (j *joinClause) String() string {
 	return fmt.Sprintf("%s JOIN %s ON %s", j.joinType, j.table, j.conds)
 }
 
-func (j *joinClause) Query() *query {
+func (j *joinClause) Query() *QueryStmt {
 	return j.parent
 }
 
 type orderbyClause struct {
-	parent  *query
+	parent  *QueryStmt
 	columns map[string]string
 }
 
-func (q *query) OrderBy(column, order string) *query {
+func (q *QueryStmt) OrderBy(column, order string) *QueryStmt {
 	if q.orderBy == nil {
 		q.orderBy = &orderbyClause{
 			parent:  q,
@@ -109,7 +109,7 @@ type selectClause struct {
 	columns  []string
 }
 
-func (q *query) Select(columns ...string) *query {
+func (q *QueryStmt) Select(columns ...string) *QueryStmt {
 	if q.selected == nil {
 		q.selected = &selectClause{
 			distinct: false,
@@ -121,7 +121,7 @@ func (q *query) Select(columns ...string) *query {
 	return q
 }
 
-func (s *query) Distinct() *query {
+func (s *QueryStmt) Distinct() *QueryStmt {
 	s.selected.distinct = true
 	return s
 }
@@ -167,36 +167,36 @@ func (g *groupByClause) String() string {
 	return output
 }
 
-func (q *query) Table(t string) *query {
+func (q *QueryStmt) Table(t string) *QueryStmt {
 	q.table = t
 	return q
 }
 
-func (q *query) InnerJoin(table string) *joinClause {
+func (q *QueryStmt) InnerJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "INNER"}
 	q.joins = append(q.joins, j)
 	return j
 }
 
-func (q *query) RightJoin(table string) *joinClause {
+func (q *QueryStmt) RightJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "RIGHT"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *query) LeftJoin(table string) *joinClause {
+func (q *QueryStmt) LeftJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "LEFT"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *query) FullOuterJoin(table string) *joinClause {
+func (q *QueryStmt) FullOuterJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "FULL OUTER"}
 	q.joins = append(q.joins, j)
 	return j
 
 }
-func (q *query) GroupBy(columns ...string) *query {
+func (q *QueryStmt) GroupBy(columns ...string) *QueryStmt {
 	if q.groupBy == nil {
 		q.groupBy = &groupByClause{
 			columns: columns,
@@ -208,7 +208,7 @@ func (q *query) GroupBy(columns ...string) *query {
 	return q
 }
 
-func (q *query) Where(parts ...string) *query {
+func (q *QueryStmt) Where(parts ...string) *QueryStmt {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
 		return q
@@ -217,16 +217,16 @@ func (q *query) Where(parts ...string) *query {
 	return q
 }
 
-func (q *query) OrWhere(parts ...string) *query {
+func (q *QueryStmt) OrWhere(parts ...string) *QueryStmt {
 	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
-func (q *query) AndWhere(parts ...string) *query {
+func (q *QueryStmt) AndWhere(parts ...string) *QueryStmt {
 	return q.Where(parts...)
 }
 
-func (q *query) SQL() (string, error) {
+func (q *QueryStmt) SQL() (string, error) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
@@ -277,7 +277,7 @@ func (q *query) SQL() (string, error) {
 	return strings.Join(sections, " "), nil
 }
 
-func (q *query) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (q *QueryStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
 	query, err := q.SQL()
 	if err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (q *query) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
 
 }
 
-func (q *query) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (q *QueryStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
 	s, err := q.SQL()
 	if err != nil {
 		return nil, err
@@ -294,7 +294,7 @@ func (q *query) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}
 	return exec(context.Background(), db, s, args)
 }
 
-func (q *query) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *QueryStmt) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
@@ -302,7 +302,7 @@ func (q *query) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
 	return _bind(context.Background(), db, v, s, args)
 }
 
-func (q *query) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *QueryStmt) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
@@ -310,6 +310,6 @@ func (q *query) BindContext(ctx context.Context, db *sql.DB, v interface{}, args
 	return _bind(ctx, db, v, s, args)
 }
 
-func NewQuery() *query {
-	return &query{}
+func NewQuery() *QueryStmt {
+	return &QueryStmt{}
 }
