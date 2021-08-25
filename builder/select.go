@@ -168,8 +168,21 @@ func (q *query) GroupBy(columns ...string) *groupByClause {
 }
 
 func (q *query) Where(parts ...string) *query {
-	q.filters = strings.Join(parts, " ")
+	if q.filters == "" {
+		q.filters = fmt.Sprintf("%s", strings.Join(parts, " "))
+		return q
+	}
+	q.filters = fmt.Sprintf("%s AND %s", q.filters, strings.Join(parts, " "))
 	return q
+}
+
+func (q *query) OrWhere(parts ...string) *query {
+	q.filters = fmt.Sprintf("%s OR %s", q.filters, strings.Join(parts, " "))
+	return q
+}
+
+func (q *query) AndWhere(parts ...string) *query {
+	return q.Where(parts...)
 }
 
 func (q *query) OrderBy(columns ...string) *orderbyClause {
