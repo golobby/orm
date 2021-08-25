@@ -10,7 +10,7 @@ import (
 type query struct {
 	table     string
 	projected *selectClause
-	filters   []*whereClause
+	filters   string
 	orderBy   *orderbyClause
 	groupBy   *groupByClause
 	joins     []*joinClause
@@ -123,18 +123,17 @@ func (g *groupByClause) String() string {
 	return output
 }
 
-type whereClause struct {
-	parent *query
-	conds  []string
-}
-
 type whereHelpers struct {
 	Like    func(column string, pattern string) string
 	In      func(column string, values ...string) string
 	Between func(column string, lower string, higher string) string
-	Not     func(cond ...string) string
 	Equal   func(column, value string) string
+	Less    func(column, value string) string
+	More    func(column, value string) string
 	EqualID func(value string) string
+	And     func(conds ...string) string
+	Or      func(conds ...string) string
+	Not     func(cond ...string) string
 }
 
 var WhereHelpers = &whereHelpers{
@@ -146,10 +145,22 @@ var WhereHelpers = &whereHelpers{
 	EqualID: func(value string) string {
 		return equal("id", value)
 	},
+	Less: less,
+	More: more,
+	Or:   or,
+	And:  and,
+}
+
+func less(column, value string) string {
+	return fmt.Sprintf("%s < %s", column, value)
+}
+
+func more(column, value string) string {
+	return fmt.Sprintf("%s > %s", column, value)
 }
 
 func equal(column, value string) string {
-	return fmt.Sprintf("%s=%s", column, value)
+	return fmt.Sprintf("%s = %s", column, value)
 }
 func like(column string, pattern string) string {
 	return fmt.Sprintf("%s LIKE %s", column, pattern)
@@ -167,25 +178,14 @@ func not(cond ...string) string {
 	return fmt.Sprintf("NOT %s", strings.Join(cond, " "))
 }
 
-func (w *whereClause) And(parts ...string) *whereClause {
-	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
-	return w
-}
-func (w *whereClause) Query() *query {
-	return w.parent
-}
-func (w *whereClause) Or(parts ...string) *whereClause {
-	w.conds = append(w.conds, "OR "+strings.Join(parts, " "))
-	return w
-}
-func (w *whereClause) Not(parts ...string) *whereClause {
-	w.conds = append(w.conds, "NOT "+strings.Join(parts, " "))
-	return w
+func and(cond ...string) string {
+	return fmt.Sprintf("%s", strings.Join(cond, " AND "))
 }
 
-func (w *whereClause) String() string {
-	return strings.Join(w.conds, " ")
+func or(cond ...string) string {
+	return fmt.Sprintf("%s", strings.Join(cond, " OR "))
 }
+
 func (q *query) Table(t string) *query {
 	q.table = t
 	return q
@@ -230,10 +230,9 @@ func (q *query) GroupBy(columns ...string) *groupByClause {
 	return q.groupBy
 }
 
-func (q *query) Where(parts ...string) *whereClause {
-	w := &whereClause{conds: []string{strings.Join(parts, " ")}, parent: q}
-	q.filters = append(q.filters, w)
-	return w
+func (q *query) Where(parts ...string) *query {
+	q.filters = strings.Join(parts, " ")
+	return q
 }
 
 func (q *query) OrderBy(columns ...string) *orderbyClause {
@@ -263,11 +262,9 @@ func (q *query) SQL() (string, error) {
 	sections = append(sections, "FROM "+q.table)
 
 	// handle where
-	if q.filters != nil {
+	if q.filters != "" {
 		sections = append(sections, "WHERE")
-		for _, f := range q.filters {
-			sections = append(sections, f.String())
-		}
+		sections = append(sections, q.filters)
 	}
 
 	if q.orderBy != nil {

@@ -18,7 +18,6 @@ func TestQueryBuilding(t *testing.T) {
 		sql, err := NewQuery().Table("users").
 			Select("id", "name").Query().
 			Where("id", "=", "$1").
-			Query().
 			SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users WHERE id = $1`, sql)
@@ -28,7 +27,6 @@ func TestQueryBuilding(t *testing.T) {
 		sql, err := NewQuery().Table("users").
 			Select("id", "name").Query().
 			Where(WhereHelpers.Not("id", "=", "$1")).
-			Query().
 			SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users WHERE NOT id = $1`, sql)
@@ -37,10 +35,11 @@ func TestQueryBuilding(t *testing.T) {
 	t.Run("select with multiple AND, OR", func(t *testing.T) {
 		sql, err := NewQuery().Table("users").
 			Select("id", "name").Query().
-			Where("id", "=", "$1").
-			Or("age", "<", "10").
-			And("name", "=", "'asghar'").
-			Query().
+			Where(WhereHelpers.And(
+				WhereHelpers.Or(
+					WhereHelpers.Equal("id", "$1"),
+					WhereHelpers.Less("age", "10")),
+				WhereHelpers.Equal("name", "'asghar'"))).
 			SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users WHERE id = $1 OR age < 10 AND name = 'asghar'`, sql)
@@ -48,7 +47,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with Like", func(t *testing.T) {
-		sql, err := NewQuery().Table("users").Select("id").Query().Where(WhereHelpers.Like("name", "%a")).Query().SQL()
+		sql, err := NewQuery().Table("users").Select("id").Query().Where(WhereHelpers.Like("name", "%a")).SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id FROM users WHERE name LIKE %a`, sql)
 	})
@@ -56,9 +55,8 @@ func TestQueryBuilding(t *testing.T) {
 	t.Run("select WHERE IN", func(t *testing.T) {
 		sql, err := NewQuery().Table("users").
 			Select("id", "name").Query().
-			Where(WhereHelpers.In("name", "'jafar'", "'khadije'")).
-			And(WhereHelpers.In("name", PlaceHolderGenerators.Postgres(2))).
-			Query().SQL()
+			Where(WhereHelpers.And(WhereHelpers.In("name", "'jafar'", "'khadije'"), WhereHelpers.In("name", PlaceHolderGenerators.Postgres(2)))).
+			SQL()
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users WHERE name IN ('jafar', 'khadije') AND name IN ($1, $2)`, sql)
 	})
@@ -66,7 +64,7 @@ func TestQueryBuilding(t *testing.T) {
 	t.Run("select BETWEEN", func(t *testing.T) {
 		sql, err := NewQuery().Table("users").
 			Select("id", "name").Query().
-			Where(WhereHelpers.Between("age", "10", "18")).Query().SQL()
+			Where(WhereHelpers.Between("age", "10", "18")).SQL()
 
 		assert.NoError(t, err)
 		assert.Equal(t, `SELECT id, name FROM users WHERE age BETWEEN 10 AND 18`, sql)
