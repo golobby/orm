@@ -8,12 +8,12 @@ import (
 )
 
 type query struct {
-	table     string
-	projected *selectClause
-	filters   string
-	orderBy   *orderbyClause
-	groupBy   *groupByClause
-	joins     []*joinClause
+	table    string
+	selected *selectClause
+	where    string
+	orderBy  *orderbyClause
+	groupBy  *groupByClause
+	joins    []*joinClause
 }
 
 type joinClause struct {
@@ -41,31 +41,50 @@ func (j *joinClause) Query() *query {
 
 type orderbyClause struct {
 	parent  *query
-	columns []string
-	desc    bool
+	columns map[string]string
 }
 
-func (s *orderbyClause) Desc() *orderbyClause {
-	s.desc = true
-	return s
-}
+func (q *query) OrderBy(column, order string) *query {
+	if q.orderBy == nil {
+		q.orderBy = &orderbyClause{
+			parent:  q,
+			columns: map[string]string{column: order},
+		}
+		return q
+	}
+	q.orderBy.columns[column] = order
+	return q
 
-func (s *orderbyClause) Query() *query {
-	return s.parent
 }
 
 func (s *orderbyClause) String() string {
-	output := strings.Join(s.columns, ", ")
-	if s.desc {
-		output = output + " DESC"
+	pairs := []string{}
+	for col, order := range s.columns {
+		pairs = append(pairs, fmt.Sprintf("%s %s", col, order))
 	}
-	return output
+	return strings.Join(pairs, ", ")
 }
 
 type selectClause struct {
-	parent   *query
 	distinct bool
 	columns  []string
+}
+
+func (q *query) Select(columns ...string) *query {
+	if q.selected == nil {
+		q.selected = &selectClause{
+			distinct: false,
+			columns:  columns,
+		}
+		return q
+	}
+	q.selected.columns = append(q.selected.columns, columns...)
+	return q
+}
+
+func (s *query) Distinct() *query {
+	s.selected.distinct = true
+	return s
 }
 
 func makeFunctionFormatter(function string) func(string) string {
@@ -90,15 +109,6 @@ var SelectHelpers = &selectHelpers{
 	Count: makeFunctionFormatter("COUNT"),
 	Avg:   makeFunctionFormatter("AVG"),
 	Sum:   makeFunctionFormatter("SUM"),
-}
-
-func (s *selectClause) Distinct() *selectClause {
-	s.distinct = true
-	return s
-}
-
-func (s *selectClause) Query() *query {
-	return s.parent
 }
 
 func (s *selectClause) String() string {
@@ -127,14 +137,7 @@ func (q *query) Table(t string) *query {
 	q.table = t
 	return q
 }
-func (q *query) Select(columns ...string) *selectClause {
-	q.projected = &selectClause{
-		parent:   q,
-		distinct: false,
-		columns:  columns,
-	}
-	return q.projected
-}
+
 func (q *query) InnerJoin(table string) *joinClause {
 	j := &joinClause{parent: q, table: table, joinType: "INNER"}
 	q.joins = append(q.joins, j)
@@ -168,16 +171,16 @@ func (q *query) GroupBy(columns ...string) *groupByClause {
 }
 
 func (q *query) Where(parts ...string) *query {
-	if q.filters == "" {
-		q.filters = fmt.Sprintf("%s", strings.Join(parts, " "))
+	if q.where == "" {
+		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
 		return q
 	}
-	q.filters = fmt.Sprintf("%s AND %s", q.filters, strings.Join(parts, " "))
+	q.where = fmt.Sprintf("%s AND %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
 func (q *query) OrWhere(parts ...string) *query {
-	q.filters = fmt.Sprintf("%s OR %s", q.filters, strings.Join(parts, " "))
+	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
@@ -185,24 +188,14 @@ func (q *query) AndWhere(parts ...string) *query {
 	return q.Where(parts...)
 }
 
-func (q *query) OrderBy(columns ...string) *orderbyClause {
-	q.orderBy = &orderbyClause{
-		parent:  q,
-		columns: columns,
-		desc:    false,
-	}
-
-	return q.orderBy
-}
-
 func (q *query) SQL() (string, error) {
 	sections := []string{}
 	// handle select
-	if q.projected == nil {
-		q.projected = &selectClause{parent: q, distinct: false, columns: []string{"*"}}
+	if q.selected == nil {
+		q.selected = &selectClause{distinct: false, columns: []string{"*"}}
 	}
 
-	sections = append(sections, "SELECT", q.projected.String())
+	sections = append(sections, "SELECT", q.selected.String())
 
 	if q.table == "" {
 		return "", fmt.Errorf("table name cannot be empty")
@@ -212,9 +205,9 @@ func (q *query) SQL() (string, error) {
 	sections = append(sections, "FROM "+q.table)
 
 	// handle where
-	if q.filters != "" {
+	if q.where != "" {
 		sections = append(sections, "WHERE")
-		sections = append(sections, q.filters)
+		sections = append(sections, q.where)
 	}
 
 	if q.orderBy != nil {
