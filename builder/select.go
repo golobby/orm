@@ -7,6 +7,15 @@ import (
 	"strings"
 )
 
+type cursorClause struct {
+	typ string
+	n   int
+}
+
+func (c *cursorClause) String() string {
+	return fmt.Sprintf("%s %d", c.typ, c.n)
+}
+
 type query struct {
 	table    string
 	selected *selectClause
@@ -14,6 +23,26 @@ type query struct {
 	orderBy  *orderbyClause
 	groupBy  *groupByClause
 	joins    []*joinClause
+	limit    *cursorClause
+	offset   *cursorClause
+}
+
+func (q *query) Limit(n int) *query {
+	q.limit = &cursorClause{typ: "LIMIT", n: n}
+	return q
+}
+
+func (q *query) Offset(n int) *query {
+	q.offset = &cursorClause{typ: "OFFSET", n: n}
+	return q
+}
+
+func (q *query) Skip(n int) *query {
+	return q.Offset(n)
+}
+
+func (q *query) Take(n int) *query {
+	return q.Limit(n)
 }
 
 type joinClause struct {
@@ -221,6 +250,14 @@ func (q *query) SQL() (string, error) {
 		for _, join := range q.joins {
 			sections = append(sections, join.String())
 		}
+	}
+
+	if q.limit != nil {
+		sections = append(sections, q.limit.String())
+	}
+
+	if q.offset != nil {
+		sections = append(sections, q.offset.String())
 	}
 
 	return strings.Join(sections, " "), nil

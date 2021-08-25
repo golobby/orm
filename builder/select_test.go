@@ -110,4 +110,11 @@ func TestQueryBuilding(t *testing.T) {
 		assert.Equal(t, `SELECT id, name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id LEFT JOIN user_credits ON users.id = user_credits.user_id`, sql)
 	})
 
+	t.Run("select with limit and offset", func(t *testing.T) {
+		sql, err := NewQuery().Table("users").Take(10).Skip(10).SQL()
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT * FROM users LIMIT 10 OFFSET 10`, sql)
+
+	})
+
 }
