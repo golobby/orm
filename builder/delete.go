@@ -63,3 +63,7 @@ func (d *deleteStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
 	return exec(context.Background(), db, query, args)
 
 }
+
+func NewDelete(table string) *deleteStmt {
+	return &deleteStmt{table: table}
+}

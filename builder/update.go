@@ -63,3 +63,6 @@ func (d *updateStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
 	return exec(context.Background(), db, query, args)
 
 }
+func NewUpdate(table string) *updateStmt {
+	return &updateStmt{table: table}
+}
