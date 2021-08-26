@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/golobby/sql)](https://goreportcard.com/report/github.com/golobby/sql)
 [![Coverage Status](https://coveralls.io/repos/github/golobby/config/badge.svg)](https://coveralls.io/github/golobby/sql?branch=master)
 
-# sql 
+# sql
 GoLobby sql is a set of helpers and utilities for simpler usage of `database/sql`.
 
 ## Documentation
@@ -18,31 +18,66 @@ To install this package run the following command in the root of your project.
 go get github.com/golobby/sql
 ```
 
-### Quick Start
-#### Builder
-Builder package contains a powerful SQL query builder.
 
-The following example demonstrates how to build a query and bind it to a struct.
-```go
-    var db *sql.DB
-    u := User{}
-    _ = builder.NewQuery().Table("users").
-			Select("id", "name").
-			Where("id", "=", "$1").Bind(db, u)
-    }
-```
-of course you can use each sub-package seperately as well as combined usage like above.
-for example just building a query:
-```go
-    q, _ := builder.NewQuery().Table("users").
-			Select("id", "name").
-			Where("id", "=", "$1").
-			SQL()
-    rows, _ := db.Query(q, args...)
-    //do smth with rows
+# Quick Start
+## Builder
+Query package supports *almost* whole SQL syntax, keywords and functions but there are probably some rough edges and some unsupported missed ones, so if there is anything missing just
+add an issue and let's talk about it.<br>
 
-```
-#### Binder
+I took a lot of inspiration from *Laravel*'s *Eloquent* APIs when designing the query builder API.
+Each SQL stmt type has it's own Go representation struct with various useful helper methods.
+### Insert
+- Into
+- Values
+- PlaceHolderGenerator
+- Exec
+- ExecContext
+- SQL
+
+### Update
+- Where
+- WhereNot
+- OrWhere
+- AndWhere
+- Set
+- SQL
+- Exec
+- ExecContext
+
+### Select
+- Select
+- Where
+- WhereNot
+- OrWhere
+- AndWhere
+- Having
+- Limit
+- Offset
+- Take (alias of Limit)
+- Skip (alias of Offset)
+- Joins
+    - InnerJoin
+    - RightJoin
+    - LeftJoin
+    - FullOuterJoin
+- OrderBy
+- GroupBy
+- Exec
+- ExecContext
+- Bind
+- BindContext
+- SQL
+
+### Delete
+- Where
+- WhereNot
+- OrWhere
+- AndWhere
+- Exec
+- ExecContext
+- SQL
+
+## Binder
 Binder package contains functionallity to bind sql.Rows to a struct.
 In this example we are binding result of query which contains multiple rows into slice.
 ```go

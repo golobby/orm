@@ -13,10 +13,22 @@ type UpdateStmt struct {
 	set   string
 }
 
-func (u *UpdateStmt) Where(parts ...string) *UpdateStmt {
-	w := strings.Join(parts, " ")
-	u.where = w
-	return u
+func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
+	if q.where == "" {
+		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
+		return q
+	}
+	q.where = fmt.Sprintf("%s AND %s", q.where, strings.Join(parts, " "))
+	return q
+}
+
+func (q *UpdateStmt) OrWhere(parts ...string) *UpdateStmt {
+	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
+	return q
+}
+
+func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
+	return q.Where(parts...)
 }
 
 type KV map[string]string

@@ -9,43 +9,29 @@ import (
 
 type DeleteStmt struct {
 	table string
-	where *deleteWhere
+	where string
 }
 
-type deleteWhere struct {
-	parent *DeleteStmt
-	conds  []string
+func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
+	if q.where == "" {
+		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
+		return q
+	}
+	q.where = fmt.Sprintf("%s AND %s", q.where, strings.Join(parts, " "))
+	return q
 }
 
-func (w *deleteWhere) And(parts ...string) *deleteWhere {
-	w.conds = append(w.conds, "AND "+strings.Join(parts, " "))
-	return w
+func (q *DeleteStmt) OrWhere(parts ...string) *DeleteStmt {
+	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
+	return q
 }
 
-func (w *deleteWhere) Stmt() *DeleteStmt {
-	return w.parent
-}
-func (w *deleteWhere) Or(parts ...string) *deleteWhere {
-	w.conds = append(w.conds, "OR "+strings.Join(parts, " "))
-	return w
-}
-func (w *deleteWhere) Not(parts ...string) *deleteWhere {
-	w.conds = append(w.conds, "NOT "+strings.Join(parts, " "))
-	return w
-}
-
-func (w *deleteWhere) String() string {
-	return strings.Join(w.conds, " ")
-}
-
-func (d *DeleteStmt) Where(parts ...string) *deleteWhere {
-	w := &deleteWhere{conds: []string{strings.Join(parts, " ")}, parent: d}
-	d.where = w
-	return w
+func (q *DeleteStmt) AndWhere(parts ...string) *DeleteStmt {
+	return q.Where(parts...)
 }
 
 func (d *DeleteStmt) SQL() (string, error) {
-	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where.String()), nil
+	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), nil
 }
 
 func (d *DeleteStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
