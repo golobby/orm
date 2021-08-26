@@ -62,23 +62,27 @@ type objectHelpers struct {
 	TableName func(v interface{}) string
 	// Returns a list of values of the given object, usefull for passing as args of sql exec or query
 	ValuesOf func(v interface{}) []interface{}
+	PrimaryKeyOf func(v interface{}) string
 }
 
 var ObjectHelpers = &objectHelpers{
 	ColumnsOf: columnsOf,
 	TableName: tableName,
 
-	ValuesOf: func(o interface{}) []interface{} {
-		v := reflect.ValueOf(o)
-		if v.Type().Kind() == reflect.Ptr {
-			v = v.Elem()
-		}
-		values := []interface{}{}
-		for i := 0; i < v.NumField(); i++ {
-			values = append(values, v.Field(i).Interface())
-		}
-		return values
-	},
+	ValuesOf: valuesOf,
+	PrimaryKeyOf: primaryKeyOf,
+}
+
+func valuesOf(o interface{}) []interface{} {
+	v := reflect.ValueOf(o)
+	if v.Type().Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	values := []interface{}{}
+	for i := 0; i < v.NumField(); i++ {
+		values = append(values, v.Field(i).Interface())
+	}
+	return values
 }
 
 func tableName(v interface{}) string {
@@ -107,9 +111,28 @@ func columnsOf(v interface{}) []string {
 	}
 	return columns
 }
+func primaryKeyOf(v interface{}) string {
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()	
+	}
+	for i:=0;i<t.NumField();i++ {
+		if tag, exists := t.Field(i).Tag.Lookup("pk"); exists {
+			if tag == "true" {
+				if name, exist:= t.Field(i).Tag.Lookup("bind");exist {
+					return name
+				}
+				return t.Field(i).Name
+			}
+		}
+	}
+	return ""
+}
 
-type objectMetadata struct {
+type ObjectMetadata struct {
+	// Name of the table that the object represents
 	Table   string
+	// List of columns that this object has.
 	Columns func(...string) []string
 	// primary key of this struct
 	PrimaryKey string
@@ -117,8 +140,8 @@ type objectMetadata struct {
 	RelationField map[string]int
 }
 
-func ObjectMetadataFrom(v interface{}) *objectMetadata {
-	return &objectMetadata{
+func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
+	return &ObjectMetadata{
 		Table: ObjectHelpers.TableName(v),
 		Columns: func(blacklist ...string) []string {
 			allColumns := ObjectHelpers.ColumnsOf(v)
@@ -131,6 +154,7 @@ func ObjectMetadataFrom(v interface{}) *objectMetadata {
 			}
 			return columns
 		},
+		PrimaryKey: primaryKeyOf(v),
 	}
 }
 
