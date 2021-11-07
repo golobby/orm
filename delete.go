@@ -8,9 +8,9 @@ import (
 )
 
 type DeleteStmt struct {
-	schema *Schema
-	table  string
-	where  string
+	repository *Repository
+	table      string
+	where      string
 }
 
 func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
@@ -40,18 +40,18 @@ func (d *DeleteStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), d.schema.conn, s, args)
+	return exec(context.Background(), d.repository.conn, s, args)
 }
 func (d *DeleteStmt) Exec(args ...interface{}) (sql.Result, error) {
 	query, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), d.schema.conn, query, args)
+	return exec(context.Background(), d.repository.conn, query, args)
 }
 
-func (d *DeleteStmt) Schema(schema *Schema) *DeleteStmt {
-	d.schema = schema
+func (d *DeleteStmt) Repository(repository *Repository) *DeleteStmt {
+	d.repository = repository
 	return d
 }
 

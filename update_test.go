@@ -9,8 +9,7 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, err := NewUpdate("users").
-			Where(WhereHelpers.EqualID("$1")).
+		s, err := NewUpdate().Table("users").Where(WhereHelpers.EqualID("$1")).
 			Set(KV{
 				"name": "'amirreza'",
 			}).

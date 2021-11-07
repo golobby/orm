@@ -8,14 +8,21 @@ import (
 )
 
 type InsertStmt struct {
+	repository            *Repository
 	table                 string
 	columns               []string
 	values                []interface{}
 	placeholdersGenerator func(n int) string
 }
 
-func NewInsert(table string) *InsertStmt {
-	return &InsertStmt{table: table}
+func NewInsert() *InsertStmt {
+	return &InsertStmt{}
+}
+func (i *InsertStmt) Repository(repository *Repository) *InsertStmt {
+	i.repository = repository
+	i.table = repository.metadata.Table
+	i.columns = repository.metadata.Columns(repository.metadata.PrimaryKey)
+	return i
 }
 
 func (i *InsertStmt) Into(columns ...string) *InsertStmt {
@@ -33,19 +40,19 @@ func (i *InsertStmt) PlaceHolderGenerator(generator func(n int) string) *InsertS
 	return i
 }
 
-func (i *InsertStmt) Exec(db *sql.DB) (sql.Result, error) {
+func (i *InsertStmt) Exec() (sql.Result, error) {
 	s, err := i.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return db.Exec(s, i.values...)
+	return i.repository.conn.Exec(s, i.values...)
 }
-func (i *InsertStmt) ExecContext(ctx context.Context, db *sql.DB) (sql.Result, error) {
+func (i *InsertStmt) ExecContext(ctx context.Context) (sql.Result, error) {
 	s, err := i.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return db.ExecContext(ctx, s, i.values...)
+	return i.repository.conn.ExecContext(ctx, s, i.values...)
 
 }
 func (i *InsertStmt) SQL() (string, error) {

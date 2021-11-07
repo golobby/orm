@@ -8,10 +8,10 @@ import (
 )
 
 type UpdateStmt struct {
-	schema *Schema
-	table  string
-	where  string
-	set    string
+	repository *Repository
+	table      string
+	where      string
+	set        string
 }
 
 func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
@@ -53,20 +53,20 @@ func (d *UpdateStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), d.schema.conn, s, args)
+	return exec(context.Background(), d.repository.conn, s, args)
 }
 func (d *UpdateStmt) Exec(args ...interface{}) (sql.Result, error) {
 	query, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), d.schema.conn, query, args)
+	return exec(context.Background(), d.repository.conn, query, args)
 
 }
 
-func (u *UpdateStmt) Schema(schema *Schema) *UpdateStmt {
-	u.schema = schema
-	u.table = schema.metadata.Table
+func (u *UpdateStmt) Repository(repository *Repository) *UpdateStmt {
+	u.repository = repository
+	u.table = repository.metadata.Table
 	return u
 }
 func (u *UpdateStmt) Table(table string) *UpdateStmt {

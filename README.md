@@ -19,65 +19,180 @@ go get github.com/golobby/orm
 ```
 
 # Quick Start
-`golobby/orm` has 3 main features.
-### Schema
-Schema is a type that holds different type info and database info to help the query builder engine build a query simpler.
+`golobby/orm` is built around idea of repositories and models.
+### Using Repositories
+Repositories are more like EFCore DbSet objects, they map to a database table and hold various informations needed for query generation.
+*Note* Since `golobby/orm` uses reflection for crating repositories it's best to build them once at the start of our application.<br/>
 ```go
-var userSchema = orm.NewSchema(&sql.DB{}, &User{})
-query, err := orm.NewQuery().
-    Schema(userSchema).
-    Where(orm.WhereHelpers.EqualID("1")).SQL() //"SELECT id, name FROM users WHERE id = 1"
+package main
 
-userSchema.NewModel(&User{Id: 1}).Fill() // fills given User object with data from database
-userSchema.NewModel(&User{
-	Id:   1,
-	Name: "amirreza",
-}).Save() //Saved given object into database using the schema.
-```
-### QueryBuilder
-Abstract SQL syntax into a Go API with builder pattern.
-### Bind
-Bind feature sql.Rows to a struct.
-In this example we are binding result of query which contains multiple rows into slice.
-```go
-    users := []User{&User{}, &User{}}
-    rows, _ := db.Query(`SELECT * FROM users`)
-    _ = bind.Bind(rows, users)
-```
+import (
+	"database/sql"
+	"github.com/golobby/orm"
+)
 
-bind also supports nested structs.
-```go
-
-type ComplexUser struct {
-	ID      int    `bind:"id"`
-	Name    string `bind:"name"`
-	Address Address
+func main() {
+	type User struct {
+		Id   int    `bind:"id" pk:"true"`
+		Name string `bind:"name"`
+	}
+	db, _ := sql.Open("", "")
+	userRepository := orm.NewRepository(db, &User{})
+	firstUser := &User{
+		Id: 1,
+    }
+	var secondUser User
+	userRepository.Fill(firstUser) //Fills the struct from database using present fields ( better to have to PK )
+	userRepository.Find(2, &secondUser) //Finds given primary key and binds it to the given struct
+	
+	newUser := &User{
+		Name: "Amirreza",
+    }
+	userRepository.Save(newUser) //Save given object
+	firstUser.Name = "Comrade"
+	userRepository.Update(firstUser) // Updates object in database
+	userRepository.Delete(secondUser) // Deletes the object from database
+	
+	
 }
-
-type Address struct {
-	ID   int    `bind:"id"`
-	Path string `bind:"path"`
-}
-
-rows, err := db.Query(`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
-
-amirreza := &ComplexUser{}
-milad := &ComplexUser{}
-
-err = Bind(rows, []*ComplexUser{amirreza, milad})
-
-
-assert.Equal(t, "amirreza", amirreza.Name)
-assert.Equal(t, "milad", milad.Name)
-
-//Nested struct also has filled
-assert.Equal(t, "kianpars", amirreza.Address.Path)
-assert.Equal(t, "delfan", milad.Address.Path)
-assert.Equal(t, 2, milad.Address.ID)
-assert.Equal(t, 1, amirreza.Address.ID)
-
 ```
-for more info on `bind` see [bind\_test.go](https://github.com/golobby/sql/tree/master/bind/bind_test.go)
+#### More advance queries using Repositories
+```go
+package main
+
+import (
+	"database/sql"
+	"github.com/golobby/orm"
+)
+
+func main() {
+	type User struct {
+		Id   int    `bind:"id" pk:"true"`
+		Name string `bind:"name"`
+	}
+	db, _ := sql.Open("", "")
+	userRepository := orm.NewRepository(db, &User{})
+	var results []User
+    userRepository.Query().
+		Where(orm.WhereHelpers.Like("name", "%A%")).
+		AndWhere(orm.WhereHelpers.Between("age", "10", "12")).
+		Distinct().
+		Limit(100).
+		Offset(50).Bind(results)
+```
+### Using Models
+Models are more Active-Record like idea.
+```go
+package main
+
+import (
+	"database/sql"
+	"github.com/golobby/orm"
+)
+
+func main() {
+	type User struct {
+		Id   int    `bind:"id" pk:"true"`
+		Name string `bind:"name"`
+	}
+	db, _ := sql.Open("", "")
+	userRepository := orm.NewRepository(db, &User{})
+	
+	// Save a new model
+	newUser := userRepository.NewModel(&User{Name: "milad"})
+	newUser.Save()
+
+	// update
+	u := &User{ Name: "Amirreza"}
+	userRepository.Fill(u)
+	um := userRepository.NewModel(u)
+	u.Name = "comrade"
+	um.Update()
+	
+	//Delete newUser
+	newUser.Delete()
+}
+```
+[//]: # (Repositories are built on top of two items.)
+
+[//]: # (### QueryBuilder)
+
+[//]: # (Abstract SQL syntax into a Go API with builder pattern.)
+
+[//]: # ()
+[//]: # (### Bind)
+
+[//]: # (Bind feature sql.Rows to a struct.)
+
+[//]: # (In this example we are binding result of query which contains multiple rows into slice.)
+
+[//]: # (```go)
+
+[//]: # (    users := []User{&User{}, &User{}})
+
+[//]: # (    rows, _ := db.Query&#40;`SELECT * FROM users`&#41;)
+
+[//]: # (    _ = bind.Bind&#40;rows, users&#41;)
+
+[//]: # (```)
+
+[//]: # ()
+[//]: # (bind also supports nested structs.)
+
+[//]: # (```go)
+
+[//]: # ()
+[//]: # (type ComplexUser struct {)
+
+[//]: # (	ID      int    `bind:"id"`)
+
+[//]: # (	Name    string `bind:"name"`)
+
+[//]: # (	Address Address)
+
+[//]: # (})
+
+[//]: # ()
+[//]: # (type Address struct {)
+
+[//]: # (	ID   int    `bind:"id"`)
+
+[//]: # (	Path string `bind:"path"`)
+
+[//]: # (})
+
+[//]: # ()
+[//]: # (rows, err := db.Query&#40;`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`&#41;)
+
+[//]: # ()
+[//]: # (amirreza := &ComplexUser{})
+
+[//]: # (milad := &ComplexUser{})
+
+[//]: # ()
+[//]: # (err = Bind&#40;rows, []*ComplexUser{amirreza, milad}&#41;)
+
+[//]: # ()
+[//]: # ()
+[//]: # (assert.Equal&#40;t, "amirreza", amirreza.Name&#41;)
+
+[//]: # (assert.Equal&#40;t, "milad", milad.Name&#41;)
+
+[//]: # ()
+[//]: # (//Nested struct also has filled)
+
+[//]: # (assert.Equal&#40;t, "kianpars", amirreza.Address.Path&#41;)
+
+[//]: # (assert.Equal&#40;t, "delfan", milad.Address.Path&#41;)
+
+[//]: # (assert.Equal&#40;t, 2, milad.Address.ID&#41;)
+
+[//]: # (assert.Equal&#40;t, 1, amirreza.Address.ID&#41;)
+
+[//]: # ()
+[//]: # (```)
+
+[//]: # (for more info on `bind` see [bind\_test.go]&#40;https://github.com/golobby/sql/tree/master/bind/bind_test.go&#41;)
 
 ## License
 GoLobby Sql is released under the [MIT License](http://opensource.org/licenses/mit-license.php).

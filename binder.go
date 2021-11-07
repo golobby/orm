@@ -42,8 +42,16 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 
 }
 
+type FromRows interface {
+	FromRows(rows *sql.Rows)
+}
+
 // Bind binds given rows to the given object at v.
 func Bind(rows *sql.Rows, v interface{}) error {
+	if fr, isFr := v.(FromRows); isFr {
+		fr.FromRows(rows)
+		return nil
+	}
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err

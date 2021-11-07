@@ -36,41 +36,28 @@ func (c *Clause) String() string {
 	return fmt.Sprintf("%s %s", c.typ, strings.Join(c.arg, c.delimiter))
 }
 
-type Schema struct {
-	conn     *sql.DB
-	metadata *ObjectMetadata
-}
-
-func NewSchema(conn *sql.DB, obj interface{}) *Schema {
-	s := &Schema{
-		conn:     conn,
-		metadata: ObjectMetadataFrom(obj),
-	}
-	return s
-}
-
 type SelectStmt struct {
-	schema   *Schema
-	table    string
-	selected *Clause
-	where    *Clause
-	orderBy  *Clause
-	groupBy  *Clause
-	joins    []*Clause
-	limit    *Clause
-	offset   *Clause
-	having   *Clause
+	repository *Repository
+	table      string
+	selected   *Clause
+	where      *Clause
+	orderBy    *Clause
+	groupBy    *Clause
+	joins      []*Clause
+	limit      *Clause
+	offset     *Clause
+	having     *Clause
 }
 
 func (s *SelectStmt) WherePK(pk interface{}) *SelectStmt {
-	s.Where(WhereHelpers.Equal(s.schema.metadata.PrimaryKey, fmt.Sprint(pk))) // SQL injection DANGER
+	s.Where(WhereHelpers.Equal(s.repository.metadata.PrimaryKey, fmt.Sprint(pk))) // SQL injection DANGER
 	return s
 }
 
-func (s *SelectStmt) Schema(schema *Schema) *SelectStmt {
-	s.schema = schema
-	s.table = schema.metadata.Table
-	s.Select(schema.metadata.Columns()...)
+func (s *SelectStmt) Repository(repository *Repository) *SelectStmt {
+	s.repository = repository
+	s.table = repository.metadata.Table
+	s.Select(repository.metadata.Columns()...)
 	return s
 }
 func (q *SelectStmt) Having(cond ...string) *SelectStmt {
@@ -268,7 +255,7 @@ func (q *SelectStmt) Exec(args ...interface{}) (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), q.schema.conn, query, args)
+	return exec(context.Background(), q.repository.conn, query, args)
 
 }
 
@@ -277,7 +264,7 @@ func (q *SelectStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), q.schema.conn, s, args)
+	return exec(context.Background(), q.repository.conn, s, args)
 }
 
 func (q *SelectStmt) Bind(v interface{}, args ...interface{}) error {
@@ -285,7 +272,7 @@ func (q *SelectStmt) Bind(v interface{}, args ...interface{}) error {
 	if err != nil {
 		return err
 	}
-	return _bind(context.Background(), q.schema.conn, v, s, args)
+	return _bind(context.Background(), q.repository.conn, v, s, args)
 }
 
 func (q *SelectStmt) BindContext(ctx context.Context, v interface{}, args ...interface{}) error {
@@ -293,14 +280,14 @@ func (q *SelectStmt) BindContext(ctx context.Context, v interface{}, args ...int
 	if err != nil {
 		return err
 	}
-	return _bind(ctx, q.schema.conn, v, s, args)
+	return _bind(ctx, q.repository.conn, v, s, args)
 }
 
 func NewQuery() *SelectStmt {
 	return &SelectStmt{}
 }
-func NewQueryUsingSchema(schema *Schema) *SelectStmt {
-	s := &SelectStmt{schema: schema}
-	s.Schema(schema)
+func NewQueryOnRepository(repository *Repository) *SelectStmt {
+	s := &SelectStmt{repository: repository}
+	s.Repository(repository)
 	return s
 }
