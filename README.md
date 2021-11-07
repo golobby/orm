@@ -5,13 +5,17 @@
 [![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/sql?branch=master)
 
 # ORM
+
 GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe ORM.
 
 ## Documentation
+
 ### Required Go Version
+
 It requires Go `v1.11` or newer versions.
 
 ### Installation
+
 To install this package run the following command in the root of your project.
 
 ```bash
@@ -19,10 +23,16 @@ go get github.com/golobby/orm
 ```
 
 # Quick Start
+
 `golobby/orm` is built around idea of repositories and models.
+
 ### Using Repositories
-Repositories are more like EFCore DbSet objects, they map to a database table and hold various informations needed for query generation.
-*Note* Since `golobby/orm` uses reflection for crating repositories it's best to build them once at the start of our application.<br/>
+
+Repositories are more like EFCore DbSet objects, they map to a database table and hold various informations needed for
+query generation.
+*Note* Since `golobby/orm` uses reflection for crating repositories it's best to build them once at the start of our
+application.<br/>
+
 ```go
 package main
 
@@ -40,23 +50,24 @@ func main() {
 	userRepository := orm.NewRepository(db, &User{})
 	firstUser := &User{
 		Id: 1,
-    }
+	}
 	var secondUser User
-	userRepository.Fill(firstUser) //Fills the struct from database using present fields ( better to have to PK )
+	userRepository.Fill(firstUser)      //Fills the struct from database using present fields ( better to have to PK )
 	userRepository.Find(2, &secondUser) //Finds given primary key and binds it to the given struct
-	
+
 	newUser := &User{
 		Name: "Amirreza",
-    }
+	}
 	userRepository.Save(newUser) //Save given object
 	firstUser.Name = "Comrade"
-	userRepository.Update(firstUser) // Updates object in database
+	userRepository.Update(firstUser)  // Updates object in database
 	userRepository.Delete(secondUser) // Deletes the object from database
-	
-	
+
 }
 ```
+
 #### More advance queries using Repositories
+
 ```go
 package main
 
@@ -73,15 +84,18 @@ func main() {
 	db, _ := sql.Open("", "")
 	userRepository := orm.NewRepository(db, &User{})
 	var results []User
-    userRepository.Query().
+	userRepository.Query().
 		Where(orm.WhereHelpers.Like("name", "%A%")).
 		AndWhere(orm.WhereHelpers.Between("age", "10", "12")).
 		Distinct().
 		Limit(100).
 		Offset(50).Bind(results)
 ```
+
 ### Using Models
+
 Models are more Active-Record like idea.
+
 ```go
 package main
 
@@ -97,22 +111,23 @@ func main() {
 	}
 	db, _ := sql.Open("", "")
 	userRepository := orm.NewRepository(db, &User{})
-	
+
 	// Save a new model
 	newUser := userRepository.NewModel(&User{Name: "milad"})
 	newUser.Save()
 
 	// update
-	u := &User{ Name: "Amirreza"}
+	u := &User{Name: "Amirreza"}
 	userRepository.Fill(u)
 	um := userRepository.NewModel(u)
 	u.Name = "comrade"
 	um.Update()
-	
+
 	//Delete newUser
 	newUser.Delete()
 }
 ```
+
 [//]: # (Repositories are built on top of two items.)
 
 [//]: # (### QueryBuilder)
@@ -120,6 +135,7 @@ func main() {
 [//]: # (Abstract SQL syntax into a Go API with builder pattern.)
 
 [//]: # ()
+
 [//]: # (### Bind)
 
 [//]: # (Bind feature sql.Rows to a struct.)
@@ -137,11 +153,13 @@ func main() {
 [//]: # (```)
 
 [//]: # ()
+
 [//]: # (bind also supports nested structs.)
 
 [//]: # (```go)
 
 [//]: # ()
+
 [//]: # (type ComplexUser struct {)
 
 [//]: # (	ID      int    `bind:"id"`)
@@ -153,6 +171,7 @@ func main() {
 [//]: # (})
 
 [//]: # ()
+
 [//]: # (type Address struct {)
 
 [//]: # (	ID   int    `bind:"id"`)
@@ -162,23 +181,29 @@ func main() {
 [//]: # (})
 
 [//]: # ()
+
 [//]: # (rows, err := db.Query&#40;`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`&#41;)
 
 [//]: # ()
+
 [//]: # (amirreza := &ComplexUser{})
 
 [//]: # (milad := &ComplexUser{})
 
 [//]: # ()
+
 [//]: # (err = Bind&#40;rows, []*ComplexUser{amirreza, milad}&#41;)
 
 [//]: # ()
+
 [//]: # ()
+
 [//]: # (assert.Equal&#40;t, "amirreza", amirreza.Name&#41;)
 
 [//]: # (assert.Equal&#40;t, "milad", milad.Name&#41;)
 
 [//]: # ()
+
 [//]: # (//Nested struct also has filled)
 
 [//]: # (assert.Equal&#40;t, "kianpars", amirreza.Address.Path&#41;)
@@ -190,9 +215,11 @@ func main() {
 [//]: # (assert.Equal&#40;t, 1, amirreza.Address.ID&#41;)
 
 [//]: # ()
+
 [//]: # (```)
 
 [//]: # (for more info on `bind` see [bind\_test.go]&#40;https://github.com/golobby/sql/tree/master/bind/bind_test.go&#41;)
 
 ## License
+
 GoLobby Sql is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
