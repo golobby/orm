@@ -1,10 +1,9 @@
-package builder
+package orm
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/golobby/sql/binder"
 	"strings"
 )
 
@@ -45,7 +44,7 @@ func _bind(ctx context.Context, db *sql.DB, v interface{}, query string, args ..
 		return err
 	}
 
-	return binder.Bind(rows, v)
+	return Bind(rows, v)
 }
 
 func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sql.Result, error) {

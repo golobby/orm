@@ -1,11 +1,11 @@
-[![GoDoc](https://godoc.org/github.com/golobby/sql?status.svg)](https://godoc.org/github.com/golobby/sql)
-[![CI](https://github.com/golobby/sql/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/sql/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/golobby/sql/workflows/CodeQL/badge.svg)](https://github.com/golobby/config/actions?query=workflow%3ACodeQL)
-[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/sql)](https://goreportcard.com/report/github.com/golobby/sql)
-[![Coverage Status](https://coveralls.io/repos/github/golobby/config/badge.svg)](https://coveralls.io/github/golobby/sql?branch=master)
+[![GoDoc](https://godoc.org/github.com/golobby/orm?status.svg)](https://godoc.org/github.com/golobby/sql)
+[![CI](https://github.com/golobby/orm/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/sql/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/golobby/orm/workflows/CodeQL/badge.svg)](https://github.com/golobby/config/actions?query=workflow%3ACodeQL)
+[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/sql)
+[![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/sql?branch=master)
 
-# sql
-GoLobby sql is a set of helpers and utilities for simpler usage of `database/sql`.
+# ORM
+GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe ORM.
 
 ## Documentation
 ### Required Go Version
@@ -15,70 +15,29 @@ It requires Go `v1.11` or newer versions.
 To install this package run the following command in the root of your project.
 
 ```bash
-go get github.com/golobby/sql
+go get github.com/golobby/orm
 ```
 
-
 # Quick Start
-## Builder
-Query package supports *almost* whole SQL syntax, keywords and functions but there are probably some rough edges and some unsupported missed ones, so if there is anything missing just
-add an issue and let's talk about it.<br>
+`golobby/orm` has 3 main features.
+### Schema
+Schema is a type that holds different type info and database info to help the query builder engine build a query simpler.
+```go
+var userSchema = orm.NewSchema(&sql.DB{}, &User{})
+query, err := orm.NewQuery().
+    Schema(userSchema).
+    Where(orm.WhereHelpers.EqualID("1")).SQL() //"SELECT id, name FROM users WHERE id = 1"
 
-I took a lot of inspiration from *Laravel*'s *Eloquent* APIs when designing the query builder API.
-Each SQL stmt type has it's own Go representation struct with various useful helper methods.
-### Insert
-- Into
-- Values
-- PlaceHolderGenerator
-- Exec
-- ExecContext
-- SQL
-
-### Update
-- Where
-- WhereNot
-- OrWhere
-- AndWhere
-- Set
-- SQL
-- Exec
-- ExecContext
-
-### Select
-- Select
-- Where
-- WhereNot
-- OrWhere
-- AndWhere
-- Having
-- Limit
-- Offset
-- Take (alias of Limit)
-- Skip (alias of Offset)
-- Joins
-    - InnerJoin
-    - RightJoin
-    - LeftJoin
-    - FullOuterJoin
-- OrderBy
-- GroupBy
-- Exec
-- ExecContext
-- Bind
-- BindContext
-- SQL
-
-### Delete
-- Where
-- WhereNot
-- OrWhere
-- AndWhere
-- Exec
-- ExecContext
-- SQL
-
-## Binder
-Binder package contains functionallity to bind sql.Rows to a struct.
+userSchema.NewModel(&User{Id: 1}).Fill() // fills given User object with data from database
+userSchema.NewModel(&User{
+	Id:   1,
+	Name: "amirreza",
+}).Save() //Saved given object into database using the schema.
+```
+### QueryBuilder
+Abstract SQL syntax into a Go API with builder pattern.
+### Bind
+Bind feature sql.Rows to a struct.
 In this example we are binding result of query which contains multiple rows into slice.
 ```go
     users := []User{&User{}, &User{}}

@@ -1,10 +1,9 @@
-package builder
+package orm
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/golobby/sql/binder"
 	"strings"
 )
 
@@ -91,7 +90,7 @@ func (m *model) Fill() error {
 	if err != nil {
 		return err
 	}
-	return binder.Bind(rows, m.obj)
+	return Bind(rows, m.obj)
 }
 
 type SelectStmt struct {

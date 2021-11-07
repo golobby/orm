@@ -1,4 +1,4 @@
-package binder
+package orm
 
 import (
 	"database/sql"
