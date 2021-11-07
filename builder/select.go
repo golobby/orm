@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/golobby/sql/binder"
 	"strings"
 )
 
@@ -36,7 +37,65 @@ func (c *Clause) String() string {
 	return fmt.Sprintf("%s %s", c.typ, strings.Join(c.arg, c.delimiter))
 }
 
+type Schema struct {
+	conn     *sql.DB
+	metadata *ObjectMetadata
+}
+
+func NewSchema(conn *sql.DB, obj interface{}) *Schema {
+	s := &Schema{
+		conn:     conn,
+		metadata: ObjectMetadataFrom(obj),
+	}
+	return s
+}
+
+type model struct {
+	schema *Schema
+	obj    interface{}
+}
+
+func (s *Schema) NewModel(obj interface{}) *model {
+	return &model{
+		schema: s,
+		obj:    obj,
+	}
+}
+
+// Save Saves a model into the DB.
+func (m *model) Save() error {
+	cols := m.schema.metadata.Columns(m.schema.metadata.PrimaryKey)
+	query, _ := NewInsert(m.schema.metadata.Table).Into(cols...).Values(ObjectHelpers.ValuesOf(m.obj)).SQL()
+	res, err := m.schema.conn.Exec(query)
+	if err != nil {
+		return err
+	}
+	pk, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	ObjectHelpers.SetPK(m.obj, pk)
+	return nil
+}
+
+// Fill fills a model inner object using result of a PK query.
+func (m *model) Fill() error {
+	query, err := NewQuery().
+		Table(m.schema.metadata.Table).
+		Select(m.schema.metadata.Columns()...).
+		Where(WhereHelpers.Equal(m.schema.metadata.PrimaryKey, fmt.Sprint(ObjectHelpers.PKValue(m.obj)))).SQL()
+	if err != nil {
+		return err
+	}
+	rows, err := m.schema.conn.Query(query)
+	if err != nil {
+		return err
+	}
+	return binder.Bind(rows, m.obj)
+}
+
 type SelectStmt struct {
+	schema   *Schema
 	table    string
 	selected *Clause
 	where    *Clause
@@ -48,6 +107,12 @@ type SelectStmt struct {
 	having   *Clause
 }
 
+func (s *SelectStmt) Schema(schema *Schema) *SelectStmt {
+	s.schema = schema
+	s.table = schema.metadata.Table
+	s.Select(schema.metadata.Columns()...)
+	return s
+}
 func (q *SelectStmt) Having(cond ...string) *SelectStmt {
 	if q.having == nil {
 		q.having = &Clause{
@@ -238,37 +303,37 @@ func (q *SelectStmt) SQL() (string, error) {
 	return strings.Join(sections, " "), nil
 }
 
-func (q *SelectStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (q *SelectStmt) Exec(args ...interface{}) (sql.Result, error) {
 	query, err := q.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, query, args)
+	return exec(context.Background(), q.schema.conn, query, args)
 
 }
 
-func (q *SelectStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (q *SelectStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
 	s, err := q.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, s, args)
+	return exec(context.Background(), q.schema.conn, s, args)
 }
 
-func (q *SelectStmt) Bind(db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *SelectStmt) Bind(v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
 	}
-	return _bind(context.Background(), db, v, s, args)
+	return _bind(context.Background(), q.schema.conn, v, s, args)
 }
 
-func (q *SelectStmt) BindContext(ctx context.Context, db *sql.DB, v interface{}, args ...interface{}) error {
+func (q *SelectStmt) BindContext(ctx context.Context, v interface{}, args ...interface{}) error {
 	s, err := q.SQL()
 	if err != nil {
 		return err
 	}
-	return _bind(ctx, db, v, s, args)
+	return _bind(ctx, q.schema.conn, v, s, args)
 }
 
 func NewQuery() *SelectStmt {
