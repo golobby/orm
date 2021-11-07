@@ -8,9 +8,10 @@ import (
 )
 
 type UpdateStmt struct {
-	table string
-	where string
-	set   string
+	schema *Schema
+	table  string
+	where  string
+	set    string
 }
 
 func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
@@ -31,7 +32,7 @@ func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
 	return q.Where(parts...)
 }
 
-type KV map[string]string
+type KV map[string]interface{}
 
 func (u *UpdateStmt) Set(kv KV) *UpdateStmt {
 	pairs := []string{}
@@ -47,21 +48,31 @@ func (u *UpdateStmt) SQL() (string, error) {
 	return fmt.Sprintf("UPDATE %s WHERE %s SET %s", u.table, u.where, u.set), nil
 }
 
-func (d *UpdateStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (d *UpdateStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
 	s, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, s, args)
+	return exec(context.Background(), d.schema.conn, s, args)
 }
-func (d *UpdateStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (d *UpdateStmt) Exec(args ...interface{}) (sql.Result, error) {
 	query, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, query, args)
+	return exec(context.Background(), d.schema.conn, query, args)
 
 }
-func NewUpdate(table string) *UpdateStmt {
-	return &UpdateStmt{table: table}
+
+func (u *UpdateStmt) Schema(schema *Schema) *UpdateStmt {
+	u.schema = schema
+	u.table = schema.metadata.Table
+	return u
+}
+func (u *UpdateStmt) Table(table string) *UpdateStmt {
+	u.table = table
+	return u
+}
+func NewUpdate() *UpdateStmt {
+	return &UpdateStmt{}
 }

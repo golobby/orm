@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+func TestFlow(t *testing.T) {
+	type User struct {
+		Id   int    `bind:"id" pk:"true"`
+		Name string `bind:"name"`
+	}
+	db, _, err := sqlmock.New()
+	assert.NoError(t, err)
+	var userSchema = orm.NewSchema(db, &User{})
+	var user User
+	// querying the primary key
+	err = orm.NewQueryUsingSchema(userSchema).WherePK(1).Bind(&user)
+	assert.NoError(t, err)
+	//FirstOrCreate []
+
+}
 func TestSchema(t *testing.T) {
 	type User struct {
 		Id   int    `bind:"id" pk:"true"`

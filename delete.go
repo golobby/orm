@@ -8,8 +8,9 @@ import (
 )
 
 type DeleteStmt struct {
-	table string
-	where string
+	schema *Schema
+	table  string
+	where  string
 }
 
 func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
@@ -34,22 +35,26 @@ func (d *DeleteStmt) SQL() (string, error) {
 	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), nil
 }
 
-func (d *DeleteStmt) ExecContext(ctx context.Context, db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (d *DeleteStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
 	s, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, s, args)
+	return exec(context.Background(), d.schema.conn, s, args)
 }
-func (d *DeleteStmt) Exec(db *sql.DB, args ...interface{}) (sql.Result, error) {
+func (d *DeleteStmt) Exec(args ...interface{}) (sql.Result, error) {
 	query, err := d.SQL()
 	if err != nil {
 		return nil, err
 	}
-	return exec(context.Background(), db, query, args)
-
+	return exec(context.Background(), d.schema.conn, query, args)
 }
 
-func NewDelete(table string) *DeleteStmt {
-	return &DeleteStmt{table: table}
+func (d *DeleteStmt) Schema(schema *Schema) *DeleteStmt {
+	d.schema = schema
+	return d
+}
+
+func NewDelete() *DeleteStmt {
+	return &DeleteStmt{}
 }

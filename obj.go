@@ -20,6 +20,8 @@ type objectHelpers struct {
 	SetPK func(obj interface{}, pk interface{})
 	// Gets value of primary key of given obj
 	PKValue func(obj interface{}) interface{}
+	// Returns a Key-Value paired of struct.
+	KeyValue func(obj interface{}) map[string]interface{}
 }
 
 // ObjectHelpers are set of functions that extract type informations from a struct, it's better to use `ObjectMetadata`
@@ -30,6 +32,7 @@ var ObjectHelpers = &objectHelpers{
 	PrimaryKeyOf: primaryKeyOf,
 	SetPK:        setPrimaryKeyFor,
 	PKValue:      primaryKeyValue,
+	KeyValue:     keyValueOf,
 }
 
 // HasValues defines how a type should return it's values for sql arguments, if not implemented sql will fallback to reflection based approach
@@ -178,6 +181,32 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 	ptr.Set(reflect.ValueOf(value))
 }
 
+type KeyValue interface {
+	KeyValue() map[string]interface{}
+}
+
+func keyValueOf(obj interface{}) map[string]interface{} {
+	m := map[string]interface{}{}
+	hv, isKeyValue := obj.(KeyValue)
+	if isKeyValue {
+		return hv.KeyValue()
+	}
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if tag, exists := f.Tag.Lookup("bind"); exists {
+			m[tag] = v.Field(i)
+		} else {
+			m[f.Name] = v.Field(i)
+		}
+	}
+	return m
+}
+
 type ObjectMetadata struct {
 	// Name of the table that the object represents
 	Table string
@@ -185,7 +214,6 @@ type ObjectMetadata struct {
 	Columns func(...string) []string
 	// primary key of this struct
 	PrimaryKey string
-
 	// index of the relation fields
 	RelationField map[string]int
 }

@@ -49,50 +49,6 @@ func NewSchema(conn *sql.DB, obj interface{}) *Schema {
 	return s
 }
 
-type model struct {
-	schema *Schema
-	obj    interface{}
-}
-
-func (s *Schema) NewModel(obj interface{}) *model {
-	return &model{
-		schema: s,
-		obj:    obj,
-	}
-}
-
-// Save Saves a model into the DB.
-func (m *model) Save() error {
-	cols := m.schema.metadata.Columns(m.schema.metadata.PrimaryKey)
-	query, _ := NewInsert(m.schema.metadata.Table).Into(cols...).Values(ObjectHelpers.ValuesOf(m.obj)).SQL()
-	res, err := m.schema.conn.Exec(query)
-	if err != nil {
-		return err
-	}
-	pk, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	ObjectHelpers.SetPK(m.obj, pk)
-	return nil
-}
-
-// Fill fills a model inner object using result of a PK query.
-func (m *model) Fill() error {
-	query, err := NewQuery().
-		Table(m.schema.metadata.Table).
-		Select(m.schema.metadata.Columns()...).
-		Where(WhereHelpers.Equal(m.schema.metadata.PrimaryKey, fmt.Sprint(ObjectHelpers.PKValue(m.obj)))).SQL()
-	if err != nil {
-		return err
-	}
-	rows, err := m.schema.conn.Query(query)
-	if err != nil {
-		return err
-	}
-	return Bind(rows, m.obj)
-}
-
 type SelectStmt struct {
 	schema   *Schema
 	table    string
@@ -104,6 +60,11 @@ type SelectStmt struct {
 	limit    *Clause
 	offset   *Clause
 	having   *Clause
+}
+
+func (s *SelectStmt) WherePK(pk interface{}) *SelectStmt {
+	s.Where(WhereHelpers.Equal(s.schema.metadata.PrimaryKey, fmt.Sprint(pk))) // SQL injection DANGER
+	return s
 }
 
 func (s *SelectStmt) Schema(schema *Schema) *SelectStmt {
@@ -337,4 +298,9 @@ func (q *SelectStmt) BindContext(ctx context.Context, v interface{}, args ...int
 
 func NewQuery() *SelectStmt {
 	return &SelectStmt{}
+}
+func NewQueryUsingSchema(schema *Schema) *SelectStmt {
+	s := &SelectStmt{schema: schema}
+	s.Schema(schema)
+	return s
 }
