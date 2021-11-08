@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -8,11 +9,10 @@ import (
 
 type objectHelpers struct {
 	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
-	// Best usage would be to generate these column names in startup.
 	ColumnsOf func(v interface{}) []string
 	// Returns a string which is the table name ( by convention is TYPEs ) of given object
 	TableName func(v interface{}) string
-	// Returns a list of values of the given object, useful for passing as args of sql exec or query
+	// Returns a list of args of the given object, useful for passing as args of sql exec or query
 	ValuesOf func(v interface{}) []interface{}
 	// Returns the primary key for given object.
 	PrimaryKeyOf func(v interface{}) string
@@ -21,21 +21,62 @@ type objectHelpers struct {
 	// Gets value of primary key of given obj
 	PKValue func(obj interface{}) interface{}
 	// Returns a Key-Value paired of struct.
-	KeyValue func(obj interface{}) map[string]interface{}
+	KeyValue                 func(obj interface{}) map[string]interface{}
+	InsertColumnsAndValuesOf func(obj interface{}) ([]string, []interface{})
 }
 
 // ObjectHelpers are set of functions that extract type informations from a struct, it's better to use `ObjectMetadata`
 var ObjectHelpers = &objectHelpers{
-	ColumnsOf:    columnsOf,
-	TableName:    tableName,
-	ValuesOf:     valuesOf,
-	PrimaryKeyOf: primaryKeyOf,
-	SetPK:        setPrimaryKeyFor,
-	PKValue:      primaryKeyValue,
-	KeyValue:     keyValueOf,
+	ColumnsOf:                columnsOf,
+	TableName:                tableName,
+	ValuesOf:                 valuesOf,
+	PrimaryKeyOf:             primaryKeyOf,
+	SetPK:                    setPrimaryKeyFor,
+	PKValue:                  primaryKeyValue,
+	KeyValue:                 keyValueOf,
+	InsertColumnsAndValuesOf: colsAndValsForInsert,
 }
 
-// HasValues defines how a type should return it's values for sql arguments, if not implemented sql will fallback to reflection based approach
+type InsertColumnsAndValues interface {
+	InsertColumnsAndValues() ([]string, []interface{})
+}
+
+func colsAndValsForInsert(o interface{}) ([]string, []interface{}) {
+	hv, is := o.(InsertColumnsAndValues)
+	if is {
+		return hv.InsertColumnsAndValues()
+	}
+	t := reflect.TypeOf(o)
+	v := reflect.ValueOf(o)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		v = v.Elem()
+	}
+	var cols []string
+	var values []interface{}
+
+	for i := 0; i < t.NumField(); i++ {
+		ft := t.Field(i)
+		fv := v.Field(i)
+		name, exists := ft.Tag.Lookup("bind")
+		_, isPK := ft.Tag.Lookup("pk")
+		if isPK {
+			continue
+		}
+		if fv.IsZero() {
+			continue
+		}
+		if exists {
+			cols = append(cols, name)
+		} else {
+			cols = append(cols, ft.Name)
+		}
+		values = append(values, fv.Interface())
+	}
+	return cols, values
+}
+
+// HasValues defines how a type should return it's args for sql arguments, if not implemented sql will fallback to reflection based approach
 type HasValues interface {
 	Values() []interface{}
 }
@@ -49,9 +90,13 @@ func valuesOf(o interface{}) []interface{} {
 	if v.Type().Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-	values := []interface{}{}
+	var values []interface{}
 	for i := 0; i < v.NumField(); i++ {
-		values = append(values, v.Field(i).Interface())
+		fv := v.Field(i)
+		if fv.IsZero() {
+			continue
+		}
+		values = append(values, fv.Interface())
 	}
 	return values
 }
@@ -168,6 +213,7 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 	val := reflect.ValueOf(v)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
+		val = val.Elem()
 	}
 	pkIdx := -1
 	for i := 0; i < t.NumField(); i++ {
@@ -177,8 +223,18 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 			}
 		}
 	}
-	ptr := reflect.NewAt(t.Field(pkIdx).Type, unsafe.Pointer(val.Field(pkIdx).UnsafeAddr()))
-	ptr.Set(reflect.ValueOf(value))
+	ptr := reflect.NewAt(t.Field(pkIdx).Type, unsafe.Pointer(val.Field(pkIdx).UnsafeAddr())).Elem()
+	toSetValue := reflect.ValueOf(value)
+	if t.AssignableTo(ptr.Type()) {
+		fmt.Println("no converting needed")
+		ptr.Set(toSetValue)
+	} else {
+		if toSetValue.CanConvert(ptr.Type()) {
+			ptr.Set(toSetValue.Convert(ptr.Type()))
+		} else {
+			panic(fmt.Sprintf("value of type %s is not assignable to %s and cannot convert also.", t, ptr.Type()))
+		}
+	}
 }
 
 type KeyValue interface {
@@ -195,13 +251,18 @@ func keyValueOf(obj interface{}) map[string]interface{} {
 	v := reflect.ValueOf(obj)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
+		v = v.Elem()
 	}
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
+		thisFieldValue := v.Field(i)
+		if thisFieldValue.IsZero() {
+			continue
+		}
 		if tag, exists := f.Tag.Lookup("bind"); exists {
-			m[tag] = v.Field(i)
+			m[tag] = thisFieldValue.Interface()
 		} else {
-			m[f.Name] = v.Field(i)
+			m[f.Name] = thisFieldValue.Interface()
 		}
 	}
 	return m

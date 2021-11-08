@@ -37,20 +37,28 @@ func (c *Clause) String() string {
 }
 
 type SelectStmt struct {
-	repository *Repository
-	table      string
-	selected   *Clause
-	where      *Clause
-	orderBy    *Clause
-	groupBy    *Clause
-	joins      []*Clause
-	limit      *Clause
-	offset     *Clause
-	having     *Clause
+	placeHolderChar string
+	repository      *Repository
+	table           string
+	selected        *Clause
+	where           *Clause
+	orderBy         *Clause
+	groupBy         *Clause
+	joins           []*Clause
+	limit           *Clause
+	offset          *Clause
+	having          *Clause
+	args            []interface{}
+}
+
+func (s *SelectStmt) WithArgs(args ...interface{}) *SelectStmt {
+	s.args = append(s.args, args...)
+	return s
 }
 
 func (s *SelectStmt) WherePK(pk interface{}) *SelectStmt {
-	s.Where(WhereHelpers.Equal(s.repository.metadata.PrimaryKey, fmt.Sprint(pk))) // SQL injection DANGER
+	s.args = append(s.args, pk)
+	s.Where(WhereHelpers.Equal(s.repository.metadata.PrimaryKey, s.placeHolderChar))
 	return s
 }
 
@@ -200,7 +208,7 @@ func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
 	return q.Where(parts...)
 }
 
-func (q *SelectStmt) SQL() (string, error) {
+func (q *SelectStmt) SQL() (string, []interface{}, error) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
@@ -210,7 +218,7 @@ func (q *SelectStmt) SQL() (string, error) {
 	sections = append(sections, q.selected.String())
 
 	if q.table == "" {
-		return "", fmt.Errorf("table name cannot be empty")
+		return "", nil, fmt.Errorf("table name cannot be empty")
 	}
 
 	// Handle from TABLE-NAME
@@ -247,11 +255,11 @@ func (q *SelectStmt) SQL() (string, error) {
 		sections = append(sections, q.having.String())
 	}
 
-	return strings.Join(sections, " "), nil
+	return strings.Join(sections, " "), q.args, nil
 }
 
-func (q *SelectStmt) Exec(args ...interface{}) (sql.Result, error) {
-	query, err := q.SQL()
+func (q *SelectStmt) Exec() (sql.Result, error) {
+	query, args, err := q.SQL()
 	if err != nil {
 		return nil, err
 	}
@@ -259,32 +267,36 @@ func (q *SelectStmt) Exec(args ...interface{}) (sql.Result, error) {
 
 }
 
-func (q *SelectStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
-	s, err := q.SQL()
+func (q *SelectStmt) ExecContext(ctx context.Context) (sql.Result, error) {
+	s, args, err := q.SQL()
 	if err != nil {
 		return nil, err
 	}
 	return exec(context.Background(), q.repository.conn, s, args)
 }
 
-func (q *SelectStmt) Bind(v interface{}, args ...interface{}) error {
-	s, err := q.SQL()
+func (q *SelectStmt) Bind(v interface{}) error {
+	s, args, err := q.SQL()
 	if err != nil {
 		return err
 	}
-	return _bind(context.Background(), q.repository.conn, v, s, args)
+	return _bind(context.Background(), q.repository.conn, v, s, args...)
 }
 
-func (q *SelectStmt) BindContext(ctx context.Context, v interface{}, args ...interface{}) error {
-	s, err := q.SQL()
+func (q *SelectStmt) BindContext(ctx context.Context, v interface{}) error {
+	s, args, err := q.SQL()
 	if err != nil {
 		return err
 	}
 	return _bind(ctx, q.repository.conn, v, s, args)
 }
 
-func NewQuery() *SelectStmt {
-	return &SelectStmt{}
+func NewQuery(opts ...func(stmt *SelectStmt)) *SelectStmt {
+	s := &SelectStmt{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 func NewQueryOnRepository(repository *Repository) *SelectStmt {
 	s := &SelectStmt{repository: repository}

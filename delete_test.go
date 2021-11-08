@@ -9,7 +9,8 @@ import (
 func TestDelete(t *testing.T) {
 
 	t.Run("simple delete equality of id", func(t *testing.T) {
-		s, err := NewDelete("users").
+		s, err := NewDelete().
+			Table("users").
 			Where("id", "=", "$1").
 			SQL()
 		assert.NoError(t, err)

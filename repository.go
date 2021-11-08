@@ -18,7 +18,7 @@ func NewRepository(conn *sql.DB, makeRepositoryFor interface{}) *Repository {
 	return s
 }
 
-//Fill the struct using primary key, PK column should be present
+//Fill the struct
 func (s *Repository) Fill(v interface{}) error {
 	pkValue := ObjectHelpers.PKValue(v)
 	if pkValue != nil {
@@ -30,7 +30,12 @@ func (s *Repository) Fill(v interface{}) error {
 
 //Save given object
 func (s *Repository) Save(v interface{}) error {
-	res, err := NewInsert().Repository(s).Values(ObjectHelpers.ValuesOf(v)...).Exec()
+	cols, values := ObjectHelpers.InsertColumnsAndValuesOf(v)
+	res, err := NewInsert().
+		Repository(s).
+		Into(cols...).
+		WithArgs(values...).
+		Exec()
 	if err != nil {
 		return err
 	}

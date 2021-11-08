@@ -55,6 +55,11 @@ func (d *DeleteStmt) Repository(repository *Repository) *DeleteStmt {
 	return d
 }
 
+func (d *DeleteStmt) Table(t string) *DeleteStmt {
+	d.table = t
+	return d
+}
+
 func NewDelete() *DeleteStmt {
 	return &DeleteStmt{}
 }

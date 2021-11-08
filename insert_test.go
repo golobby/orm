@@ -9,25 +9,29 @@ import (
 func TestInsert(t *testing.T) {
 
 	t.Run("simple insert for psql", func(t *testing.T) {
-		sql, err := NewInsert("users").
+		sql, args, err := NewInsert().
+			Table("users").
 			Into("name", "password").
-			Values("'amirreza'", "'admin'").
+			WithArgs("amirreza", "password").
 			PlaceHolderGenerator(PlaceHolderGenerators.Postgres).
 			SQL()
 
 		assert.NoError(t, err)
-		assert.Equal(t, "INSERT INTO users (name, password) VALUES ($1, $2)", sql)
+		assert.Equal(t, []interface{}{"amirreza", "password"}, args)
+		assert.Equal(t, "INSERT INTO users (name,password) VALUES ($1, $2)", sql)
 	})
 
 	t.Run("simple insert for mysql", func(t *testing.T) {
-		sql, err := NewInsert("users").
+		sql, args, err := NewInsert().
+			Table("users").
 			Into("name", "password").
-			Values("'amirreza'", "'admin'").
+			WithArgs("amirreza", "password").
 			PlaceHolderGenerator(PlaceHolderGenerators.MySQL).
 			SQL()
 
 		assert.NoError(t, err)
-		assert.Equal(t, "INSERT INTO users (name, password) VALUES (?, ?)", sql)
+		assert.Equal(t, []interface{}{"amirreza", "password"}, args)
+		assert.Equal(t, "INSERT INTO users (name,password) VALUES (?, ?)", sql)
 	})
 
 }
