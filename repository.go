@@ -10,10 +10,10 @@ type Repository struct {
 	metadata *ObjectMetadata
 }
 
-func NewRepository(conn *sql.DB, obj interface{}) *Repository {
+func NewRepository(conn *sql.DB, makeRepositoryFor interface{}) *Repository {
 	s := &Repository{
 		conn:     conn,
-		metadata: ObjectMetadataFrom(obj),
+		metadata: ObjectMetadataFrom(makeRepositoryFor),
 	}
 	return s
 }

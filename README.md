@@ -28,9 +28,9 @@ go get github.com/golobby/orm
 
 ### Using Repositories
 
-Repositories are more like EFCore DbSet objects, they map to a database table and hold various informations needed for
+Repositories are more like EFCore DbSet objects, they map to a database table and hold various information needed for
 query generation.
-*Note* Since `golobby/orm` uses reflection for crating repositories it's best to build them once at the start of our
+*Note* Since `golobby/orm` uses reflection for creating repositories it's best to build them once at the start of our
 application.<br/>
 
 ```go
