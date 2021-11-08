@@ -92,41 +92,6 @@ func main() {
 		Offset(50).Bind(results)
 ```
 
-### Using Models
-
-Models are more Active-Record like idea.
-
-```go
-package main
-
-import (
-	"database/sql"
-	"github.com/golobby/orm"
-)
-
-func main() {
-	type User struct {
-		Id   int    `bind:"id" pk:"true"`
-		Name string `bind:"name"`
-	}
-	db, _ := sql.Open("", "")
-	userRepository := orm.NewRepository(db, &User{})
-
-	// Save a new model
-	newUser := userRepository.NewModel(&User{Name: "milad"})
-	newUser.Save()
-
-	// update
-	u := &User{Name: "Amirreza"}
-	userRepository.Fill(u)
-	um := userRepository.NewModel(u)
-	u.Name = "comrade"
-	um.Update()
-
-	//Delete newUser
-	newUser.Delete()
-}
-```
 
 [//]: # (Repositories are built on top of two items.)
 

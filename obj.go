@@ -7,33 +7,42 @@ import (
 	"unsafe"
 )
 
+type Entity interface {
+	PKValue
+	PKColumn
+	SetPKValue
+	Table
+	ToMap
+	InsertColumnsAndValues
+}
 type objectHelpers struct {
 	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
-	ColumnsOf func(v interface{}) []string
+	Columns func(v interface{}) []string
 	// Returns a string which is the table name ( by convention is TYPEs ) of given object
-	TableName func(v interface{}) string
+	Table func(v interface{}) string
 	// Returns a list of args of the given object, useful for passing as args of sql exec or query
-	ValuesOf func(v interface{}) []interface{}
+	Values func(v interface{}) []interface{}
 	// Returns the primary key for given object.
-	PrimaryKeyOf func(v interface{}) string
+	PKColumn func(v interface{}) string
 	// Sets primary key for object
 	SetPK func(obj interface{}, pk interface{})
 	// Gets value of primary key of given obj
 	PKValue func(obj interface{}) interface{}
 	// Returns a Key-Value paired of struct.
-	KeyValue                 func(obj interface{}) map[string]interface{}
+	ToMap                    func(obj interface{}) map[string]interface{}
 	InsertColumnsAndValuesOf func(obj interface{}) ([]string, []interface{})
 }
 
-// ObjectHelpers are set of functions that extract type informations from a struct, it's better to use `ObjectMetadata`
+// ObjectHelpers are set of functions that extract type informations from a struct, it's better to use `ObjectMetadata` if possible also
+// implement Entity interface for better performance.
 var ObjectHelpers = &objectHelpers{
-	ColumnsOf:                columnsOf,
-	TableName:                tableName,
-	ValuesOf:                 valuesOf,
-	PrimaryKeyOf:             primaryKeyOf,
+	Columns:                  columnsOf,
+	Table:                    tableName,
+	Values:                   valuesOf,
+	PKColumn:                 primaryKeyOf,
 	SetPK:                    setPrimaryKeyFor,
 	PKValue:                  primaryKeyValue,
-	KeyValue:                 keyValueOf,
+	ToMap:                    keyValueOf,
 	InsertColumnsAndValuesOf: colsAndValsForInsert,
 }
 
@@ -76,13 +85,13 @@ func colsAndValsForInsert(o interface{}) ([]string, []interface{}) {
 	return cols, values
 }
 
-// HasValues defines how a type should return it's args for sql arguments, if not implemented sql will fallback to reflection based approach
-type HasValues interface {
+// Values defines how a type should return it's args for sql arguments, if not implemented sql will fallback to reflection based approach
+type Values interface {
 	Values() []interface{}
 }
 
 func valuesOf(o interface{}) []interface{} {
-	hv, isHasValues := o.(HasValues)
+	hv, isHasValues := o.(Values)
 	if isHasValues {
 		return hv.Values()
 	}
@@ -101,15 +110,15 @@ func valuesOf(o interface{}) []interface{} {
 	return values
 }
 
-// HasTableName defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach
-type HasTableName interface {
-	TableName() string
+// Table defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach
+type Table interface {
+	Table() string
 }
 
 func tableName(v interface{}) string {
-	hv, isTableName := v.(HasTableName)
+	hv, isTableName := v.(Table)
 	if isTableName {
-		return hv.TableName()
+		return hv.Table()
 	}
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
@@ -119,13 +128,13 @@ func tableName(v interface{}) string {
 	return strings.ToLower(parts[len(parts)-1]) + "s"
 }
 
-// HasColumns defines a type columns list, if not implemented sql will fallback to reflection based approach
-type HasColumns interface {
+// Columns defines a type columns list, if not implemented sql will fallback to reflection based approach
+type Columns interface {
 	Columns() []string
 }
 
 func columnsOf(v interface{}) []string {
-	hv, isHasColumns := v.(HasColumns)
+	hv, isHasColumns := v.(Columns)
 	if isHasColumns {
 		return hv.Columns()
 	}
@@ -146,15 +155,15 @@ func columnsOf(v interface{}) []string {
 	return columns
 }
 
-// HasPK defines a type PK column name, if not implemented sql will fallback to reflection based approach
-type HasPK interface {
-	PK() string
+// PKColumn defines a type PK column name, if not implemented sql will fallback to reflection based approach
+type PKColumn interface {
+	PKColumn() string
 }
 
 func primaryKeyOf(v interface{}) string {
-	hv, isHasPK := v.(HasPK)
+	hv, isHasPK := v.(PKColumn)
 	if isHasPK {
-		return hv.PK()
+		return hv.PKColumn()
 	}
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
@@ -199,14 +208,14 @@ func primaryKeyValue(v interface{}) interface{} {
 	return ""
 }
 
-type SetPK interface {
-	SetPK(pk interface{})
+type SetPKValue interface {
+	SetPKValue(pk interface{})
 }
 
 func setPrimaryKeyFor(v interface{}, value interface{}) {
-	hv, isSetPK := v.(SetPK)
+	hv, isSetPK := v.(SetPKValue)
 	if isSetPK {
-		hv.SetPK(value)
+		hv.SetPKValue(value)
 		return
 	}
 	t := reflect.TypeOf(v)
@@ -237,15 +246,15 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 	}
 }
 
-type KeyValue interface {
-	KeyValue() map[string]interface{}
+type ToMap interface {
+	ToMap() map[string]interface{}
 }
 
 func keyValueOf(obj interface{}) map[string]interface{} {
 	m := map[string]interface{}{}
-	hv, isKeyValue := obj.(KeyValue)
+	hv, isKeyValue := obj.(ToMap)
 	if isKeyValue {
-		return hv.KeyValue()
+		return hv.ToMap()
 	}
 	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
@@ -281,9 +290,9 @@ type ObjectMetadata struct {
 
 func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
 	return &ObjectMetadata{
-		Table: ObjectHelpers.TableName(v),
+		Table: ObjectHelpers.Table(v),
 		Columns: func(blacklist ...string) []string {
-			allColumns := ObjectHelpers.ColumnsOf(v)
+			allColumns := ObjectHelpers.Columns(v)
 			blacklisted := strings.Join(blacklist, ";")
 			columns := []string{}
 			for _, col := range allColumns {

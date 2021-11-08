@@ -24,7 +24,7 @@ func (s *Repository) Fill(v interface{}) error {
 	if pkValue != nil {
 		return NewQueryOnRepository(s).WherePK(pkValue).Bind(v)
 	}
-	kvs := ObjectHelpers.KeyValue(v)
+	kvs := ObjectHelpers.ToMap(v)
 	return NewQueryOnRepository(s).Where(WhereHelpers.ForKV(kvs)).Bind(v)
 }
 
@@ -49,14 +49,14 @@ func (s *Repository) Save(v interface{}) error {
 
 //Update object in database
 func (s *Repository) Update(v interface{}) error {
-	query := WhereHelpers.Equal(ObjectHelpers.PrimaryKeyOf(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
-	_, err := NewUpdate().Repository(s).Where(query).Set(ObjectHelpers.KeyValue(v)).Exec()
+	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
+	_, err := NewUpdate().Repository(s).Where(query).Set(ObjectHelpers.ToMap(v)).Exec()
 	return err
 }
 
 // Delete the object from database
 func (s *Repository) Delete(v interface{}) error {
-	query := WhereHelpers.Equal(ObjectHelpers.PrimaryKeyOf(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
+	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
 	_, err := NewDelete().Repository(s).Where(query).Exec()
 	return err
 }
