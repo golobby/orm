@@ -9,13 +9,17 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, err := NewUpdate().Table("users").Where(WhereHelpers.EqualID("$1")).
-			Set(KV{
-				"name": "'amirreza'",
-			}).
-			SQL()
+		s, args, err := NewUpdate().
+			Table("users").
+			Where(WhereHelpers.Equal("id", "$1")).
+			WithArgs(2).
+			Set(M{
+				"name": "$2",
+			}).WithArgs("'amirreza'").
+			Build()
 
 		assert.NoError(t, err)
-		assert.Equal(t, `UPDATE users WHERE id = $1 SET name = 'amirreza'`, s)
+		assert.Equal(t, []interface{}{2, "'amirreza'"}, args)
+		assert.Equal(t, `UPDATE users WHERE id = $1 SET name=$2`, s)
 	})
 }

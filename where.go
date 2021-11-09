@@ -12,7 +12,6 @@ type whereHelpers struct {
 	Equal   func(column, value string) string
 	Less    func(column, value string) string
 	More    func(column, value string) string
-	EqualID func(value string) string
 	And     func(conds ...string) string
 	Or      func(conds ...string) string
 	Not     func(cond ...string) string
@@ -25,13 +24,10 @@ var WhereHelpers = &whereHelpers{
 	Between: between,
 	Not:     not,
 	Equal:   equal,
-	EqualID: func(value string) string {
-		return equal("id", value)
-	},
-	Less: less,
-	More: more,
-	Or:   or,
-	And:  and,
+	Less:    less,
+	More:    more,
+	Or:      or,
+	And:     and,
 }
 
 func forKV(kv KV) string {

@@ -1,18 +1,20 @@
 package orm
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 )
 
 type DeleteStmt struct {
-	repository *Repository
-	table      string
-	where      string
+	table string
+	where string
+	args  []interface{}
 }
 
+func (q *DeleteStmt) WithArgs(args ...interface{}) *DeleteStmt {
+	q.args = append(q.args, args...)
+	return q
+}
 func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
@@ -31,28 +33,8 @@ func (q *DeleteStmt) AndWhere(parts ...string) *DeleteStmt {
 	return q.Where(parts...)
 }
 
-func (d *DeleteStmt) SQL() (string, error) {
-	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), nil
-}
-
-func (d *DeleteStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
-	s, err := d.SQL()
-	if err != nil {
-		return nil, err
-	}
-	return exec(context.Background(), d.repository.conn, s, args)
-}
-func (d *DeleteStmt) Exec(args ...interface{}) (sql.Result, error) {
-	query, err := d.SQL()
-	if err != nil {
-		return nil, err
-	}
-	return exec(context.Background(), d.repository.conn, query, args)
-}
-
-func (d *DeleteStmt) Repository(repository *Repository) *DeleteStmt {
-	d.repository = repository
-	return d
+func (d *DeleteStmt) SQL() (string, []interface{}, error) {
+	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), d.args, nil
 }
 
 func (d *DeleteStmt) Table(t string) *DeleteStmt {

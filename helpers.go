@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 )
 
+type PlaceholderGenerator func(n int) []string
 type placeHolderGenerators struct {
-	Postgres func(n int) string
-	MySQL    func(n int) string
+	Postgres PlaceholderGenerator
+	MySQL    PlaceholderGenerator
 }
 
 var PlaceHolderGenerators = &placeHolderGenerators{
@@ -17,21 +17,21 @@ var PlaceHolderGenerators = &placeHolderGenerators{
 	MySQL:    mySQLPlaceHolder,
 }
 
-func postgresPlaceholder(n int) string {
+func postgresPlaceholder(n int) []string {
 	output := []string{}
 	for i := 1; i < n+1; i++ {
 		output = append(output, fmt.Sprintf("$%d", i))
 	}
-	return strings.Join(output, ", ")
+	return output
 }
 
-func mySQLPlaceHolder(n int) string {
+func mySQLPlaceHolder(n int) []string {
 	output := []string{}
 	for i := 0; i < n; i++ {
 		output = append(output, "?")
 	}
 
-	return strings.Join(output, ", ")
+	return output
 }
 
 func _query(ctx context.Context, db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {

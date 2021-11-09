@@ -1,19 +1,23 @@
 package orm
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 )
 
+type M = map[string]interface{}
+
 type UpdateStmt struct {
-	repository *Repository
-	table      string
-	where      string
-	set        string
+	table string
+	where string
+	set   M
+	args  []interface{}
 }
 
+func (q *UpdateStmt) WithArgs(args ...interface{}) *UpdateStmt {
+	q.args = append(q.args, args...)
+	return q
+}
 func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
@@ -34,41 +38,19 @@ func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
 
 type KV map[string]interface{}
 
-func (u *UpdateStmt) Set(kv KV) *UpdateStmt {
-	pairs := []string{}
-	for k, v := range kv {
-		pairs = append(pairs, fmt.Sprintf("%s = %s", k, v))
-	}
-
-	u.set = strings.Join(pairs, ", ")
+func (u *UpdateStmt) Set(values M) *UpdateStmt {
+	u.set = values
 	return u
 }
 
-func (u *UpdateStmt) SQL() (string, error) {
-	return fmt.Sprintf("UPDATE %s WHERE %s SET %s", u.table, u.where, u.set), nil
-}
-
-func (d *UpdateStmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
-	s, err := d.SQL()
-	if err != nil {
-		return nil, err
+func (u *UpdateStmt) Build() (string, []interface{}, error) {
+	var pairs []string
+	for k, v := range u.set {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", k, fmt.Sprint(v)))
 	}
-	return exec(context.Background(), d.repository.conn, s, args)
-}
-func (d *UpdateStmt) Exec(args ...interface{}) (sql.Result, error) {
-	query, err := d.SQL()
-	if err != nil {
-		return nil, err
-	}
-	return exec(context.Background(), d.repository.conn, query, args)
-
+	return fmt.Sprintf("UPDATE %s WHERE %s SET %s", u.table, u.where, strings.Join(pairs, ",")), u.args, nil
 }
 
-func (u *UpdateStmt) Repository(repository *Repository) *UpdateStmt {
-	u.repository = repository
-	u.table = repository.metadata.Table
-	return u
-}
 func (u *UpdateStmt) Table(table string) *UpdateStmt {
 	u.table = table
 	return u

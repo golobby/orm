@@ -1,41 +1,69 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 )
 
 type Repository struct {
+	dialect  *Dialect
 	conn     *sql.DB
 	metadata *ObjectMetadata
 }
 
-func NewRepository(conn *sql.DB, makeRepositoryFor interface{}) *Repository {
+func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
 	s := &Repository{
 		conn:     conn,
 		metadata: ObjectMetadataFrom(makeRepositoryFor),
+		dialect:  dialect,
 	}
 	return s
 }
 
 //Fill the struct
 func (s *Repository) Fill(v interface{}) error {
+	var q string
+	var args []interface{}
+	var err error
 	pkValue := ObjectHelpers.PKValue(v)
 	if pkValue != nil {
-		return NewQueryOnRepository(s).WherePK(pkValue).Bind(v)
+		ph := s.dialect.PlaceholderChar
+		if s.dialect.IncludeIndexInPlaceholder {
+			ph = ph + "1"
+		}
+		q, args, err = NewQuery().Select(s.metadata.Columns()...).Table(s.metadata.Table).Where(WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).WithArgs(pkValue).SQL()
+		if err != nil {
+			return err
+		}
+
+	} else {
+		q, args, err = NewQuery().Table(s.metadata.Table).Select(s.metadata.Columns()...).Where(WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).SQL()
 	}
-	kvs := ObjectHelpers.ToMap(v)
-	return NewQueryOnRepository(s).Where(WhereHelpers.ForKV(kvs)).Bind(v)
+	if err != nil {
+		return err
+	}
+	return _bind(context.Background(), s.conn, v, q, args...)
 }
 
 //Save given object
 func (s *Repository) Save(v interface{}) error {
 	cols, values := ObjectHelpers.InsertColumnsAndValuesOf(v)
-	res, err := NewInsert().
-		Repository(s).
+	var phs []string
+	if s.dialect.PlaceholderChar == "$" {
+		phs = postgresPlaceholder(len(cols))
+	} else {
+		phs = mySQLPlaceHolder(len(cols))
+	}
+	q, args, err := NewInsert().
+		Table(s.metadata.Table).
 		Into(cols...).
-		WithArgs(values...).
-		Exec()
+		Values(phs...).
+		WithArgs(values...).SQL()
+	if err != nil {
+		return err
+	}
+	res, err := s.conn.Exec(q, args...)
 	if err != nil {
 		return err
 	}
@@ -49,18 +77,45 @@ func (s *Repository) Save(v interface{}) error {
 
 //Update object in database
 func (s *Repository) Update(v interface{}) error {
-	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
-	_, err := NewUpdate().Repository(s).Where(query).Set(ObjectHelpers.ToMap(v)).Exec()
+	ph := s.dialect.PlaceholderChar
+	if s.dialect.IncludeIndexInPlaceholder {
+		ph = ph + "1"
+	}
+	counter := 2
+	asMap := ObjectHelpers.ToMap(v)
+	phMap := map[string]interface{}{}
+	args := []interface{}{}
+	for k, v := range asMap {
+		thisPh := s.dialect.PlaceholderChar
+		if s.dialect.IncludeIndexInPlaceholder {
+			thisPh += fmt.Sprint(counter)
+		}
+		phMap[k] = thisPh
+		args = append(args, v)
+		counter++
+	}
+	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)
+	q, args, err := NewUpdate().
+		Table(s.metadata.Table).
+		Where(query).WithArgs(ObjectHelpers.PKValue(v)).
+		Set(phMap).WithArgs(args...).
+		Build()
+	_, err = s.conn.Exec(q, args...)
 	return err
 }
 
 // Delete the object from database
 func (s *Repository) Delete(v interface{}) error {
-	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), fmt.Sprint(ObjectHelpers.PKValue(v)))
-	_, err := NewDelete().Repository(s).Where(query).Exec()
+	ph := s.dialect.PlaceholderChar
+	if s.dialect.IncludeIndexInPlaceholder {
+		ph = ph + "1"
+	}
+	query := WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)
+	q, args, err := NewDelete().
+		Table(s.metadata.Table).
+		Where(query).
+		WithArgs(ObjectHelpers.PKValue(v)).
+		SQL()
+	_, err = s.conn.Exec(q, args...)
 	return err
-}
-
-func (s *Repository) Query() *SelectStmt {
-	return NewQueryOnRepository(s)
 }

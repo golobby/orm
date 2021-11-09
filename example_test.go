@@ -17,7 +17,7 @@ func TestExampleRepositories(t *testing.T) {
 	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
 	// create the repository using database connection and an instance of the type representing the table in database.
-	userRepository := orm.NewRepository(db, &User{})
+	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
 	firstUser := &User{
 		Name: "Amirreza",
 	}
@@ -44,24 +44,15 @@ func TestExampleRepositories(t *testing.T) {
 	assert.Equal(t, 19, secondUser.Age)
 
 	//// Update the entity in database.
-	//secondUser.Age = 11
-	//err = userRepository.Update(secondUser)
-	//assert.NoError(t, err)
-	//
-	//// Delete the entity from database.
-	//err = userRepository.Delete(secondUser)
-	//assert.NoError(t, err)
-	//
-	//// Custom query with binding to a custom struct.
-	//type onlyName struct {
-	//	Name string `bind:"name"`
-	//}
-	//var names []onlyName
-	//err = userRepository.Query().
-	//	Where(orm.WhereHelpers.Like("name", "%Amir%")).
-	//	Limit(10).
-	//	Select("name").
-	//	Bind(&names)
-	//assert.NoError(t, err)
+	secondUser.Age = 11
+	mockDB.ExpectExec(`UPDATE users`).WithArgs(2, 2, "amirreza", 11).WillReturnResult(sqlmock.NewResult(1, 1))
+	err = userRepository.Update(secondUser)
 
+	assert.NoError(t, mockDB.ExpectationsWereMet())
+	assert.NoError(t, err)
+
+	//// Delete the entity from database.
+	mockDB.ExpectExec(`DELETE FROM users`).WithArgs(2).WillReturnResult(sqlmock.NewResult(0, 1))
+	err = userRepository.Delete(secondUser)
+	assert.NoError(t, err)
 }
