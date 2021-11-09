@@ -1,8 +1,6 @@
-package orm
+package qb
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 )
 
@@ -32,21 +30,4 @@ func mySQLPlaceHolder(n int) []string {
 	}
 
 	return output
-}
-
-func _query(ctx context.Context, db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
-	return db.QueryContext(ctx, query, args...)
-}
-
-func _bind(ctx context.Context, db *sql.DB, v interface{}, query string, args ...interface{}) error {
-	rows, err := _query(ctx, db, query, args...)
-	if err != nil {
-		return err
-	}
-
-	return Bind(rows, v)
-}
-
-func exec(ctx context.Context, db *sql.DB, stmt string, args ...interface{}) (sql.Result, error) {
-	return db.ExecContext(ctx, stmt, args...)
 }
