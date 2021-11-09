@@ -14,6 +14,7 @@ type Entity interface {
 	Table
 	ToMap
 	InsertColumnsAndValues
+	FromRows
 }
 type objectHelpers struct {
 	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
@@ -284,8 +285,7 @@ type ObjectMetadata struct {
 	Columns func(...string) []string
 	// primary key of this struct
 	PrimaryKey string
-	// index of the relation fields
-	RelationField map[string]int
+	Relations  []*ObjectMetadata
 }
 
 func ObjectMetadataFrom(v interface{}) *ObjectMetadata {

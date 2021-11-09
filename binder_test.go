@@ -20,7 +20,7 @@ type ComplexUser struct {
 }
 
 type Address struct {
-	ID   int    `bind:"address_id"`
+	ID   int    `bind:"id"`
 	Path string `bind:"path"`
 }
 
@@ -89,11 +89,11 @@ func TestBindNested(t *testing.T) {
 		assert.NoError(t, err)
 		mock.
 			ExpectQuery("SELECT .* FROM users").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "address_id", "path"}).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "address_id", "address_path"}).
 				AddRow(1, "amirreza", 1, "kianpars").
 				AddRow(2, "milad", 2, "delfan"))
 
-		rows, err := db.Query(`SELECT users.id, users.name, addresses.id AS address_id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
+		rows, err := db.Query(`SELECT users.id, users.name, addresses.id AS address_id, addresses.path AS address_path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
 		assert.NoError(t, err)
 
 		amirreza := &ComplexUser{}

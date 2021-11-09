@@ -32,7 +32,20 @@ func (s *Repository) Fill(v interface{}) error {
 		if s.dialect.IncludeIndexInPlaceholder {
 			ph = ph + "1"
 		}
-		q, args, err = qb.NewQuery().Select(s.metadata.Columns()...).Table(s.metadata.Table).Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).WithArgs(pkValue).SQL()
+		cols := s.metadata.Columns()
+		builder := qb.NewQuery().
+			Select(cols...).
+			Table(s.metadata.Table).
+			Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).
+			WithArgs(pkValue)
+		//if eagerLoad && hasRelations(v)  {
+		//	for _, rel := range s.metadata.Relations {
+		//		builder.LeftJoin(rel.Table, s.metadata.Table[:len(s.metadata.Table)]+"")
+		//	}
+		//	builder.LeftJoin("")
+		//}
+		q, args, err = builder.
+			SQL()
 		if err != nil {
 			return err
 		}

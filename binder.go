@@ -3,9 +3,14 @@ package orm
 import (
 	"database/sql"
 	"reflect"
+	"strings"
 	"unsafe"
 )
 
+func getTypeName(t reflect.Type) string {
+	parts := strings.Split(t.Name(), ".")
+	return strings.ToLower(parts[len(parts)-1])
+}
 func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
@@ -13,7 +18,7 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 		v = v.Elem()
 		t = t.Elem()
 	}
-
+	tyName := getTypeName(v.Type())
 	scanInto := []interface{}{}
 	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
@@ -26,7 +31,7 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 			} else {
 				name, exists := ft.Tag.Lookup("bind")
 				if exists {
-					if ct.Name() == name {
+					if ct.Name() == name || ct.Name() == tyName+"_"+name {
 						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
 						actualPtr := ptr.Elem().Addr().Interface()
 						scanInto = append(scanInto, actualPtr)
