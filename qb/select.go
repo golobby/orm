@@ -192,7 +192,7 @@ func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
 	return q.Where(parts...)
 }
 
-func (q *SelectStmt) SQL() (string, []interface{}, error) {
+func (q *SelectStmt) Build() (string, []interface{}, error) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {

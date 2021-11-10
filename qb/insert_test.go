@@ -14,7 +14,7 @@ func TestInsert(t *testing.T) {
 			Into("name", "password").
 			Values("$1", "$2").
 			WithArgs("amirreza", "password").
-			SQL()
+			Build()
 
 		assert.NoError(t, err)
 		assert.Equal(t, []interface{}{"amirreza", "password"}, args)
@@ -27,7 +27,7 @@ func TestInsert(t *testing.T) {
 			Into("name", "password").
 			Values("?", "?").
 			WithArgs("amirreza", "password").
-			SQL()
+			Build()
 
 		assert.NoError(t, err)
 		assert.Equal(t, []interface{}{"amirreza", "password"}, args)

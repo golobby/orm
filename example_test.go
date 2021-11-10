@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestExampleRepositories(t *testing.T) {
+func TestExampleRepositoriesNoRel(t *testing.T) {
 	type User struct {
 		Id   int64  `bind:"id" pk:"true"`
 		Name string `bind:"name"`

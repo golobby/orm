@@ -1,22 +1,26 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/golobby/orm/binder"
 	"github.com/golobby/orm/qb"
 )
 
 type Repository struct {
-	dialect  *Dialect
-	conn     *sql.DB
-	metadata *ObjectMetadata
+	dialect   *Dialect
+	conn      *sql.DB
+	metadata  *ObjectMetadata
+	eagerLoad bool
 }
 
 func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
 	s := &Repository{
-		conn:     conn,
-		metadata: ObjectMetadataFrom(makeRepositoryFor),
-		dialect:  dialect,
+		conn:      conn,
+		metadata:  ObjectMetadataFrom(makeRepositoryFor),
+		dialect:   dialect,
+		eagerLoad: true,
 	}
 	return s
 }
@@ -38,20 +42,14 @@ func (s *Repository) Fill(v interface{}) error {
 			Table(s.metadata.Table).
 			Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).
 			WithArgs(pkValue)
-		//if eagerLoad && hasRelations(v)  {
-		//	for _, rel := range s.metadata.Relations {
-		//		builder.LeftJoin(rel.Table, s.metadata.Table[:len(s.metadata.Table)]+"")
-		//	}
-		//	builder.LeftJoin("")
-		//}
 		q, args, err = builder.
-			SQL()
+			Build()
 		if err != nil {
 			return err
 		}
 
 	} else {
-		q, args, err = qb.NewQuery().Table(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).SQL()
+		q, args, err = qb.NewQuery().Table(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).Build()
 	}
 	if err != nil {
 		return err
@@ -60,7 +58,7 @@ func (s *Repository) Fill(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return Bind(rows, v)
+	return binder.Bind(rows, v)
 }
 
 //Save given object
@@ -76,7 +74,7 @@ func (s *Repository) Save(v interface{}) error {
 		Table(s.metadata.Table).
 		Into(cols...).
 		Values(phs...).
-		WithArgs(values...).SQL()
+		WithArgs(values...).Build()
 	if err != nil {
 		return err
 	}
@@ -132,7 +130,46 @@ func (s *Repository) Delete(v interface{}) error {
 		Table(s.metadata.Table).
 		Where(query).
 		WithArgs(ObjectHelpers.PKValue(v)).
-		SQL()
+		Build()
 	_, err = s.conn.Exec(q, args...)
 	return err
+}
+func (s *Repository) Exec(q qb.SQL) (sql.Result, error) {
+	return s.ExecContext(context.Background(), q)
+}
+
+func (s *Repository) ExecContext(ctx context.Context, q qb.SQL) (sql.Result, error) {
+	query, args, err := q.Build()
+	if err != nil {
+		return nil, err
+	}
+	return s.conn.ExecContext(ctx, query, args...)
+}
+
+func (s *Repository) Query(q qb.SQL) (*sql.Rows, error) {
+	return s.QueryContext(context.Background(), q)
+
+}
+func (s *Repository) QueryContext(ctx context.Context, q qb.SQL) (*sql.Rows, error) {
+	query, args, err := q.Build()
+	if err != nil {
+		return nil, err
+	}
+	return s.conn.QueryContext(ctx, query, args...)
+}
+
+func (s *Repository) Bind(q qb.SQL, out interface{}) error {
+	return s.BindContext(context.Background(), q, out)
+}
+
+func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{}) error {
+	query, args, err := q.Build()
+	if err != nil {
+		return err
+	}
+	rows, err := s.conn.QueryContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	return binder.Bind(rows, out)
 }

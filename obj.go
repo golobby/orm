@@ -2,19 +2,21 @@ package orm
 
 import (
 	"fmt"
+	"github.com/golobby/orm/binder"
 	"reflect"
 	"strings"
 	"unsafe"
 )
 
 type Entity interface {
+	Columns
 	PKValue
 	PKColumn
 	SetPKValue
 	Table
 	ToMap
 	InsertColumnsAndValues
-	FromRows
+	binder.FromRows
 }
 type objectHelpers struct {
 	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
@@ -278,6 +280,31 @@ func keyValueOf(obj interface{}) map[string]interface{} {
 	return m
 }
 
+type Relations interface {
+	Relations() []*ObjectMetadata
+}
+
+func relationsOf(obj interface{}) []*ObjectMetadata {
+	r, is := obj.(Relations)
+	if is {
+		return r.Relations()
+	}
+	var mds []*ObjectMetadata
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		v = v.Elem()
+	}
+	for i := 0; i < t.NumField(); i++ {
+		ft := t.Field(i)
+		if rel, exists := ft.Tag.Lookup("fk"); exists && rel == "true" {
+			mds = append(mds, ObjectMetadataFrom(v.Field(i).Interface()))
+		}
+	}
+	return mds
+}
+
 type ObjectMetadata struct {
 	// Name of the table that the object represents
 	Table string
@@ -303,5 +330,6 @@ func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
 			return columns
 		},
 		PrimaryKey: primaryKeyOf(v),
+		Relations:  relationsOf(v),
 	}
 }

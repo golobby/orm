@@ -33,7 +33,7 @@ func (q *DeleteStmt) AndWhere(parts ...string) *DeleteStmt {
 	return q.Where(parts...)
 }
 
-func (d *DeleteStmt) SQL() (string, []interface{}, error) {
+func (d *DeleteStmt) Build() (string, []interface{}, error) {
 	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), d.args, nil
 }
 

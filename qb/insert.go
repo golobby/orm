@@ -30,7 +30,7 @@ func (i *InsertStmt) WithArgs(args ...interface{}) *InsertStmt {
 }
 
 //SQL returns a query, and list of arguments to query executor
-func (i *InsertStmt) SQL() (string, []interface{}, error) {
+func (i *InsertStmt) Build() (string, []interface{}, error) {
 	var valuesJoined []string
 	for _, v := range i.values {
 		valuesJoined = append(valuesJoined, fmt.Sprintf("(%s)", strings.Join(v, ",")))
