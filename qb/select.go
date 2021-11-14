@@ -35,7 +35,9 @@ func (c *Clause) String() string {
 }
 
 type SelectStmt struct {
-	table    string
+	table string
+
+	subQuery *SelectStmt
 	selected *Clause
 	where    *Clause
 	orderBy  *Clause
@@ -145,8 +147,13 @@ func (s *SelectStmt) Distinct() *SelectStmt {
 	return s
 }
 
-func (q *SelectStmt) Table(t string) *SelectStmt {
+func (q *SelectStmt) From(t string) *SelectStmt {
 	q.table = t
+	return q
+}
+
+func (q *SelectStmt) FromQuery(sub *SelectStmt) *SelectStmt {
+	q.subQuery = sub
 	return q
 }
 
@@ -201,12 +208,21 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 
 	sections = append(sections, q.selected.String())
 
-	if q.table == "" {
+	if q.table == "" && q.subQuery == nil {
 		return "", nil, fmt.Errorf("table name cannot be empty")
 	}
 
 	// Handle from TABLE-NAME
-	sections = append(sections, "FROM "+q.table)
+	if q.subQuery == nil {
+		sections = append(sections, "FROM "+q.table)
+	} else {
+		subquery, args, err := q.subQuery.Build()
+		if err != nil {
+			return "", nil, err
+		}
+		q.args = append(args, q.args...)
+		sections = append(sections, fmt.Sprintf("FROM (%s)", subquery))
+	}
 
 	// handle where
 	if q.where != nil {

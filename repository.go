@@ -39,7 +39,7 @@ func (s *Repository) Fill(v interface{}) error {
 		cols := s.metadata.Columns()
 		builder := qb.NewQuery().
 			Select(cols...).
-			Table(s.metadata.Table).
+			From(s.metadata.Table).
 			Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).
 			WithArgs(pkValue)
 		q, args, err = builder.
@@ -49,7 +49,7 @@ func (s *Repository) Fill(v interface{}) error {
 		}
 
 	} else {
-		q, args, err = qb.NewQuery().Table(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).Build()
+		q, args, err = qb.NewQuery().From(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).Build()
 	}
 	if err != nil {
 		return err

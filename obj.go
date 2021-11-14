@@ -280,56 +280,28 @@ func keyValueOf(obj interface{}) map[string]interface{} {
 	return m
 }
 
-type Relations interface {
-	Relations() []*ObjectMetadata
-}
-
-func relationsOf(obj interface{}) []*ObjectMetadata {
-	r, is := obj.(Relations)
-	if is {
-		return r.Relations()
-	}
-	var mds []*ObjectMetadata
-	t := reflect.TypeOf(obj)
-	v := reflect.ValueOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		v = v.Elem()
-	}
-	for i := 0; i < t.NumField(); i++ {
-		ft := t.Field(i)
-		if rel, exists := ft.Tag.Lookup("fk"); exists && rel == "true" {
-			mds = append(mds, ObjectMetadataFrom(v.Field(i).Interface()))
-		}
-	}
-	return mds
-}
-
 type ObjectMetadata struct {
 	// Name of the table that the object represents
-	Table string
-	// List of columns that this object has.
-	Columns func(...string) []string
-	// primary key of this struct
-	PrimaryKey string
-	Relations  []*ObjectMetadata
+	Table  string
+	Fields []*FieldMetadata
+}
+type RelationType uint8
+
+const (
+	RelationTypeOneToOne = iota + 1
+	RelationTypeOneToMany
+	RelationTypeManyToOne
+	RelationTypeManyToMany
+)
+
+type FieldMetadata struct {
+	SQLName      string
+	IsRel        bool
+	RelationType RelationType
 }
 
 func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
 	return &ObjectMetadata{
 		Table: ObjectHelpers.Table(v),
-		Columns: func(blacklist ...string) []string {
-			allColumns := ObjectHelpers.Columns(v)
-			blacklisted := strings.Join(blacklist, ";")
-			columns := []string{}
-			for _, col := range allColumns {
-				if !strings.Contains(blacklisted, col) {
-					columns = append(columns, col)
-				}
-			}
-			return columns
-		},
-		PrimaryKey: primaryKeyOf(v),
-		Relations:  relationsOf(v),
 	}
 }
