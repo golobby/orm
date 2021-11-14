@@ -1,10 +1,11 @@
 package orm_test
 
 import (
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestExampleRepositoriesNoRel(t *testing.T) {
@@ -57,23 +58,31 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestExampleRepositoriesWithRelation(t *testing.T) {
-	type Address struct {
-		Content string `sqlname:"content"`
-	}
+type Address struct {
+	Content string `orm:"name=content"`
+}
+
+func (a Address) Table() string {
+	return "addresses"
+}
+func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	type User struct {
-		Id      int64   `sqlname:"id" pk:"true"`
-		Name    string  `sqlname:"name"`
-		Age     int     `sqlname:"age"`
-		Address Address `rel:"true" foreigntable:"addresses" reltype:"one2one" left:"id" right:"user_id"`
+		Id      int64   `orm:"name=id pk=true"`
+		Name    string  `orm:"name=name"`
+		Age     int     `orm:"name=age"`
+		Address Address `orm:"in_rel=true with=addresses has=one left=id right=user_id"`
 	}
-	db, _, err := sqlmock.New()
+	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
 	// create the repository using database connection and an instance of the type representing the table in database.
 	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
 	firstUser := &User{
 		Id: 1,
 	}
+	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age, addresses.content`).
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age", "addresses.content"}).AddRow(1, "amirreza", 23, "ahvaz"))
 	err = userRepository.FillWithRelations(firstUser)
 	assert.NoError(t, err)
+	assert.NoError(t, mockDB.ExpectationsWereMet())
 }

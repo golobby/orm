@@ -1,4 +1,4 @@
-package binder
+package orm
 
 import (
 	"github.com/DATA-DOG/go-sqlmock"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/golobby/orm/binder"
+
 	"github.com/golobby/orm/qb"
 )
 
@@ -57,7 +57,7 @@ func (s *Repository) Fill(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return binder.Bind(rows, v)
+	return Bind(rows, v)
 }
 
 //Save given object
@@ -170,7 +170,7 @@ func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{})
 	if err != nil {
 		return err
 	}
-	return binder.Bind(rows, out)
+	return Bind(rows, out)
 }
 
 func (s *Repository) FillWithRelations(v interface{}) error {
@@ -192,9 +192,12 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 			continue
 		}
 		table := field.RelationMetadata.Table
-		if field.RelationMetadata.Type == RelationTypeManyToOne || field.RelationMetadata.Type == RelationTypeOneToOne {
+		if field.RelationMetadata.Type == RelationTypeHasOne {
 			builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
 			builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
+		} else if field.RelationMetadata.Type == RelationTypeHasMany {
+			//builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+			//builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn,))
 		}
 	}
 	q, args, err = builder.
@@ -206,5 +209,5 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return binder.Bind(rows, v)
+	return Bind(rows, v)
 }

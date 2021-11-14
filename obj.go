@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"unsafe"
-
-	"github.com/golobby/orm/binder"
 )
 
 type Entity interface {
@@ -17,7 +15,7 @@ type Entity interface {
 	Table
 	ToMap
 	InsertColumnsAndValues
-	binder.FromRows
+	FromRows
 }
 
 type InsertColumnsAndValues interface {
@@ -144,12 +142,15 @@ func pkName(v interface{}) string {
 		t = t.Elem()
 	}
 	for i := 0; i < t.NumField(); i++ {
-		if tag, exists := t.Field(i).Tag.Lookup("pk"); exists {
-			if tag == "true" {
-				if name, exist := t.Field(i).Tag.Lookup("sqlname"); exist {
-					return name
+		ft := t.Field(i)
+		if orm, exists := ft.Tag.Lookup("orm"); exists {
+			m := fieldMetadataFromTag(orm)
+			if m.PK {
+				if m.Name == "" {
+					return ft.Name
+				} else {
+					return m.Name
 				}
-				return t.Field(i).Name
 			}
 		}
 	}
@@ -172,9 +173,10 @@ func pkValue(v interface{}) interface{} {
 		val = val.Elem()
 	}
 	for i := 0; i < t.NumField(); i++ {
-		if tag, exists := t.Field(i).Tag.Lookup("pk"); exists {
-			if tag == "true" {
-
+		ft := t.Field(i)
+		if orm, exists := ft.Tag.Lookup("orm"); exists {
+			m := fieldMetadataFromTag(orm)
+			if m.PK {
 				return val.Field(i).Interface()
 			}
 		}
@@ -271,21 +273,15 @@ func (o *ObjectMetadata) Columns() []string {
 type RelationType uint8
 
 const (
-	RelationTypeOneToOne = iota + 1
-	RelationTypeOneToMany
-	RelationTypeManyToOne
-	RelationTypeManyToMany
+	RelationTypeHasOne = iota + 1
+	RelationTypeHasMany
 )
 
 func relationTypeFromStr(s string) RelationType {
-	if s == "one2one" {
-		return RelationTypeOneToOne
-	} else if s == "one2many" {
-		return RelationTypeOneToMany
-	} else if s == "many2one" {
-		return RelationTypeManyToOne
-	} else if s == "many2many" {
-		return RelationTypeManyToMany
+	if s == "1" || s == "one" {
+		return RelationTypeHasOne
+	} else if s == "n" || s == "many" {
+		return RelationTypeHasMany
 	}
 	panic("no relation type matched for " + s)
 }
@@ -300,13 +296,60 @@ type RelationMetadata struct {
 
 type FieldMetadata struct {
 	SQLName          string
+	IsPK             bool
 	IsRel            bool
 	RelationMetadata *RelationMetadata
+}
+type FieldTag struct {
+	Name    string
+	PK      bool
+	InRel   bool
+	With    string
+	RelType RelationType
+	Left    string
+	Right   string
 }
 type HasFields interface {
 	Fields() []*FieldMetadata
 }
 
+func fieldMetadataFromTag(t string) FieldTag {
+	if t == "" {
+		return FieldTag{}
+	}
+	tuples := strings.Split(t, " ")
+	var tag FieldTag
+	kv := map[string]string{}
+	for _, tuple := range tuples {
+		parts := strings.Split(tuple, "=")
+		key := parts[0]
+		value := parts[1]
+		kv[key] = value
+		if key == "name" {
+			tag.Name = value
+		} else if key == "in_rel" {
+			tag.InRel = value == "true"
+
+		} else if key == "with" {
+
+			tag.With = value
+
+		} else if key == "has" {
+
+			tag.RelType = relationTypeFromStr(value)
+
+		} else if key == "left" {
+
+			tag.Left = value
+
+		} else if key == "right" {
+			tag.Right = value
+		} else if key == "pk" {
+			tag.PK = true
+		}
+	}
+	return tag
+}
 func fieldsOf(obj interface{}) []*FieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
@@ -321,38 +364,33 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 	var fms []*FieldMetadata
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
+		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
 		fm := &FieldMetadata{}
-		// Resolve this field name in database table
-		if sqlName, exists := ft.Tag.Lookup("sqlname"); exists {
-			fm.SQLName = sqlName
+		if tagParsed.Name != "" {
+			fm.SQLName = tagParsed.Name
 		} else {
 			fm.SQLName = ft.Name
 		}
-		if _, exists := ft.Tag.Lookup("rel"); exists {
+		if tagParsed.PK {
+			fm.IsPK = true
+		}
+		if tagParsed.InRel == true {
 			fm.IsRel = true
+
 			fm.RelationMetadata = &RelationMetadata{}
-			if table, exists := ft.Tag.Lookup("foreigntable"); exists {
-				fm.RelationMetadata.Table = table
-			} else {
-				// if no tag use fields own name as right table name
-				fm.RelationMetadata.Table = ft.Name
-			}
-			if typ, exists := ft.Tag.Lookup("reltype"); exists {
-				fm.RelationMetadata.Type = relationTypeFromStr(typ)
-			} else {
-				panic("cannot infer relation type yet for " + ft.Name)
-			}
-			if leftCol, exists := ft.Tag.Lookup("left"); exists {
-				fm.RelationMetadata.LeftColumn = leftCol
-			} else {
-				fm.RelationMetadata.LeftColumn = ft.Name
-			}
-			if rightCol, exists := ft.Tag.Lookup("right"); exists {
-				fm.RelationMetadata.RightColumn = rightCol
-			} else {
-				panic("cannot infer right side of join yet for " + ft.Name)
-			}
 			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface())
+			if tagParsed.RelType != 0 {
+				fm.RelationMetadata.Type = tagParsed.RelType
+			}
+			if tagParsed.With != "" {
+				fm.RelationMetadata.Table = tagParsed.With
+			}
+			if tagParsed.Left != "" {
+				fm.RelationMetadata.LeftColumn = tagParsed.Left
+			}
+			if tagParsed.Right != "" {
+				fm.RelationMetadata.RightColumn = tagParsed.Right
+			}
 		}
 		fms = append(fms, fm)
 	}

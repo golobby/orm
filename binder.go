@@ -1,16 +1,11 @@
-package binder
+package orm
 
 import (
 	"database/sql"
 	"reflect"
-	"strings"
 	"unsafe"
 )
 
-func getTypeName(t reflect.Type) string {
-	parts := strings.Split(t.Name(), ".")
-	return strings.ToLower(parts[len(parts)-1])
-}
 func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
@@ -18,8 +13,8 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 		v = v.Elem()
 		t = t.Elem()
 	}
-	tyName := getTypeName(v.Type())
-	scanInto := []interface{}{}
+	tableName := tableName(v.Interface())
+	var scanInto []interface{}
 	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
@@ -29,9 +24,10 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 			} else if ft.Type.Kind() == reflect.Struct {
 				return append(scanInto, makePtrsOf(v.Field(i), cts)...)
 			} else {
-				name, exists := ft.Tag.Lookup("sqlname")
+				orm, exists := ft.Tag.Lookup("orm")
 				if exists {
-					if ct.Name() == name || ct.Name() == tyName+"_"+name {
+					md := fieldMetadataFromTag(orm)
+					if ct.Name() == md.Name || ct.Name() == tableName+"."+md.Name {
 						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
 						actualPtr := ptr.Elem().Addr().Interface()
 						scanInto = append(scanInto, actualPtr)
@@ -70,7 +66,7 @@ func Bind(rows *sql.Rows, v interface{}) error {
 		t = t.Elem()
 	}
 
-	inputs := [][]interface{}{}
+	var inputs [][]interface{}
 	if t.Kind() != reflect.Slice {
 		inputs = append(inputs, makePtrsOf(reflect.ValueOf(v), cts))
 	} else {
@@ -97,4 +93,12 @@ func Bind(rows *sql.Rows, v interface{}) error {
 
 	return nil
 
+}
+
+type Binder struct {
+	objectMetadata *ObjectMetadata
+}
+
+func NewBinder(o *ObjectMetadata) *Binder {
+	return &Binder{objectMetadata: o}
 }
