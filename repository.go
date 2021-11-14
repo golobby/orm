@@ -36,9 +36,8 @@ func (s *Repository) Fill(v interface{}) error {
 		if s.dialect.IncludeIndexInPlaceholder {
 			ph = ph + "1"
 		}
-		cols := s.metadata.Columns()
 		builder := qb.NewQuery().
-			Select(cols...).
+			Select(s.metadata.Columns()...).
 			From(s.metadata.Table).
 			Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).
 			WithArgs(pkValue)

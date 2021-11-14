@@ -2,10 +2,11 @@ package orm
 
 import (
 	"fmt"
-	"github.com/golobby/orm/binder"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"github.com/golobby/orm/binder"
 )
 
 type Entity interface {
@@ -70,7 +71,7 @@ func colsAndValsForInsert(o interface{}) ([]string, []interface{}) {
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		fv := v.Field(i)
-		name, exists := ft.Tag.Lookup("bind")
+		name, exists := ft.Tag.Lookup("sqlname")
 		_, isPK := ft.Tag.Lookup("pk")
 		if isPK {
 			continue
@@ -149,7 +150,7 @@ func columnsOf(v interface{}) []string {
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if tag, exists := f.Tag.Lookup("bind"); exists {
+		if tag, exists := f.Tag.Lookup("sqlname"); exists {
 			columns = append(columns, tag)
 		} else {
 			columns = append(columns, f.Name)
@@ -175,7 +176,7 @@ func primaryKeyOf(v interface{}) string {
 	for i := 0; i < t.NumField(); i++ {
 		if tag, exists := t.Field(i).Tag.Lookup("pk"); exists {
 			if tag == "true" {
-				if name, exist := t.Field(i).Tag.Lookup("bind"); exist {
+				if name, exist := t.Field(i).Tag.Lookup("sqlname"); exist {
 					return name
 				}
 				return t.Field(i).Name
@@ -271,7 +272,7 @@ func keyValueOf(obj interface{}) map[string]interface{} {
 		if thisFieldValue.IsZero() {
 			continue
 		}
-		if tag, exists := f.Tag.Lookup("bind"); exists {
+		if tag, exists := f.Tag.Lookup("sqlname"); exists {
 			m[tag] = thisFieldValue.Interface()
 		} else {
 			m[f.Name] = thisFieldValue.Interface()
@@ -285,6 +286,15 @@ type ObjectMetadata struct {
 	Table  string
 	Fields []*FieldMetadata
 }
+
+func (o *ObjectMetadata) Columns() []string {
+	var cols []string
+	for _, field := range o.Fields {
+		cols = append(cols, field.SQLName)
+	}
+	return cols
+}
+
 type RelationType uint8
 
 const (
@@ -294,14 +304,89 @@ const (
 	RelationTypeManyToMany
 )
 
+func relationTypeFromStr(s string) RelationType {
+	if s == "one2one" {
+		return RelationTypeOneToOne
+	} else if s == "one2many" {
+		return RelationTypeOneToMany
+	} else if s == "many2one" {
+		return RelationTypeManyToOne
+	} else if s == "many2many" {
+		return RelationTypeManyToMany
+	}
+	panic("no relation type matched for " + s)
+}
+
+type RelationMetadata struct {
+	Type        RelationType
+	Table       string
+	LeftColumn  string
+	RightColumn string
+}
+
 type FieldMetadata struct {
-	SQLName      string
-	IsRel        bool
-	RelationType RelationType
+	SQLName          string
+	IsRel            bool
+	RelationMetadata *RelationMetadata
+}
+type HasFields interface {
+	Fields() []*FieldMetadata
+}
+
+func fieldsOf(obj interface{}) []*FieldMetadata {
+	hasFields, is := obj.(HasFields)
+	if is {
+		return hasFields.Fields()
+	}
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		v = v.Elem()
+	}
+	var fms []*FieldMetadata
+	for i := 0; i < t.NumField(); i++ {
+		ft := t.Field(i)
+		fm := &FieldMetadata{}
+		// Resolve this field name in database table
+		if sqlName, exists := ft.Tag.Lookup("sqlname"); exists {
+			fm.SQLName = sqlName
+		} else {
+			fm.SQLName = ft.Name
+		}
+		if _, exists := ft.Tag.Lookup("rel"); exists {
+			fm.IsRel = true
+			fm.RelationMetadata = &RelationMetadata{}
+			if table, exists := ft.Tag.Lookup("foreigntable"); exists {
+				fm.RelationMetadata.Table = table
+			} else {
+				// if no tag use fields own name as right table name
+				fm.RelationMetadata.Table = ft.Name
+			}
+			if typ, exists := ft.Tag.Lookup("reltype"); exists {
+				fm.RelationMetadata.Type = relationTypeFromStr(typ)
+			} else {
+				panic("cannot infer relation type yet for " + ft.Name)
+			}
+			if leftCol, exists := ft.Tag.Lookup("left"); exists {
+				fm.RelationMetadata.LeftColumn = leftCol
+			} else {
+				fm.RelationMetadata.LeftColumn = ft.Name
+			}
+			if rightCol, exists := ft.Tag.Lookup("right"); exists {
+				fm.RelationMetadata.RightColumn = rightCol
+			} else {
+				panic("cannot infer right side of join yet for " + ft.Name)
+			}
+		}
+		fms = append(fms, fm)
+	}
+	return fms
 }
 
 func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
 	return &ObjectMetadata{
-		Table: ObjectHelpers.Table(v),
+		Table:  ObjectHelpers.Table(v),
+		Fields: fieldsOf(v),
 	}
 }

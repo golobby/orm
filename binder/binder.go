@@ -29,7 +29,7 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 			} else if ft.Type.Kind() == reflect.Struct {
 				return append(scanInto, makePtrsOf(v.Field(i), cts)...)
 			} else {
-				name, exists := ft.Tag.Lookup("bind")
+				name, exists := ft.Tag.Lookup("sqlname")
 				if exists {
 					if ct.Name() == name || ct.Name() == tyName+"_"+name {
 						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
