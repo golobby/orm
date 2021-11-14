@@ -30,7 +30,7 @@ func (s *Repository) Fill(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
-	pkValue := ObjectHelpers.PKValue(v)
+	pkValue := pkValue(v)
 	if pkValue != nil {
 		ph := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
@@ -39,7 +39,7 @@ func (s *Repository) Fill(v interface{}) error {
 		builder := qb.NewQuery().
 			Select(s.metadata.Columns()...).
 			From(s.metadata.Table).
-			Where(qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)).
+			Where(qb.WhereHelpers.Equal(pkName(v), ph)).
 			WithArgs(pkValue)
 		q, args, err = builder.
 			Build()
@@ -48,7 +48,7 @@ func (s *Repository) Fill(v interface{}) error {
 		}
 
 	} else {
-		q, args, err = qb.NewQuery().From(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(ObjectHelpers.ToMap(v))).Limit(1).Build()
+		q, args, err = qb.NewQuery().From(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(keyValueOf(v))).Limit(1).Build()
 	}
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (s *Repository) Fill(v interface{}) error {
 
 //Save given object
 func (s *Repository) Save(v interface{}) error {
-	cols, values := ObjectHelpers.InsertColumnsAndValuesOf(v)
+	cols, values := colsAndValsForInsert(v)
 	var phs []string
 	if s.dialect.PlaceholderChar == "$" {
 		phs = qb.PlaceHolderGenerators.Postgres(len(cols))
@@ -85,7 +85,7 @@ func (s *Repository) Save(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	ObjectHelpers.SetPK(v, id)
+	setPrimaryKeyFor(v, id)
 	return nil
 }
 
@@ -96,9 +96,9 @@ func (s *Repository) Update(v interface{}) error {
 		ph = ph + "1"
 	}
 	counter := 2
-	asMap := ObjectHelpers.ToMap(v)
+	asMap := keyValueOf(v)
 	phMap := map[string]interface{}{}
-	args := []interface{}{}
+	var args []interface{}
 	for k, v := range asMap {
 		thisPh := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
@@ -108,10 +108,10 @@ func (s *Repository) Update(v interface{}) error {
 		args = append(args, v)
 		counter++
 	}
-	query := qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)
+	query := qb.WhereHelpers.Equal(pkName(v), ph)
 	q, args, err := qb.NewUpdate().
 		Table(s.metadata.Table).
-		Where(query).WithArgs(ObjectHelpers.PKValue(v)).
+		Where(query).WithArgs(pkValue(v)).
 		Set(phMap).WithArgs(args...).
 		Build()
 	_, err = s.conn.Exec(q, args...)
@@ -124,11 +124,11 @@ func (s *Repository) Delete(v interface{}) error {
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	query := qb.WhereHelpers.Equal(ObjectHelpers.PKColumn(v), ph)
+	query := qb.WhereHelpers.Equal(pkName(v), ph)
 	q, args, err := qb.NewDelete().
 		Table(s.metadata.Table).
 		Where(query).
-		WithArgs(ObjectHelpers.PKValue(v)).
+		WithArgs(pkValue(v)).
 		Build()
 	_, err = s.conn.Exec(q, args...)
 	return err
@@ -171,4 +171,40 @@ func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{})
 		return err
 	}
 	return binder.Bind(rows, out)
+}
+
+func (s *Repository) FillWithRelations(v interface{}) error {
+	var q string
+	var args []interface{}
+	var err error
+	pkValue := pkValue(v)
+	ph := s.dialect.PlaceholderChar
+	if s.dialect.IncludeIndexInPlaceholder {
+		ph = ph + "1"
+	}
+	builder := qb.NewQuery().
+		Select(s.metadata.Columns()...).
+		From(s.metadata.Table).
+		Where(qb.WhereHelpers.Equal(pkName(v), ph)).
+		WithArgs(pkValue)
+	for _, field := range s.metadata.Fields {
+		if field.RelationMetadata == nil {
+			continue
+		}
+		table := field.RelationMetadata.Table
+		if field.RelationMetadata.Type == RelationTypeManyToOne || field.RelationMetadata.Type == RelationTypeOneToOne {
+			builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+			builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
+		}
+	}
+	q, args, err = builder.
+		Build()
+	if err != nil {
+		return err
+	}
+	rows, err := s.conn.Query(q, args...)
+	if err != nil {
+		return err
+	}
+	return binder.Bind(rows, v)
 }

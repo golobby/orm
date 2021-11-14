@@ -56,3 +56,24 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	err = userRepository.Delete(secondUser)
 	assert.NoError(t, err)
 }
+
+func TestExampleRepositoriesWithRelation(t *testing.T) {
+	type Address struct {
+		Content string `sqlname:"content"`
+	}
+	type User struct {
+		Id      int64   `sqlname:"id" pk:"true"`
+		Name    string  `sqlname:"name"`
+		Age     int     `sqlname:"age"`
+		Address Address `rel:"true" foreigntable:"addresses" reltype:"one2one" left:"id" right:"user_id"`
+	}
+	db, _, err := sqlmock.New()
+	assert.NoError(t, err)
+	// create the repository using database connection and an instance of the type representing the table in database.
+	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
+	firstUser := &User{
+		Id: 1,
+	}
+	err = userRepository.FillWithRelations(firstUser)
+	assert.NoError(t, err)
+}

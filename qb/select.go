@@ -133,8 +133,9 @@ func (q *SelectStmt) OrderBy(column, order string) *SelectStmt {
 func (q *SelectStmt) Select(columns ...string) *SelectStmt {
 	if q.selected == nil {
 		q.selected = &Clause{
-			typ:   ClauseType_Select,
-			parts: []string{strings.Join(columns, ", ")},
+			typ:       ClauseType_Select,
+			parts:     columns,
+			delimiter: ", ",
 		}
 		return q
 	}
@@ -223,7 +224,11 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 		q.args = append(args, q.args...)
 		sections = append(sections, fmt.Sprintf("FROM (%s)", subquery))
 	}
-
+	if q.joins != nil {
+		for _, join := range q.joins {
+			sections = append(sections, join.String())
+		}
+	}
 	// handle where
 	if q.where != nil {
 		sections = append(sections, q.where.String())
@@ -235,12 +240,6 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 
 	if q.groupBy != nil {
 		sections = append(sections, q.groupBy.String())
-	}
-
-	if q.joins != nil {
-		for _, join := range q.joins {
-			sections = append(sections, join.String())
-		}
 	}
 
 	if q.limit != nil {

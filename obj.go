@@ -19,36 +19,6 @@ type Entity interface {
 	InsertColumnsAndValues
 	binder.FromRows
 }
-type objectHelpers struct {
-	// Returns a list of string which are the columns that a struct repreasent based on binder tags.
-	Columns func(v interface{}) []string
-	// Returns a string which is the table name ( by convention is TYPEs ) of given object
-	Table func(v interface{}) string
-	// Returns a list of args of the given object, useful for passing as args of sql exec or query
-	Values func(v interface{}) []interface{}
-	// Returns the primary key for given object.
-	PKColumn func(v interface{}) string
-	// Sets primary key for object
-	SetPK func(obj interface{}, pk interface{})
-	// Gets value of primary key of given obj
-	PKValue func(obj interface{}) interface{}
-	// Returns a Key-Value paired of struct.
-	ToMap                    func(obj interface{}) map[string]interface{}
-	InsertColumnsAndValuesOf func(obj interface{}) ([]string, []interface{})
-}
-
-// ObjectHelpers are set of functions that extract type informations from a struct, it's better to use `ObjectMetadata` if possible also
-// implement Entity interface for better performance.
-var ObjectHelpers = &objectHelpers{
-	Columns:                  columnsOf,
-	Table:                    tableName,
-	Values:                   valuesOf,
-	PKColumn:                 primaryKeyOf,
-	SetPK:                    setPrimaryKeyFor,
-	PKValue:                  primaryKeyValue,
-	ToMap:                    keyValueOf,
-	InsertColumnsAndValuesOf: colsAndValsForInsert,
-}
 
 type InsertColumnsAndValues interface {
 	InsertColumnsAndValues() ([]string, []interface{})
@@ -164,7 +134,7 @@ type PKColumn interface {
 	PKColumn() string
 }
 
-func primaryKeyOf(v interface{}) string {
+func pkName(v interface{}) string {
 	hv, isHasPK := v.(PKColumn)
 	if isHasPK {
 		return hv.PKColumn()
@@ -190,7 +160,7 @@ type PKValue interface {
 	PKValue() interface{}
 }
 
-func primaryKeyValue(v interface{}) interface{} {
+func pkValue(v interface{}) interface{} {
 	hv, isPKValue := v.(PKValue)
 	if isPKValue {
 		return hv.PKValue()
@@ -290,7 +260,10 @@ type ObjectMetadata struct {
 func (o *ObjectMetadata) Columns() []string {
 	var cols []string
 	for _, field := range o.Fields {
-		cols = append(cols, field.SQLName)
+		if field.IsRel {
+			continue
+		}
+		cols = append(cols, o.Table+"."+field.SQLName)
 	}
 	return cols
 }
@@ -318,10 +291,11 @@ func relationTypeFromStr(s string) RelationType {
 }
 
 type RelationMetadata struct {
-	Type        RelationType
-	Table       string
-	LeftColumn  string
-	RightColumn string
+	Type           RelationType
+	Table          string
+	LeftColumn     string
+	RightColumn    string
+	objectMetadata *ObjectMetadata
 }
 
 type FieldMetadata struct {
@@ -378,6 +352,7 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 			} else {
 				panic("cannot infer right side of join yet for " + ft.Name)
 			}
+			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface())
 		}
 		fms = append(fms, fm)
 	}
@@ -386,7 +361,7 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 
 func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
 	return &ObjectMetadata{
-		Table:  ObjectHelpers.Table(v),
+		Table:  tableName(v),
 		Fields: fieldsOf(v),
 	}
 }
