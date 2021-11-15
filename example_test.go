@@ -58,8 +58,18 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+type AddressContent struct {
+	AddressID string `orm:"name=address_id"`
+	Content   string `orm:"name=content"`
+}
+
+func (a AddressContent) Table() string {
+	return "address_contents"
+}
+
 type Address struct {
-	Content string `orm:"name=content"`
+	UserID         string         `orm:"name=user_id"`
+	AddressContent AddressContent `orm:"in_rel=true with=address_content has=one left=id right=address_id"`
 }
 
 func (a Address) Table() string {
@@ -79,10 +89,14 @@ func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	firstUser := &User{
 		Id: 1,
 	}
-	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age, addresses.content`).
+	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age, addresses.user_id, address_contents.address_id, address_contents.content`).
 		WithArgs(1).
-		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age", "addresses.content"}).AddRow(1, "amirreza", 23, "ahvaz"))
+		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age", "addresses.user_id", "address_contents.address_id", "address_contents.content"}).
+			AddRow(1, "amirreza", 23, 1, 1, "ahvaz"))
 	err = userRepository.FillWithRelations(firstUser)
 	assert.NoError(t, err)
 	assert.NoError(t, mockDB.ExpectationsWereMet())
+	assert.Equal(t, "amirreza", firstUser.Name)
+	assert.Equal(t, "ahvaz", firstUser.Address.AddressContent.Content)
+
 }

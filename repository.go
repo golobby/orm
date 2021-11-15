@@ -173,6 +173,22 @@ func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{})
 	return Bind(rows, out)
 }
 
+func resolveRelations(builder *qb.SelectStmt, field *FieldMetadata) {
+	table := field.RelationMetadata.Table
+	if field.RelationMetadata.Type == RelationTypeHasOne {
+		builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+		builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
+		for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
+			if innerField.IsRel {
+				resolveRelations(builder, innerField)
+			}
+		}
+	} else if field.RelationMetadata.Type == RelationTypeHasMany {
+		//builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+		//builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn,))
+	}
+}
+
 func (s *Repository) FillWithRelations(v interface{}) error {
 	var q string
 	var args []interface{}
@@ -191,14 +207,7 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 		if field.RelationMetadata == nil {
 			continue
 		}
-		table := field.RelationMetadata.Table
-		if field.RelationMetadata.Type == RelationTypeHasOne {
-			builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
-			builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
-		} else if field.RelationMetadata.Type == RelationTypeHasMany {
-			//builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
-			//builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn,))
-		}
+		resolveRelations(builder, field)
 	}
 	q, args, err = builder.
 		Build()
