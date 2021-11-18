@@ -300,15 +300,16 @@ type FieldMetadata struct {
 	IsRel            bool
 	RelationMetadata *RelationMetadata
 }
+
 type FieldTag struct {
-	Name    string
-	PK      bool
-	InRel   bool
-	With    string
-	RelType RelationType
-	Left    string
-	Right   string
+	Name  string
+	PK    bool
+	InRel bool
+	With  string
+	Left  string
+	Right string
 }
+
 type HasFields interface {
 	Fields() []*FieldMetadata
 }
@@ -329,19 +330,10 @@ func fieldMetadataFromTag(t string) FieldTag {
 			tag.Name = value
 		} else if key == "in_rel" {
 			tag.InRel = value == "true"
-
 		} else if key == "with" {
-
 			tag.With = value
-
-		} else if key == "has" {
-
-			tag.RelType = relationTypeFromStr(value)
-
 		} else if key == "left" {
-
 			tag.Left = value
-
 		} else if key == "right" {
 			tag.Right = value
 		} else if key == "pk" {
@@ -350,6 +342,7 @@ func fieldMetadataFromTag(t string) FieldTag {
 	}
 	return tag
 }
+
 func fieldsOf(obj interface{}) []*FieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
@@ -379,9 +372,7 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 
 			fm.RelationMetadata = &RelationMetadata{}
 			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface())
-			if tagParsed.RelType != 0 {
-				fm.RelationMetadata.Type = tagParsed.RelType
-			}
+
 			if tagParsed.With != "" {
 				fm.RelationMetadata.Table = tagParsed.With
 			}

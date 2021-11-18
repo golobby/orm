@@ -25,7 +25,7 @@ func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}
 	return s
 }
 
-//Fill the struct
+// Fill the struct
 func (s *Repository) Fill(v interface{}) error {
 	var q string
 	var args []interface{}
@@ -60,7 +60,7 @@ func (s *Repository) Fill(v interface{}) error {
 	return Bind(rows, v)
 }
 
-//Save given object
+// Save given object
 func (s *Repository) Save(v interface{}) error {
 	cols, values := colsAndValsForInsert(v)
 	var phs []string
@@ -89,7 +89,7 @@ func (s *Repository) Save(v interface{}) error {
 	return nil
 }
 
-//Update object in database
+// Update object in database
 func (s *Repository) Update(v interface{}) error {
 	ph := s.dialect.PlaceholderChar
 	if s.dialect.IncludeIndexInPlaceholder {
@@ -133,6 +133,7 @@ func (s *Repository) Delete(v interface{}) error {
 	_, err = s.conn.Exec(q, args...)
 	return err
 }
+
 func (s *Repository) Exec(q qb.SQL) (sql.Result, error) {
 	return s.ExecContext(context.Background(), q)
 }
@@ -147,8 +148,8 @@ func (s *Repository) ExecContext(ctx context.Context, q qb.SQL) (sql.Result, err
 
 func (s *Repository) Query(q qb.SQL) (*sql.Rows, error) {
 	return s.QueryContext(context.Background(), q)
-
 }
+
 func (s *Repository) QueryContext(ctx context.Context, q qb.SQL) (*sql.Rows, error) {
 	query, args, err := q.Build()
 	if err != nil {
@@ -175,17 +176,13 @@ func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{})
 
 func resolveRelations(builder *qb.SelectStmt, field *FieldMetadata) {
 	table := field.RelationMetadata.Table
-	if field.RelationMetadata.Type == RelationTypeHasOne {
-		builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
-		builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
-		for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
-			if innerField.IsRel {
-				resolveRelations(builder, innerField)
-			}
+
+	builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+	builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
+	for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
+		if innerField.IsRel {
+			resolveRelations(builder, innerField)
 		}
-	} else if field.RelationMetadata.Type == RelationTypeHasMany {
-		//builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
-		//builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn,))
 	}
 }
 
