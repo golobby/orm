@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/golobby/orm/ds"
+	"github.com/iancoleman/strcase"
 )
 
 // Entity
@@ -16,10 +17,12 @@ type Entity interface {
 	SetPKValue
 	Values
 }
+
 // Values returns a slice containing all values of current object to be used in insert or updates.
 type Values interface {
 	Values() []interface{}
 }
+
 func (s *Repository) valuesOf(o interface{}, withPK bool) []interface{} {
 	vls, is := o.(Values)
 	if is {
@@ -70,7 +73,7 @@ func tableName(v interface{}) string {
 func (r *Repository) pkName(v interface{}) string {
 	for _, field := range r.metadata.Fields {
 		if field.IsPK {
-			return field.SQLName
+			return field.Name
 		}
 	}
 	return ""
@@ -145,9 +148,9 @@ func (s *Repository) toMap(obj interface{}) []ds.KV {
 
 type ObjectMetadata struct {
 	// Name of the table that the object represents
-	Table  string
+	Table   string
 	dialect *Dialect
-	Fields []*FieldMetadata
+	Fields  []*FieldMetadata
 }
 
 func (o *ObjectMetadata) Columns(withPK bool) []string {
@@ -160,9 +163,9 @@ func (o *ObjectMetadata) Columns(withPK bool) []string {
 			continue
 		}
 		if o.dialect.AddTableNameInSelectColumns {
-			cols = append(cols, o.Table+"."+field.SQLName)
+			cols = append(cols, o.Table+"."+field.Name)
 		} else {
-			cols = append(cols, field.SQLName)
+			cols = append(cols, field.Name)
 		}
 	}
 	return cols
@@ -184,7 +187,7 @@ type RelationMetadata struct {
 }
 
 type FieldMetadata struct {
-	SQLName          string
+	Name             string
 	IsPK             bool
 	IsRel            bool
 	RelationMetadata *RelationMetadata
@@ -215,7 +218,7 @@ func fieldMetadataFromTag(t string) FieldTag {
 		key := parts[0]
 		value := parts[1]
 		kv[key] = value
-		if key == "name" || key == "sqlname" {
+		if key == "name" {
 			tag.Name = value
 		} else if key == "in_rel" {
 			tag.InRel = value == "true"
@@ -249,11 +252,11 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
 		fm := &FieldMetadata{}
 		if tagParsed.Name != "" {
-			fm.SQLName = tagParsed.Name
+			fm.Name = tagParsed.Name
 		} else {
-			fm.SQLName = ft.Name
+			fm.Name = strcase.ToSnake(ft.Name)
 		}
-		if tagParsed.PK {
+		if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
 			fm.IsPK = true
 		}
 		if tagParsed.InRel == true {
@@ -279,8 +282,8 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 
 func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
 	return &ObjectMetadata{
-		Table:  tableName(v),
+		Table:   tableName(v),
 		dialect: dialect,
-		Fields: fieldsOf(v, dialect),
+		Fields:  fieldsOf(v, dialect),
 	}
 }
