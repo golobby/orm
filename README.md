@@ -104,7 +104,7 @@ for CRUD operations on 10000 records
 |--------------------------------------------------------|-------------|
 | Golobby                                                | 60523       |
 | [GORM](https://gorm.io/)                               | 91979       |
-| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 60523       |
+| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 86998       |
 
 [benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
 
