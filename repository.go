@@ -19,7 +19,7 @@ type Repository struct {
 func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
 	s := &Repository{
 		conn:      conn,
-		metadata:  ObjectMetadataFrom(makeRepositoryFor),
+		metadata:  ObjectMetadataFrom(makeRepositoryFor, dialect),
 		dialect:   dialect,
 		eagerLoad: true,
 	}
@@ -31,7 +31,7 @@ func (s *Repository) Fill(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
-	pkValue := getPkValue(v)
+	pkValue := s.getPkValue(v)
 	if pkValue != nil {
 		ph := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
@@ -90,7 +90,7 @@ func (s *Repository) Save(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	setPkValue(v, id)
+	s.setPkValue(v, id)
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (s *Repository) Update(v interface{}) error {
 	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
 	q, args, err := qb.NewUpdate().
 		Table(s.metadata.Table).
-		Where(query).WithArgs(getPkValue(v)).
+		Where(query).WithArgs(s.getPkValue(v)).
 		Set(kvsWithPh...).WithArgs(args...).
 		Build()
 	_, err = s.conn.Exec(q, args...)
@@ -133,7 +133,7 @@ func (s *Repository) Delete(v interface{}) error {
 	q, args, err := qb.NewDelete().
 		Table(s.metadata.Table).
 		Where(query).
-		WithArgs(getPkValue(v)).
+		WithArgs(s.getPkValue(v)).
 		Build()
 	_, err = s.conn.Exec(q, args...)
 	return err

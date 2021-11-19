@@ -85,7 +85,7 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
-	pkValue := getPkValue(v)
+	pkValue := s.getPkValue(v)
 	ph := s.dialect.PlaceholderChar
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"

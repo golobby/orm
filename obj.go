@@ -80,7 +80,7 @@ type GetPKValue interface {
 	PKValue() interface{}
 }
 
-func getPkValue(v interface{}) interface{} {
+func (s *Repository) getPkValue(v interface{}) interface{} {
 	hv, isPKValue := v.(GetPKValue)
 	if isPKValue {
 		return hv.PKValue()
@@ -91,13 +91,9 @@ func getPkValue(v interface{}) interface{} {
 		t = t.Elem()
 		val = val.Elem()
 	}
-	for i := 0; i < t.NumField(); i++ {
-		ft := t.Field(i)
-		if orm, exists := ft.Tag.Lookup("orm"); exists {
-			m := fieldMetadataFromTag(orm)
-			if m.PK {
-				return val.Field(i).Interface()
-			}
+	for i, field := range s.metadata.Fields {
+		if field.IsPK {
+			return val.Field(i).Interface()
 		}
 	}
 	return ""
@@ -107,7 +103,7 @@ type SetPKValue interface {
 	SetPKValue(pk interface{})
 }
 
-func setPkValue(v interface{}, value interface{}) {
+func (s *Repository) setPkValue(v interface{}, value interface{}) {
 	hv, isSetPK := v.(SetPKValue)
 	if isSetPK {
 		hv.SetPKValue(value)
@@ -120,26 +116,17 @@ func setPkValue(v interface{}, value interface{}) {
 		val = val.Elem()
 	}
 	pkIdx := -1
-	for i := 0; i < t.NumField(); i++ {
-		ft := t.Field(i)
-		if orm, exists := ft.Tag.Lookup("orm"); exists {
-			m := fieldMetadataFromTag(orm)
-			if m.PK {
-				pkIdx = i
-			}
+	for i, field := range s.metadata.Fields {
+		if field.IsPK {
+			pkIdx = i
 		}
 	}
 	ptr := reflect.NewAt(t.Field(pkIdx).Type, unsafe.Pointer(val.Field(pkIdx).UnsafeAddr())).Elem()
 	toSetValue := reflect.ValueOf(value)
-	if t.AssignableTo(ptr.Type()) {
-		fmt.Println("no converting needed")
+	if t.Field(pkIdx).Type.AssignableTo(ptr.Type()) {
 		ptr.Set(toSetValue)
 	} else {
-		if toSetValue.CanConvert(ptr.Type()) {
-			ptr.Set(toSetValue.Convert(ptr.Type()))
-		} else {
-			panic(fmt.Sprintf("value of type %s is not assignable to %s and cannot convert also.", t, ptr.Type()))
-		}
+		panic(fmt.Sprintf("value of type %s is not assignable to %s", t.Field(pkIdx).Type.String(), ptr.Type()))
 	}
 }
 
@@ -159,6 +146,7 @@ func (s *Repository) toMap(obj interface{}) []ds.KV {
 type ObjectMetadata struct {
 	// Name of the table that the object represents
 	Table  string
+	dialect *Dialect
 	Fields []*FieldMetadata
 }
 
@@ -171,7 +159,11 @@ func (o *ObjectMetadata) Columns(withPK bool) []string {
 		if !withPK && field.IsPK {
 			continue
 		}
-		cols = append(cols, o.Table+"."+field.SQLName)
+		if o.dialect.AddTableNameInSelectColumns {
+			cols = append(cols, o.Table+"."+field.SQLName)
+		} else {
+			cols = append(cols, field.SQLName)
+		}
 	}
 	return cols
 }
@@ -240,7 +232,7 @@ func fieldMetadataFromTag(t string) FieldTag {
 	return tag
 }
 
-func fieldsOf(obj interface{}) []*FieldMetadata {
+func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()
@@ -268,7 +260,7 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 			fm.IsRel = true
 
 			fm.RelationMetadata = &RelationMetadata{}
-			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface())
+			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface(), dialect)
 
 			if tagParsed.With != "" {
 				fm.RelationMetadata.Table = tagParsed.With
@@ -285,9 +277,10 @@ func fieldsOf(obj interface{}) []*FieldMetadata {
 	return fms
 }
 
-func ObjectMetadataFrom(v interface{}) *ObjectMetadata {
+func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
 	return &ObjectMetadata{
 		Table:  tableName(v),
-		Fields: fieldsOf(v),
+		dialect: dialect,
+		Fields: fieldsOf(v, dialect),
 	}
 }
