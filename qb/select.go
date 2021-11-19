@@ -268,7 +268,7 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 	return strings.Join(sections, " "), q.args, nil
 }
 
-func NewQuery(opts ...func(stmt *SelectStmt)) *SelectStmt {
+func NewSelect(opts ...func(stmt *SelectStmt)) *SelectStmt {
 	s := &SelectStmt{}
 	for _, opt := range opts {
 		opt(s)

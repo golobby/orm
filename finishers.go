@@ -90,7 +90,7 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	builder := qb.NewQuery().
+	builder := qb.NewSelect().
 		Select(s.metadata.Columns(true)...).
 		From(s.metadata.Table).
 		Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).

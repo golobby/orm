@@ -25,7 +25,6 @@ func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}
 	}
 	return s
 }
-
 // Fill the struct
 func (s *Repository) Fill(v interface{}) error {
 	var q string
@@ -37,7 +36,7 @@ func (s *Repository) Fill(v interface{}) error {
 		if s.dialect.IncludeIndexInPlaceholder {
 			ph = ph + "1"
 		}
-		builder := qb.NewQuery().
+		builder := qb.NewSelect().
 			Select(s.metadata.Columns(true)...).
 			From(s.metadata.Table).
 			Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
@@ -49,7 +48,7 @@ func (s *Repository) Fill(v interface{}) error {
 		}
 
 	} else {
-		q, args, err = qb.NewQuery().
+		q, args, err = qb.NewSelect().
 			From(s.metadata.Table).
 			Select(s.metadata.Columns(true)...).
 			Where(qb.WhereHelpers.ForKV(s.toMap(v))).Limit(1).Build()

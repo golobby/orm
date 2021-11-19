@@ -79,6 +79,20 @@ if err != nil {
     panic(err)
 }
 ```
+##### Custom queries
+Sometimes you need custom queries but you want the power of orm with you.
+```go
+var models []*Model
+err = modelRepository.Bind(qb.NewSelect().
+    From("users").
+    Select("id", "name").
+    OrderBy("created_at", "DESC"), models)
+if err != nil {
+    panic(err)
+}
+```
+you can use `Bind`, `Query`, `Exec` and also their `Context` version methods on repository to execute any query you
+want whether you build them with `qb` or you just write them by hand.
 # Benchmarks
 for CRUD operations on 10000 records
 - Create
