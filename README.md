@@ -27,122 +27,56 @@ go get github.com/golobby/orm
 first step to use golobby/orm is creating
 a new repository.
 ```go
-package main
-
-import (
-	"github.com/golobby/orm"
-	"database/sql"
-)
+db, _ := sql.Open("postgres", "")
+modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
+```
+##### Defining our model
+```go
 type Model struct {
 	ID int
 	Name string
-}
-func main() {
-	db, _ := sql.Open("postgres", "")
-	modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
 }
 ```
-### Inserting a new record
+##### Inserting a new record
 ```go
-package main
-
-import (
-	"github.com/golobby/orm"
-	"database/sql"
-	"fmt"
-)
-type Model struct {
-	ID int
-	Name string
+amirreza := &Model{
+    Name: "Amirreza",
 }
-func main() {
-	db, _ := sql.Open("postgres", "")
-	modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
-	amirreza := &Model{
-		Name: "Amirreza",
-	}
-	err := modelRepository.Save(amirreza)
-    if err != nil {
-        panic(err)
-    }
-	fmt.Println(amirreza.ID) // primary key is now set to last inserted id
+err := modelRepository.Save(amirreza)
+if err != nil {
+    panic(err)
+}
+fmt.Println(amirreza.ID) // primary key is now set to last inserted id
+```
+##### Fetching a record from database
+```go
+amirreza := &Model{
+    ID: 1,
+}
+err := modelRepository.Fill(amirreza)
+if err != nil {
+    panic(err)
+}
+fmt.Println(amirreza.Name) // primary key is now set to last inserted id
+```
+##### Updating a record
+```go
+amirreza := &Model{
+    ID: 1,
+}
+amirreza.Name = "comrade"
+err := modelRepository.Update(amirreza)
+if err != nil {
+    panic(err)
 }
 ```
-### Fetching a record from database
+##### Deleting a record
 ```go
-package main
-
-import (
-	"github.com/golobby/orm"
-	"database/sql"
-	"fmt"
-)
-type Model struct {
-	ID int
-	Name string
-}
-func main() {
-	db, _ := sql.Open("postgres", "")
-	modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
-	amirreza := &Model{
-		ID: 1,
-	}
-	err := modelRepository.Fill(amirreza)
-    if err != nil {
-        panic(err)
-    }
-	fmt.Println(amirreza.Name) // primary key is now set to last inserted id
-}
-```
-### Updating a record
-```go
-package main
-
-import (
-	"github.com/golobby/orm"
-	"database/sql"
-)
-type Model struct {
-	ID int
-	Name string
-}
-func main() {
-	db, _ := sql.Open("postgres", "")
-	modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
-	amirreza := &Model{
-		ID: 1,
-		
-	}
-	amirreza.Name = "comrade"
-	err := modelRepository.Update(amirreza)
-	if err != nil {
-	    panic(err)
-	}
-}
-```
-### Deleting a record
-```go
-package main
-
-import (
-	"github.com/golobby/orm"
-	"database/sql"
-)
-type Model struct {
-	ID int
-	Name string
-}
-func main() {
-	db, _ := sql.Open("postgres", "")
-	modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
-	amirreza := &Model{
-		ID: 1,
-		
-	}
-	err := modelRepository.Delete(amirreza)
-	if err != nil {
-	    panic(err)
-	}
+err := modelRepository.Delete(&Model{
+    ID: 1,
+})
+if err != nil {
+    panic(err)
 }
 ```
 # Benchmarks
