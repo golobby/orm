@@ -91,8 +91,17 @@ func main() {
 		Limit(100).
 		Offset(50).Bind(results)
 ```
-
-
+### Benchmarks
+for CRUD operations on 10000 records
+- Create
+- Read
+- Update
+- Delete
+(on Asus ROG G512 with 32 GB of Ram, Core I7 10750)
+| ORM | Miliseconds |
+| Golobby | 56301   |
+| Gorm    | 86043   |
+[benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
 [//]: # (Repositories are built on top of two items.)
 
 [//]: # (### QueryBuilder)
