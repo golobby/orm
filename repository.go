@@ -137,12 +137,30 @@ func (s *Repository) Delete(v interface{}) error {
 	_, err = s.conn.Exec(q, args...)
 	return err
 }
+func (s *Repository) injectRepoMetadata(q qb.SQL) {
+	switch q.(type) {
+	case *qb.SelectStmt:
+		selectStmt := q.(*qb.SelectStmt)
+		selectStmt.From(s.metadata.Table)
+	case *qb.InsertStmt:
+		insertStmt := q.(*qb.InsertStmt)
+		insertStmt.Table(s.metadata.Table)
+	case *qb.UpdateStmt:
+		updateStmt := q.(*qb.UpdateStmt)
+		updateStmt.Table(s.metadata.Table)
+	case *qb.DeleteStmt:
+		deleteStmt := q.(*qb.DeleteStmt)
+		deleteStmt.Table(s.metadata.Table)
+	}
+}
 
 func (s *Repository) Exec(q qb.SQL) (sql.Result, error) {
+	s.injectRepoMetadata(q)
 	return s.ExecContext(context.Background(), q)
 }
 
 func (s *Repository) ExecContext(ctx context.Context, q qb.SQL) (sql.Result, error) {
+	s.injectRepoMetadata(q)
 	query, args, err := q.Build()
 	if err != nil {
 		return nil, err
@@ -151,10 +169,12 @@ func (s *Repository) ExecContext(ctx context.Context, q qb.SQL) (sql.Result, err
 }
 
 func (s *Repository) Query(q qb.SQL) (*sql.Rows, error) {
+	s.injectRepoMetadata(q)
 	return s.QueryContext(context.Background(), q)
 }
 
 func (s *Repository) QueryContext(ctx context.Context, q qb.SQL) (*sql.Rows, error) {
+	s.injectRepoMetadata(q)
 	query, args, err := q.Build()
 	if err != nil {
 		return nil, err
@@ -163,10 +183,12 @@ func (s *Repository) QueryContext(ctx context.Context, q qb.SQL) (*sql.Rows, err
 }
 
 func (s *Repository) Bind(q qb.SQL, out interface{}) error {
+	s.injectRepoMetadata(q)
 	return s.BindContext(context.Background(), q, out)
 }
 
 func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{}) error {
+	s.injectRepoMetadata(q)
 	query, args, err := q.Build()
 	if err != nil {
 		return err
