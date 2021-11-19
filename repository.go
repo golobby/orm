@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/golobby/orm/ds"
 
 	"github.com/golobby/orm/qb"
 )
@@ -48,7 +49,10 @@ func (s *Repository) Fill(v interface{}) error {
 		}
 
 	} else {
-		q, args, err = qb.NewQuery().From(s.metadata.Table).Select(s.metadata.Columns()...).Where(qb.WhereHelpers.ForKV(keyValueOf(v))).Limit(1).Build()
+		q, args, err = qb.NewQuery().
+			From(s.metadata.Table).
+			Select(s.metadata.Columns()...).
+			Where(qb.WhereHelpers.ForKV(keyValueOf(v))).Limit(1).Build()
 	}
 	if err != nil {
 		return err
@@ -96,23 +100,23 @@ func (s *Repository) Update(v interface{}) error {
 		ph = ph + "1"
 	}
 	counter := 2
-	asMap := keyValueOf(v)
-	phMap := map[string]interface{}{}
+	kvs := keyValueOf(v)
+	var kvsWithPh []ds.KV
 	var args []interface{}
-	for k, v := range asMap {
+	for _, kv := range kvs {
 		thisPh := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
 			thisPh += fmt.Sprint(counter)
 		}
-		phMap[k] = thisPh
-		args = append(args, v)
+		kvsWithPh = append(kvsWithPh, ds.KV{Key: kv.Key, Value: thisPh})
+		args = append(args, kv.Value)
 		counter++
 	}
 	query := qb.WhereHelpers.Equal(pkName(v), ph)
 	q, args, err := qb.NewUpdate().
 		Table(s.metadata.Table).
 		Where(query).WithArgs(pkValue(v)).
-		Set(phMap).WithArgs(args...).
+		Set(kvsWithPh...).WithArgs(args...).
 		Build()
 	_, err = s.conn.Exec(q, args...)
 	return err

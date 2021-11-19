@@ -20,6 +20,6 @@ func TestUpdate(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, []interface{}{2, "'amirreza'"}, args)
-		assert.Equal(t, `UPDATE users WHERE id = $1 SET name=$2`, s)
+		assert.Equal(t, `UPDATE users SET name=$2 WHERE id = $1`, s)
 	})
 }

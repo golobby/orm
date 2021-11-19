@@ -2,6 +2,7 @@ package qb
 
 import (
 	"fmt"
+	"github.com/golobby/orm/ds"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ type whereHelpers struct {
 	And     func(conds ...string) string
 	Or      func(conds ...string) string
 	Not     func(cond ...string) string
-	ForKV   func(kv KV) string
+	ForKV   func(kvs ...[]ds.KV) string
 }
 
 var WhereHelpers = &whereHelpers{
@@ -30,13 +31,13 @@ var WhereHelpers = &whereHelpers{
 	And:     and,
 }
 
-func forKV(kv KV) string {
-	parts := []string{}
-	for k, v := range kv {
-		if _, isString := v.(string); isString {
-			parts = append(parts, fmt.Sprintf(`%s="%s"`, fmt.Sprint(k), v))
+func forKV(kvs ...ds.KV) string {
+	var parts []string
+	for _, kv := range kvs {
+		if _, isString := kv.Value.(string); isString {
+			parts = append(parts, fmt.Sprintf(`%s="%s"`, fmt.Sprint(kv.Key), kv.Value))
 		} else {
-			parts = append(parts, fmt.Sprintf(`%s=%s`, fmt.Sprint(k), fmt.Sprint(v)))
+			parts = append(parts, fmt.Sprintf(`%s=%s`, fmt.Sprint(kv.Key), fmt.Sprint(kv.Value)))
 		}
 	}
 	return strings.Join(parts, " AND ")

@@ -2,6 +2,7 @@ package qb
 
 import (
 	"fmt"
+	"github.com/golobby/orm/ds"
 	"strings"
 )
 
@@ -10,8 +11,8 @@ type M = map[string]interface{}
 type UpdateStmt struct {
 	table string
 	where string
-	set   M
-	args  []interface{}
+	set   []ds.KV
+	args []interface{}
 }
 
 func (q *UpdateStmt) WithArgs(args ...interface{}) *UpdateStmt {
@@ -36,19 +37,17 @@ func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
 	return q.Where(parts...)
 }
 
-type KV map[string]interface{}
-
-func (u *UpdateStmt) Set(values M) *UpdateStmt {
-	u.set = values
+func (u *UpdateStmt) Set(kvs ...ds.KV) *UpdateStmt {
+	u.set = append(u.set, kvs...)
 	return u
 }
 
 func (u *UpdateStmt) Build() (string, []interface{}, error) {
 	var pairs []string
-	for k, v := range u.set {
-		pairs = append(pairs, fmt.Sprintf("%s=%s", k, fmt.Sprint(v)))
+	for _, kv := range u.set {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", kv.Key, fmt.Sprint(kv.Value)))
 	}
-	return fmt.Sprintf("UPDATE %s WHERE %s SET %s", u.table, u.where, strings.Join(pairs, ",")), u.args, nil
+	return fmt.Sprintf("UPDATE %s SET %s WHERE %s", u.table, strings.Join(pairs, ","), u.where), u.args, nil
 }
 
 func (u *UpdateStmt) Table(table string) *UpdateStmt {

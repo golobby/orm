@@ -2,6 +2,7 @@ package orm
 
 import (
 	"fmt"
+	"github.com/golobby/orm/ds"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -202,8 +203,10 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 	}
 	pkIdx := -1
 	for i := 0; i < t.NumField(); i++ {
-		if tag, exists := t.Field(i).Tag.Lookup("pk"); exists {
-			if tag == "true" {
+		ft := t.Field(i)
+		if orm, exists := ft.Tag.Lookup("orm"); exists {
+			m := fieldMetadataFromTag(orm)
+			if m.PK {
 				pkIdx = i
 			}
 		}
@@ -226,12 +229,8 @@ type ToMap interface {
 	ToMap() map[string]interface{}
 }
 
-func keyValueOf(obj interface{}) map[string]interface{} {
-	m := map[string]interface{}{}
-	hv, isKeyValue := obj.(ToMap)
-	if isKeyValue {
-		return hv.ToMap()
-	}
+func keyValueOf(obj interface{}) []ds.KV {
+	var kvs []ds.KV
 	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
 	if t.Kind() == reflect.Ptr {
@@ -245,12 +244,18 @@ func keyValueOf(obj interface{}) map[string]interface{} {
 			continue
 		}
 		if tag, exists := f.Tag.Lookup("sqlname"); exists {
-			m[tag] = thisFieldValue.Interface()
+			kvs = append(kvs, ds.KV{
+				Key:   tag,
+				Value: thisFieldValue.Interface(),
+			})
 		} else {
-			m[f.Name] = thisFieldValue.Interface()
+			kvs = append(kvs, ds.KV{
+				Key:   f.Name,
+				Value: thisFieldValue.Interface(),
+			})
 		}
 	}
-	return m
+	return kvs
 }
 
 type ObjectMetadata struct {
