@@ -2,10 +2,11 @@ package orm
 
 import (
 	"fmt"
-	"github.com/golobby/orm/ds"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"github.com/golobby/orm/ds"
 )
 
 type Entity interface {
@@ -15,9 +16,29 @@ type Entity interface {
 	Table
 	ToMap
 	InsertColumnsAndValues
-	FromRows
+	Values
 }
+type Values interface {
+	Values() []interface{}
+}
+func valuesOf(o interface{}) []interface{} {
+	vls, is := o.(Values)
+	if is {
+		return vls.Values()
+	}
+	t := reflect.TypeOf(o)
+	v := reflect.ValueOf(o)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+		v = v.Elem()
+	}
+	var values []interface{}
 
+	for i := 0; i < t.NumField(); i++ {
+		values = append(values, v.Field(i).Interface())
+	}
+	return values
+}
 type InsertColumnsAndValues interface {
 	InsertColumnsAndValues() ([]string, []interface{})
 }
@@ -80,26 +101,14 @@ type PKColumn interface {
 	PKColumn() string
 }
 
-func pkName(v interface{}) string {
+func (r *Repository) pkName(v interface{}) string {
 	hv, isHasPK := v.(PKColumn)
 	if isHasPK {
 		return hv.PKColumn()
 	}
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	for i := 0; i < t.NumField(); i++ {
-		ft := t.Field(i)
-		if orm, exists := ft.Tag.Lookup("orm"); exists {
-			m := fieldMetadataFromTag(orm)
-			if m.PK {
-				if m.Name == "" {
-					return ft.Name
-				} else {
-					return m.Name
-				}
-			}
+	for _, field := range r.metadata.Fields {
+		if field.IsPK {
+			return field.SQLName
 		}
 	}
 	return ""
@@ -176,31 +185,14 @@ type ToMap interface {
 	ToMap() map[string]interface{}
 }
 
-func keyValueOf(obj interface{}) []ds.KV {
+func (s *Repository) keyValueOf(obj interface{}) []ds.KV {
 	var kvs []ds.KV
-	t := reflect.TypeOf(obj)
-	v := reflect.ValueOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		v = v.Elem()
-	}
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-		thisFieldValue := v.Field(i)
-		if thisFieldValue.IsZero() {
-			continue
-		}
-		if tag, exists := f.Tag.Lookup("sqlname"); exists {
-			kvs = append(kvs, ds.KV{
-				Key:   tag,
-				Value: thisFieldValue.Interface(),
-			})
-		} else {
-			kvs = append(kvs, ds.KV{
-				Key:   f.Name,
-				Value: thisFieldValue.Interface(),
-			})
-		}
+	vs := valuesOf(obj)
+	for i, field := range s.metadata.Fields {
+		kvs = append(kvs, ds.KV{
+			Key:   field.SQLName,
+			Value: vs[i],
+		})
 	}
 	return kvs
 }
@@ -228,15 +220,6 @@ const (
 	RelationTypeHasOne = iota + 1
 	RelationTypeHasMany
 )
-
-func relationTypeFromStr(s string) RelationType {
-	if s == "1" || s == "one" {
-		return RelationTypeHasOne
-	} else if s == "n" || s == "many" {
-		return RelationTypeHasMany
-	}
-	panic("no relation type matched for " + s)
-}
 
 type RelationMetadata struct {
 	Type           RelationType
@@ -278,7 +261,7 @@ func fieldMetadataFromTag(t string) FieldTag {
 		key := parts[0]
 		value := parts[1]
 		kv[key] = value
-		if key == "name" {
+		if key == "name" || key == "sqlname" {
 			tag.Name = value
 		} else if key == "in_rel" {
 			tag.InRel = value == "true"

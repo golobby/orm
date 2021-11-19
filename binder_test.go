@@ -1,27 +1,36 @@
 package orm
 
 import (
-	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
 
 type User struct {
-	ID   int    `bind:"id"`
-	Name string `bind:"name"`
+	ID   int    `orm:"pk=true name=id"`
+	Name string `orm:"name=name"`
 }
-
+func (c *User) Table() string {
+	return "users"
+}
 type ComplexUser struct {
-	ID      int    `bind:"id"`
-	Name    string `bind:"name"`
-	Address Address
+	ID      int    `orm:"pk=true name=id"`
+	Name    string `orm:"name=name"`
+	Address Address `orm:"in_rel=true with=addresses left=id right=user_id"`
+}
+func (c ComplexUser) Table() string {
+	return "users"
 }
 
 type Address struct {
-	ID   int    `bind:"id"`
-	Path string `bind:"path"`
+	ID   int    `orm:"pk=true name=id"`
+	Path string `orm:"name=path"`
+}
+func (c Address) Table() string {
+	return "addresses"
 }
 
 func TestBind(t *testing.T) {
@@ -89,11 +98,11 @@ func TestBindNested(t *testing.T) {
 		assert.NoError(t, err)
 		mock.
 			ExpectQuery("SELECT .* FROM users").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "address_id", "address_path"}).
+			WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "addresses.id", "addresses.path"}).
 				AddRow(1, "amirreza", 1, "kianpars").
 				AddRow(2, "milad", 2, "delfan"))
 
-		rows, err := db.Query(`SELECT users.id, users.name, addresses.id AS address_id, addresses.path AS address_path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
+		rows, err := db.Query(`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
 		assert.NoError(t, err)
 
 		amirreza := &ComplexUser{}

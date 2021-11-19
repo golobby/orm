@@ -10,9 +10,9 @@ import (
 
 func TestExampleRepositoriesNoRel(t *testing.T) {
 	type User struct {
-		Id   int64  `sqlname:"id" pk:"true"`
-		Name string `sqlname:"name"`
-		Age  int    `sqlname:"age"`
+		Id   int64  `orm:"name=id pk=true"`
+		Name string `orm:"name=name"`
+		Age  int    `orm:"name=age"`
 	}
 	// any sql database connection
 	db, mockDB, err := sqlmock.New()
@@ -31,9 +31,9 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.Equal(t, int64(1), firstUser.Id)
 
-	mockDB.ExpectQuery(`SELECT id, name, age FROM users`).
+	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age FROM users`).
 		WithArgs(1).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "age"}).AddRow(2, "amirreza", 19))
+		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age"}).AddRow(2, "amirreza", 19))
 	secondUser := &User{
 		Id: 1,
 	}

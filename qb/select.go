@@ -34,11 +34,21 @@ func (c *Clause) String() string {
 	return fmt.Sprintf("%s %s", c.typ, strings.Join(c.parts, c.delimiter))
 }
 
-type SelectStmt struct {
-	table string
+type SelectClause struct {
+	*Clause
+	distinct bool
+}
+func (s *SelectClause) String() string {
+	if s.distinct {
+		s.Clause.typ += " DISTINCT"
+	}
+	return s.Clause.String()
+}
 
+type SelectStmt struct {
+	table    string
 	subQuery *SelectStmt
-	selected *Clause
+	selected *SelectClause
 	where    *Clause
 	orderBy  *Clause
 	groupBy  *Clause
@@ -132,11 +142,12 @@ func (q *SelectStmt) OrderBy(column, order string) *SelectStmt {
 
 func (q *SelectStmt) Select(columns ...string) *SelectStmt {
 	if q.selected == nil {
-		q.selected = &Clause{
-			typ:       ClauseType_Select,
-			parts:     columns,
-			delimiter: ", ",
-		}
+		q.selected = &SelectClause{
+			Clause: &Clause{
+				typ:       ClauseType_Select,
+				parts:     columns,
+				delimiter: ", ",
+			}}
 		return q
 	}
 	q.selected.parts = append(q.selected.parts, columns...)
@@ -144,7 +155,7 @@ func (q *SelectStmt) Select(columns ...string) *SelectStmt {
 }
 
 func (s *SelectStmt) Distinct() *SelectStmt {
-	s.selected.parts = append([]string{"DISTINCT"}, s.selected.parts...)
+	s.selected.distinct = true
 	return s
 }
 
@@ -204,7 +215,7 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
-		q.selected = &Clause{typ: ClauseType_Select, parts: []string{"*"}}
+		q.selected = &SelectClause{Clause: &Clause{typ: ClauseType_Select, parts: []string{"*"}}}
 	}
 
 	sections = append(sections, q.selected.String())
