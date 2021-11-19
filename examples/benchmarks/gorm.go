@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-func main() {
-	fmt.Println("Benchmarking Golang ORMs ...")
+func _gorm() {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 

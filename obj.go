@@ -9,7 +9,6 @@ import (
 )
 
 type Entity interface {
-	Columns
 	PKValue
 	PKColumn
 	SetPKValue
@@ -58,31 +57,6 @@ func colsAndValsForInsert(o interface{}) ([]string, []interface{}) {
 	return cols, values
 }
 
-// Values defines how a type should return it's args for sql arguments, if not implemented sql will fallback to reflection based approach
-type Values interface {
-	Values() []interface{}
-}
-
-func valuesOf(o interface{}) []interface{} {
-	hv, isHasValues := o.(Values)
-	if isHasValues {
-		return hv.Values()
-	}
-	v := reflect.ValueOf(o)
-	if v.Type().Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	var values []interface{}
-	for i := 0; i < v.NumField(); i++ {
-		fv := v.Field(i)
-		if fv.IsZero() {
-			continue
-		}
-		values = append(values, fv.Interface())
-	}
-	return values
-}
-
 // Table defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach
 type Table interface {
 	Table() string
@@ -99,33 +73,6 @@ func tableName(v interface{}) string {
 	}
 	parts := strings.Split(t.Name(), ".")
 	return strings.ToLower(parts[len(parts)-1]) + "s"
-}
-
-// Columns defines a type columns list, if not implemented sql will fallback to reflection based approach
-type Columns interface {
-	Columns() []string
-}
-
-func columnsOf(v interface{}) []string {
-	hv, isHasColumns := v.(Columns)
-	if isHasColumns {
-		return hv.Columns()
-	}
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	columns := []string{}
-
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-		if tag, exists := f.Tag.Lookup("sqlname"); exists {
-			columns = append(columns, tag)
-		} else {
-			columns = append(columns, f.Name)
-		}
-	}
-	return columns
 }
 
 // PKColumn defines a type PK column name, if not implemented sql will fallback to reflection based approach
