@@ -100,10 +100,11 @@ for CRUD operations on 10000 records
 <br>
 (on Asus ROG G512 with 32 GB of Ram, Core I7 10750)<br>
 
-| ORM | Miliseconds |
-|---------|---------|
-| Golobby | 56301   |
-| Gorm    | 86043   |
+| ORM                                                    | Miliseconds |
+|--------------------------------------------------------|-------------|
+| Golobby                                                | 60523       |
+| [GORM](https://gorm.io/)                               | 91979       |
+| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 60523       |
 
 [benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
 
