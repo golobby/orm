@@ -79,8 +79,9 @@ if err != nil {
     panic(err)
 }
 ```
-##### Custom queries
+#### Custom queries
 Sometimes you need custom queries but you want the power of orm with you.
+##### Binding query result to model
 ```go
 var models []*Model
 err = modelRepository.Bind(qb.NewSelect().

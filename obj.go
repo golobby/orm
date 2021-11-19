@@ -2,6 +2,7 @@ package orm
 
 import (
 	"fmt"
+	"github.com/gertd/go-pluralize"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -66,8 +67,10 @@ func tableName(v interface{}) string {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
 	parts := strings.Split(t.Name(), ".")
-	return strings.ToLower(parts[len(parts)-1]) + "s"
+	name := parts[len(parts)-1]
+	return 	strcase.ToSnake(pluralize.NewClient().Plural(name))
 }
 
 func (r *Repository) pkName(v interface{}) string {

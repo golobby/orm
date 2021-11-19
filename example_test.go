@@ -63,18 +63,11 @@ type AddressContent struct {
 	Content   string `orm:"name=content"`
 }
 
-func (a AddressContent) Table() string {
-	return "address_contents"
-}
-
 type Address struct {
 	UserID         string         `orm:"name=user_id"`
 	AddressContent AddressContent `orm:"in_rel=true with=address_content has=one left=id right=address_id"`
 }
 
-func (a Address) Table() string {
-	return "addresses"
-}
 func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	type User struct {
 		Id      int64   `orm:"name=id pk=true"`
