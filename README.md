@@ -97,102 +97,15 @@ for CRUD operations on 10000 records
 - Read
 - Update
 - Delete
-(on Asus ROG G512 with 32 GB of Ram, Core I7 10750)
+<br>
+(on Asus ROG G512 with 32 GB of Ram, Core I7 10750)<br>
+
 | ORM | Miliseconds |
+|---------|---------|
 | Golobby | 56301   |
 | Gorm    | 86043   |
+
 [benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
-[//]: # (Repositories are built on top of two items.)
-
-[//]: # (### QueryBuilder)
-
-[//]: # (Abstract SQL syntax into a Go API with builder pattern.)
-
-[//]: # ()
-
-[//]: # (### Bind)
-
-[//]: # (Bind feature sql.Rows to a struct.)
-
-[//]: # (In this example we are binding result of query which contains multiple rows into slice.)
-
-[//]: # (```go)
-
-[//]: # (    users := []User{&User{}, &User{}})
-
-[//]: # (    rows, _ := db.Query&#40;`SELECT * FROM users`&#41;)
-
-[//]: # (    _ = bind.Bind&#40;rows, users&#41;)
-
-[//]: # (```)
-
-[//]: # ()
-
-[//]: # (bind also supports nested structs.)
-
-[//]: # (```go)
-
-[//]: # ()
-
-[//]: # (type ComplexUser struct {)
-
-[//]: # (	ID      int    `bind:"id"`)
-
-[//]: # (	Name    string `bind:"name"`)
-
-[//]: # (	Address Address)
-
-[//]: # (})
-
-[//]: # ()
-
-[//]: # (type Address struct {)
-
-[//]: # (	ID   int    `bind:"id"`)
-
-[//]: # (	Path string `bind:"path"`)
-
-[//]: # (})
-
-[//]: # ()
-
-[//]: # (rows, err := db.Query&#40;`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`&#41;)
-
-[//]: # ()
-
-[//]: # (amirreza := &ComplexUser{})
-
-[//]: # (milad := &ComplexUser{})
-
-[//]: # ()
-
-[//]: # (err = Bind&#40;rows, []*ComplexUser{amirreza, milad}&#41;)
-
-[//]: # ()
-
-[//]: # ()
-
-[//]: # (assert.Equal&#40;t, "amirreza", amirreza.Name&#41;)
-
-[//]: # (assert.Equal&#40;t, "milad", milad.Name&#41;)
-
-[//]: # ()
-
-[//]: # (//Nested struct also has filled)
-
-[//]: # (assert.Equal&#40;t, "kianpars", amirreza.Address.Path&#41;)
-
-[//]: # (assert.Equal&#40;t, "delfan", milad.Address.Path&#41;)
-
-[//]: # (assert.Equal&#40;t, 2, milad.Address.ID&#41;)
-
-[//]: # (assert.Equal&#40;t, 1, amirreza.Address.ID&#41;)
-
-[//]: # ()
-
-[//]: # (```)
-
-[//]: # (for more info on `bind` see [bind\_test.go]&#40;https://github.com/golobby/sql/tree/master/bind/bind_test.go&#41;)
 
 ## License
 
