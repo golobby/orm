@@ -72,7 +72,7 @@ func (s *Repository) BindContext(ctx context.Context, q qb.SQL, out interface{})
 func resolveRelations(builder *qb.SelectStmt, field *FieldMetadata) {
 	table := field.RelationMetadata.Table
 
-	builder.Select(field.RelationMetadata.objectMetadata.Columns()...)
+	builder.Select(field.RelationMetadata.objectMetadata.Columns(true)...)
 	builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
 	for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
 		if innerField.IsRel {
@@ -85,13 +85,13 @@ func (s *Repository) FillWithRelations(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
-	pkValue := pkValue(v)
+	pkValue := getPkValue(v)
 	ph := s.dialect.PlaceholderChar
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	builder := qb.NewQuery().
-		Select(s.metadata.Columns()...).
+		Select(s.metadata.Columns(true)...).
 		From(s.metadata.Table).
 		Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
 		WithArgs(pkValue)

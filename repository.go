@@ -31,14 +31,14 @@ func (s *Repository) Fill(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
-	pkValue := pkValue(v)
+	pkValue := getPkValue(v)
 	if pkValue != nil {
 		ph := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
 			ph = ph + "1"
 		}
 		builder := qb.NewQuery().
-			Select(s.metadata.Columns()...).
+			Select(s.metadata.Columns(true)...).
 			From(s.metadata.Table).
 			Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
 			WithArgs(pkValue)
@@ -51,8 +51,8 @@ func (s *Repository) Fill(v interface{}) error {
 	} else {
 		q, args, err = qb.NewQuery().
 			From(s.metadata.Table).
-			Select(s.metadata.Columns()...).
-			Where(qb.WhereHelpers.ForKV(s.keyValueOf(v))).Limit(1).Build()
+			Select(s.metadata.Columns(true)...).
+			Where(qb.WhereHelpers.ForKV(s.toMap(v))).Limit(1).Build()
 	}
 	if err != nil {
 		return err
@@ -66,7 +66,8 @@ func (s *Repository) Fill(v interface{}) error {
 
 // Save given object
 func (s *Repository) Save(v interface{}) error {
-	cols, values := colsAndValsForInsert(v)
+	cols := s.metadata.Columns(false)
+	values := s.valuesOf(v, false)
 	var phs []string
 	if s.dialect.PlaceholderChar == "$" {
 		phs = qb.PlaceHolderGenerators.Postgres(len(cols))
@@ -89,7 +90,7 @@ func (s *Repository) Save(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	setPrimaryKeyFor(v, id)
+	setPkValue(v, id)
 	return nil
 }
 
@@ -100,7 +101,7 @@ func (s *Repository) Update(v interface{}) error {
 		ph = ph + "1"
 	}
 	counter := 2
-	kvs := s.keyValueOf(v)
+	kvs := s.toMap(v)
 	var kvsWithPh []ds.KV
 	var args []interface{}
 	for _, kv := range kvs {
@@ -115,7 +116,7 @@ func (s *Repository) Update(v interface{}) error {
 	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
 	q, args, err := qb.NewUpdate().
 		Table(s.metadata.Table).
-		Where(query).WithArgs(pkValue(v)).
+		Where(query).WithArgs(getPkValue(v)).
 		Set(kvsWithPh...).WithArgs(args...).
 		Build()
 	_, err = s.conn.Exec(q, args...)
@@ -132,7 +133,7 @@ func (s *Repository) Delete(v interface{}) error {
 	q, args, err := qb.NewDelete().
 		Table(s.metadata.Table).
 		Where(query).
-		WithArgs(pkValue(v)).
+		WithArgs(getPkValue(v)).
 		Build()
 	_, err = s.conn.Exec(q, args...)
 	return err

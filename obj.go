@@ -9,19 +9,18 @@ import (
 	"github.com/golobby/orm/ds"
 )
 
+// Entity
 type Entity interface {
-	PKValue
-	PKColumn
-	SetPKValue
 	Table
-	ToMap
-	InsertColumnsAndValues
+	GetPKValue
+	SetPKValue
 	Values
 }
+// Values returns a slice containing all values of current object to be used in insert or updates.
 type Values interface {
 	Values() []interface{}
 }
-func valuesOf(o interface{}) []interface{} {
+func (s *Repository) valuesOf(o interface{}, withPK bool) []interface{} {
 	vls, is := o.(Values)
 	if is {
 		return vls.Values()
@@ -32,50 +31,22 @@ func valuesOf(o interface{}) []interface{} {
 		t = t.Elem()
 		v = v.Elem()
 	}
+	pkIdx := -1
+	for i, field := range s.metadata.Fields {
+		if field.IsPK {
+			pkIdx = i
+		}
+	}
+
 	var values []interface{}
 
 	for i := 0; i < t.NumField(); i++ {
+		if !withPK && i == pkIdx {
+			continue
+		}
 		values = append(values, v.Field(i).Interface())
 	}
 	return values
-}
-type InsertColumnsAndValues interface {
-	InsertColumnsAndValues() ([]string, []interface{})
-}
-
-func colsAndValsForInsert(o interface{}) ([]string, []interface{}) {
-	hv, is := o.(InsertColumnsAndValues)
-	if is {
-		return hv.InsertColumnsAndValues()
-	}
-	t := reflect.TypeOf(o)
-	v := reflect.ValueOf(o)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		v = v.Elem()
-	}
-	var cols []string
-	var values []interface{}
-
-	for i := 0; i < t.NumField(); i++ {
-		ft := t.Field(i)
-		fv := v.Field(i)
-		name, exists := ft.Tag.Lookup("sqlname")
-		_, isPK := ft.Tag.Lookup("pk")
-		if isPK {
-			continue
-		}
-		if fv.IsZero() {
-			continue
-		}
-		if exists {
-			cols = append(cols, name)
-		} else {
-			cols = append(cols, ft.Name)
-		}
-		values = append(values, fv.Interface())
-	}
-	return cols, values
 }
 
 // Table defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach
@@ -96,16 +67,7 @@ func tableName(v interface{}) string {
 	return strings.ToLower(parts[len(parts)-1]) + "s"
 }
 
-// PKColumn defines a type PK column name, if not implemented sql will fallback to reflection based approach
-type PKColumn interface {
-	PKColumn() string
-}
-
 func (r *Repository) pkName(v interface{}) string {
-	hv, isHasPK := v.(PKColumn)
-	if isHasPK {
-		return hv.PKColumn()
-	}
 	for _, field := range r.metadata.Fields {
 		if field.IsPK {
 			return field.SQLName
@@ -114,12 +76,12 @@ func (r *Repository) pkName(v interface{}) string {
 	return ""
 }
 
-type PKValue interface {
+type GetPKValue interface {
 	PKValue() interface{}
 }
 
-func pkValue(v interface{}) interface{} {
-	hv, isPKValue := v.(PKValue)
+func getPkValue(v interface{}) interface{} {
+	hv, isPKValue := v.(GetPKValue)
 	if isPKValue {
 		return hv.PKValue()
 	}
@@ -145,7 +107,7 @@ type SetPKValue interface {
 	SetPKValue(pk interface{})
 }
 
-func setPrimaryKeyFor(v interface{}, value interface{}) {
+func setPkValue(v interface{}, value interface{}) {
 	hv, isSetPK := v.(SetPKValue)
 	if isSetPK {
 		hv.SetPKValue(value)
@@ -181,16 +143,13 @@ func setPrimaryKeyFor(v interface{}, value interface{}) {
 	}
 }
 
-type ToMap interface {
-	ToMap() map[string]interface{}
-}
-
-func (s *Repository) keyValueOf(obj interface{}) []ds.KV {
+func (s *Repository) toMap(obj interface{}) []ds.KV {
 	var kvs []ds.KV
-	vs := valuesOf(obj)
-	for i, field := range s.metadata.Fields {
+	vs := s.valuesOf(obj, true)
+	cols := s.metadata.Columns(true)
+	for i, col := range cols {
 		kvs = append(kvs, ds.KV{
-			Key:   field.SQLName,
+			Key:   col,
 			Value: vs[i],
 		})
 	}
@@ -203,10 +162,13 @@ type ObjectMetadata struct {
 	Fields []*FieldMetadata
 }
 
-func (o *ObjectMetadata) Columns() []string {
+func (o *ObjectMetadata) Columns(withPK bool) []string {
 	var cols []string
 	for _, field := range o.Fields {
 		if field.IsRel {
+			continue
+		}
+		if !withPK && field.IsPK {
 			continue
 		}
 		cols = append(cols, o.Table+"."+field.SQLName)

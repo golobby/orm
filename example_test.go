@@ -23,7 +23,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 		Name: "Amirreza",
 	}
 	mockDB.ExpectExec(`INSERT INTO users`).
-		WithArgs(sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	// Saves an entity to database.
 	err = userRepository.Save(firstUser)
