@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-func (o *ObjectMetadata) makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
 	if t.Kind() == reflect.Ptr {
@@ -21,9 +21,9 @@ func (o *ObjectMetadata) makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []in
 			ft := t.Field(i)
 
 			if ft.Type.Kind() == reflect.Ptr {
-				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.makePtrsOf(v.Field(i).Elem(), cts)...)
+				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.ptrsFor(v.Field(i).Elem(), cts)...)
 			} else if ft.Type.Kind() == reflect.Struct {
-				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.makePtrsOf(v.Field(i), cts)...)
+				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.ptrsFor(v.Field(i), cts)...)
 			} else {
 				fieldName := o.Fields[i].Name
 				if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
@@ -31,14 +31,13 @@ func (o *ObjectMetadata) makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []in
 					actualPtr := ptr.Elem().Addr().Interface()
 					scanInto = append(scanInto, actualPtr)
 					newcts := append(cts[:index], cts[index+1:]...)
-					return append(scanInto, o.makePtrsOf(v, newcts)...)
+					return append(scanInto, o.ptrsFor(v, newcts)...)
 				}
 			}
 
 		}
 	}
 	return scanInto
-
 }
 
 // Bind binds given rows to the given object at v.
@@ -58,7 +57,7 @@ func (o *ObjectMetadata) Bind(rows *sql.Rows, v interface{}) error {
 
 	var inputs [][]interface{}
 	if t.Kind() != reflect.Slice {
-		inputs = append(inputs, o.makePtrsOf(reflect.ValueOf(v), cts))
+		inputs = append(inputs, o.ptrsFor(reflect.ValueOf(v), cts))
 	} else {
 		for i := 0; i < vt.Len(); i++ {
 			p := vt.Index(i).Elem()
@@ -67,7 +66,7 @@ func (o *ObjectMetadata) Bind(rows *sql.Rows, v interface{}) error {
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs := o.makePtrsOf(p, newCts)
+			ptrs := o.ptrsFor(p, newCts)
 			inputs = append(inputs, ptrs)
 		}
 	}

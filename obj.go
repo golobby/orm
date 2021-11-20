@@ -156,6 +156,7 @@ func (s *Repository) toMap(obj interface{}) []ds.KV {
 type ObjectMetadata struct {
 	// Name of the table that the object represents
 	Table   string
+	Type reflect.Type
 	dialect *Dialect
 	Fields  []*FieldMetadata
 }
@@ -197,6 +198,7 @@ type FieldMetadata struct {
 	Name             string
 	IsPK             bool
 	IsRel            bool
+	Type reflect.Type
 	RelationMetadata *RelationMetadata
 }
 
@@ -248,16 +250,18 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		return hasFields.Fields()
 	}
 	t := reflect.TypeOf(obj)
-	v := reflect.ValueOf(obj)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
-		v = v.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
 	}
 	var fms []*FieldMetadata
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
 		fm := &FieldMetadata{}
+		fm.Type = ft.Type
 		if tagParsed.Name != "" {
 			fm.Name = tagParsed.Name
 		} else {
@@ -291,6 +295,7 @@ func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
 	return &ObjectMetadata{
 		Table:   tableName(v),
 		dialect: dialect,
+		Type: reflect.TypeOf(v),
 		Fields:  fieldsOf(v, dialect),
 	}
 }

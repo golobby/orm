@@ -91,5 +91,4 @@ func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.Equal(t, "amirreza", firstUser.Name)
 	assert.Equal(t, "ahvaz", firstUser.Address.AddressContent.Content)
-
 }

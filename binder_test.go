@@ -13,12 +13,9 @@ type User struct {
 	ID   int
 	Name string
 }
-func (c *User) Table() string {
-	return "users"
-}
 type ComplexUser struct {
-	ID      int    `orm:"pk=true name=id"`
-	Name    string `orm:"name=name"`
+	ID      int
+	Name    string
 	Address Address `orm:"in_rel=true with=addresses left=id right=user_id"`
 }
 func (c ComplexUser) Table() string {
@@ -26,11 +23,8 @@ func (c ComplexUser) Table() string {
 }
 
 type Address struct {
-	ID   int    `orm:"pk=true name=id"`
-	Path string `orm:"name=path"`
-}
-func (c Address) Table() string {
-	return "addresses"
+	ID   int
+	Path string
 }
 
 func TestBind(t *testing.T) {
