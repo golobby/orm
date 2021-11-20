@@ -79,3 +79,14 @@ func (e *Entity) HasOne(out interface{}) error {
 	}
 	return repo.Bind(out, q, args...)
 }
+
+func (e *Entity) Save() error {
+	return e.repo.Save(e.obj)
+}
+func (e *Entity) Update() error {
+	return e.repo.Update(e.obj)
+
+}
+func (e *Entity) Delete()error {
+	return e.repo.Delete(e.obj)
+}

@@ -38,7 +38,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 		Id: 1,
 	}
 	// Fill the gaps of struct from database.
-	err = userRepository.Fill(secondUser, false)
+	err = userRepository.Fill(secondUser)
 	assert.NoError(t, err)
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.Equal(t, "amirreza", secondUser.Name)
@@ -66,31 +66,6 @@ type AddressContent struct {
 type Address struct {
 	UserID         string
 	AddressContent AddressContent `orm:"in_rel=true with=address_content has=one left=id right=address_id"`
-}
-
-func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
-	type User struct {
-		ID      int64
-		Name    string
-		Age     int
-		Address Address `orm:"in_rel=true with=addresses has=one left=id right=user_id"`
-	}
-	db, mockDB, err := sqlmock.New()
-	assert.NoError(t, err)
-	// create the repository using database connection and an instance of the type representing the table in database.
-	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
-	firstUser := &User{
-		ID: 1,
-	}
-	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age, addresses.user_id, address_contents.address_id, address_contents.content`).
-		WithArgs(1).
-		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age", "addresses.user_id", "address_contents.address_id", "address_contents.content"}).
-			AddRow(1, "amirreza", 23, 1, 1, "ahvaz"))
-	err = userRepository.Fill(firstUser, true)
-	assert.NoError(t, err)
-	assert.NoError(t, mockDB.ExpectationsWereMet())
-	assert.Equal(t, "amirreza", firstUser.Name)
-	assert.Equal(t, "ahvaz", firstUser.Address.AddressContent.Content)
 }
 
 func TestEntity_HasMany(t *testing.T) {

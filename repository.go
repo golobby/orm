@@ -32,7 +32,7 @@ func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}
 }
 
 // Fill the struct
-func (s *Repository) Fill(v interface{}, loadRelations bool) error {
+func (s *Repository) Fill(v interface{}) error {
 	var q string
 	var args []interface{}
 	var err error
@@ -46,17 +46,17 @@ func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 		From(s.metadata.Table).
 		Where(qb.WhereHelpers.Equal(s.metadata.pkName(), ph)).
 		WithArgs(pkValue)
-	if loadRelations {
-		for _, field := range s.metadata.Fields {
-			if field.RelationMetadata == nil {
-				continue
-			}
-			// I have no way of allocating a slice before scanning. so now only singular relations can be load eagerly :(
-			if field.RelationMetadata.Type == RelationTypeHasOne {
-				resolveRelations(builder, field)
-			}
-		}
-	}
+	//if loadRelations {
+	//	for _, field := range s.metadata.Fields {
+	//		if field.RelationMetadata == nil {
+	//			continue
+	//		}
+	//		// I have no way of allocating a slice before scanning. so now only singular relations can be load eagerly :(
+	//		if field.RelationMetadata.Type == RelationTypeHasOne {
+	//			resolveRelations(builder, field)
+	//		}
+	//	}
+	//}
 	q, args = builder.
 		Build()
 	rows, err := s.conn.Query(q, args...)
