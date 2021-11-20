@@ -40,7 +40,7 @@ func golobby() {
 				log.Println("sGolobby error : ", err.Error())
 				continue
 			}
-			err = repo.Fill(m, false)
+			err = repo.Fill(m)
 			if err != nil {
 				log.Println("rGolobby error : ", err.Error())
 				continue
