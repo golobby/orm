@@ -10,8 +10,8 @@ import (
 )
 
 type User struct {
-	ID   int    `orm:"pk=true name=id"`
-	Name string `orm:"name=name"`
+	ID   int
+	Name string
 }
 func (c *User) Table() string {
 	return "users"
@@ -44,8 +44,8 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 
 		u := &User{}
-
-		err = Bind(rows, u)
+		md := ObjectMetadataFrom(u, Sqlite3SQLDialect)
+		err = md.Bind(rows, u)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", u.Name)
@@ -63,8 +63,9 @@ func TestBind(t *testing.T) {
 
 		amirreza := &User{}
 		milad := &User{}
+		md := ObjectMetadataFrom(amirreza, Sqlite3SQLDialect)
 
-		err = Bind(rows, []interface{}{amirreza, milad})
+		err = md.Bind(rows, []interface{}{amirreza, milad})
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", amirreza.Name)
@@ -86,8 +87,8 @@ func TestBindNested(t *testing.T) {
 		u := &ComplexUser{
 			Address: Address{},
 		}
-
-		err = Bind(rows, u)
+		md := ObjectMetadataFrom(u, Sqlite3SQLDialect)
+		err = md.Bind(rows, u)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", u.Name)
@@ -107,8 +108,9 @@ func TestBindNested(t *testing.T) {
 
 		amirreza := &ComplexUser{}
 		milad := &ComplexUser{}
+		md := ObjectMetadataFrom(amirreza, Sqlite3SQLDialect)
 
-		err = Bind(rows, []*ComplexUser{amirreza, milad})
+		err = md.Bind(rows, []*ComplexUser{amirreza, milad})
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", amirreza.Name)

@@ -10,9 +10,9 @@ import (
 
 func TestExampleRepositoriesNoRel(t *testing.T) {
 	type User struct {
-		Id   int64  `orm:"name=id pk=true"`
-		Name string `orm:"name=name"`
-		Age  int    `orm:"name=age"`
+		Id   int64
+		Name string
+		Age  int
 	}
 	// any sql database connection
 	db, mockDB, err := sqlmock.New()

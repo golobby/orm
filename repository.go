@@ -58,7 +58,7 @@ func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 	if err != nil {
 		return err
 	}
-	return Bind(rows, v)
+	return s.metadata.Bind(rows, v)
 }
 
 // Save given object
@@ -143,8 +143,9 @@ func (s *Repository) BindContext(ctx context.Context, out interface{}, q string,
 	if err != nil {
 		return err
 	}
-	return Bind(rows, out)
+	return s.metadata.Bind(rows, out)
 }
+
 func (s *Repository) DB() *sql.DB {
 	return s.conn
 }

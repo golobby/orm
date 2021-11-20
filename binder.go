@@ -6,34 +6,32 @@ import (
 	"unsafe"
 )
 
-func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+func (o *ObjectMetadata) makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
 	if t.Kind() == reflect.Ptr {
 		v = v.Elem()
 		t = t.Elem()
 	}
-	tableName := tableName(v.Interface())
+	tableName := o.Table
 	var scanInto []interface{}
 	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
 			ft := t.Field(i)
+
 			if ft.Type.Kind() == reflect.Ptr {
-				return append(scanInto, makePtrsOf(v.Field(i).Elem(), cts)...)
+				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.makePtrsOf(v.Field(i).Elem(), cts)...)
 			} else if ft.Type.Kind() == reflect.Struct {
-				return append(scanInto, makePtrsOf(v.Field(i), cts)...)
+				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.makePtrsOf(v.Field(i), cts)...)
 			} else {
-				orm, exists := ft.Tag.Lookup("orm")
-				if exists {
-					md := fieldMetadataFromTag(orm)
-					if ct.Name() == md.Name || ct.Name() == tableName+"."+md.Name {
-						ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
-						actualPtr := ptr.Elem().Addr().Interface()
-						scanInto = append(scanInto, actualPtr)
-						newcts := append(cts[:index], cts[index+1:]...)
-						return append(scanInto, makePtrsOf(v, newcts)...)
-					}
+				fieldName := o.Fields[i].Name
+				if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
+					ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
+					actualPtr := ptr.Elem().Addr().Interface()
+					scanInto = append(scanInto, actualPtr)
+					newcts := append(cts[:index], cts[index+1:]...)
+					return append(scanInto, o.makePtrsOf(v, newcts)...)
 				}
 			}
 
@@ -44,7 +42,7 @@ func makePtrsOf(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 }
 
 // Bind binds given rows to the given object at v.
-func Bind(rows *sql.Rows, v interface{}) error {
+func (o *ObjectMetadata) Bind(rows *sql.Rows, v interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err
@@ -60,7 +58,7 @@ func Bind(rows *sql.Rows, v interface{}) error {
 
 	var inputs [][]interface{}
 	if t.Kind() != reflect.Slice {
-		inputs = append(inputs, makePtrsOf(reflect.ValueOf(v), cts))
+		inputs = append(inputs, o.makePtrsOf(reflect.ValueOf(v), cts))
 	} else {
 		for i := 0; i < vt.Len(); i++ {
 			p := vt.Index(i).Elem()
@@ -69,7 +67,7 @@ func Bind(rows *sql.Rows, v interface{}) error {
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs := makePtrsOf(p, newCts)
+			ptrs := o.makePtrsOf(p, newCts)
 			inputs = append(inputs, ptrs)
 		}
 	}

@@ -2,10 +2,11 @@ package orm
 
 import (
 	"fmt"
-	"github.com/gertd/go-pluralize"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"github.com/gertd/go-pluralize"
 
 	"github.com/golobby/orm/ds"
 	"github.com/iancoleman/strcase"
