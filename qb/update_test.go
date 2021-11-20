@@ -10,7 +10,7 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, args, err := NewUpdate().
+		s, args := NewUpdate().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
 			Set(ds.KV{
@@ -20,7 +20,6 @@ func TestUpdate(t *testing.T) {
 			WithArgs(2).
 			Build()
 
-		assert.NoError(t, err)
 		assert.Equal(t, []interface{}{2}, args)
 		assert.Equal(t, `UPDATE users SET name=$2 WHERE id = $1`, s)
 	})

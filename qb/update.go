@@ -42,12 +42,12 @@ func (u *UpdateStmt) Set(kvs ...ds.KV) *UpdateStmt {
 	return u
 }
 
-func (u *UpdateStmt) Build() (string, []interface{}, error) {
+func (u *UpdateStmt) Build() (string, []interface{}) {
 	var pairs []string
 	for _, kv := range u.set {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", kv.Key, fmt.Sprint(kv.Value)))
 	}
-	return fmt.Sprintf("UPDATE %s SET %s WHERE %s", u.table, strings.Join(pairs, ","), u.where), u.args, nil
+	return fmt.Sprintf("UPDATE %s SET %s WHERE %s", u.table, strings.Join(pairs, ","), u.where), u.args
 }
 
 func (u *UpdateStmt) Table(table string) *UpdateStmt {

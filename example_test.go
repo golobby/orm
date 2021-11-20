@@ -38,7 +38,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 		Id: 1,
 	}
 	// Fill the gaps of struct from database.
-	err = userRepository.Fill(secondUser)
+	err = userRepository.Fill(secondUser, false)
 	assert.NoError(t, err)
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.Equal(t, "amirreza", secondUser.Name)
@@ -86,7 +86,7 @@ func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age", "addresses.user_id", "address_contents.address_id", "address_contents.content"}).
 			AddRow(1, "amirreza", 23, 1, 1, "ahvaz"))
-	err = userRepository.FillWithRelations(firstUser)
+	err = userRepository.Fill(firstUser, true)
 	assert.NoError(t, err)
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.Equal(t, "amirreza", firstUser.Name)

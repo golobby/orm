@@ -211,7 +211,7 @@ func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
 	return q.Where(parts...)
 }
 
-func (q *SelectStmt) Build() (string, []interface{}, error) {
+func (q *SelectStmt) Build() (string, []interface{}, ) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
@@ -220,18 +220,11 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 
 	sections = append(sections, q.selected.String())
 
-	if q.table == "" && q.subQuery == nil {
-		return "", nil, fmt.Errorf("table name cannot be empty")
-	}
-
 	// Handle from TABLE-NAME
 	if q.subQuery == nil {
 		sections = append(sections, "FROM "+q.table)
 	} else {
-		subquery, args, err := q.subQuery.Build()
-		if err != nil {
-			return "", nil, err
-		}
+		subquery, args := q.subQuery.Build()
 		q.args = append(args, q.args...)
 		sections = append(sections, fmt.Sprintf("FROM (%s)", subquery))
 	}
@@ -265,7 +258,7 @@ func (q *SelectStmt) Build() (string, []interface{}, error) {
 		sections = append(sections, q.having.String())
 	}
 
-	return strings.Join(sections, " "), q.args, nil
+	return strings.Join(sections, " "), q.args
 }
 
 func NewSelect(opts ...func(stmt *SelectStmt)) *SelectStmt {

@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -15,6 +16,9 @@ type Repository struct {
 	metadata  *ObjectMetadata
 	eagerLoad bool
 }
+func (r *Repository) Schema() *ObjectMetadata {
+	return r.metadata
+}
 
 func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
 	s := &Repository{
@@ -26,36 +30,30 @@ func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}
 	return s
 }
 // Fill the struct
-func (s *Repository) Fill(v interface{}) error {
+func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 	var q string
 	var args []interface{}
 	var err error
 	pkValue := s.getPkValue(v)
-	if pkValue != nil {
-		ph := s.dialect.PlaceholderChar
-		if s.dialect.IncludeIndexInPlaceholder {
-			ph = ph + "1"
-		}
-		builder := qb.NewSelect().
-			Select(s.metadata.Columns(true)...).
-			From(s.metadata.Table).
-			Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
-			WithArgs(pkValue)
-		q, args, err = builder.
-			Build()
-		if err != nil {
-			return err
-		}
-
-	} else {
-		q, args, err = qb.NewSelect().
-			From(s.metadata.Table).
-			Select(s.metadata.Columns(true)...).
-			Where(qb.WhereHelpers.ForKV(s.toMap(v))).Limit(1).Build()
+	ph := s.dialect.PlaceholderChar
+	if s.dialect.IncludeIndexInPlaceholder {
+		ph = ph + "1"
 	}
-	if err != nil {
-		return err
+	builder := qb.NewSelect().
+		Select(s.metadata.Columns(true)...).
+		From(s.metadata.Table).
+		Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
+		WithArgs(pkValue)
+	if loadRelations {
+		for _, field := range s.metadata.Fields {
+			if field.RelationMetadata == nil {
+				continue
+			}
+			resolveRelations(builder, field)
+		}
 	}
+	q, args = builder.
+		Build()
 	rows, err := s.conn.Query(q, args...)
 	if err != nil {
 		return err
@@ -73,14 +71,12 @@ func (s *Repository) Save(v interface{}) error {
 	} else {
 		phs = qb.PlaceHolderGenerators.MySQL(len(cols))
 	}
-	q, args, err := qb.NewInsert().
+	q, args := qb.NewInsert().
 		Table(s.metadata.Table).
 		Into(cols...).
 		Values(phs...).
 		WithArgs(values...).Build()
-	if err != nil {
-		return err
-	}
+
 	res, err := s.conn.Exec(q, args...)
 	if err != nil {
 		return err
@@ -113,12 +109,12 @@ func (s *Repository) Update(v interface{}) error {
 		counter++
 	}
 	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
-	q, args, err := qb.NewUpdate().
+	q, args := qb.NewUpdate().
 		Table(s.metadata.Table).
 		Where(query).WithArgs(s.getPkValue(v)).
 		Set(kvsWithPh...).WithArgs(args...).
 		Build()
-	_, err = s.conn.Exec(q, args...)
+	_, err := s.conn.Exec(q, args...)
 	return err
 }
 
@@ -129,11 +125,38 @@ func (s *Repository) Delete(v interface{}) error {
 		ph = ph + "1"
 	}
 	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
-	q, args, err := qb.NewDelete().
+	q, args := qb.NewDelete().
 		Table(s.metadata.Table).
 		Where(query).
 		WithArgs(s.getPkValue(v)).
 		Build()
-	_, err = s.conn.Exec(q, args...)
+	_, err := s.conn.Exec(q, args...)
 	return err
+}
+
+func (s *Repository) Bind(out interface{}, q string, args ...interface{}) error {
+	return s.BindContext(context.Background(), out, q, args...)
+}
+
+func (s *Repository) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {
+	rows, err := s.conn.QueryContext(ctx, q, args...)
+	if err != nil {
+		return err
+	}
+	return Bind(rows, out)
+}
+func (s *Repository) DB() *sql.DB {
+	return s.conn
+}
+
+func resolveRelations(builder *qb.SelectStmt, field *FieldMetadata) {
+	table := field.RelationMetadata.Table
+
+	builder.Select(field.RelationMetadata.objectMetadata.Columns(true)...)
+	builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
+	for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
+		if innerField.IsRel {
+			resolveRelations(builder, innerField)
+		}
+	}
 }
