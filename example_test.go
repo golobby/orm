@@ -59,20 +59,20 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 }
 
 type AddressContent struct {
-	AddressID string `orm:"name=address_id"`
-	Content   string `orm:"name=content"`
+	AddressID string
+	Content   string
 }
 
 type Address struct {
-	UserID         string         `orm:"name=user_id"`
+	UserID         string
 	AddressContent AddressContent `orm:"in_rel=true with=address_content has=one left=id right=address_id"`
 }
 
 func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	type User struct {
-		Id      int64   `orm:"name=id pk=true"`
-		Name    string  `orm:"name=name"`
-		Age     int     `orm:"name=age"`
+		ID      int64
+		Name    string
+		Age     int
 		Address Address `orm:"in_rel=true with=addresses has=one left=id right=user_id"`
 	}
 	db, mockDB, err := sqlmock.New()
@@ -80,7 +80,7 @@ func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	// create the repository using database connection and an instance of the type representing the table in database.
 	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
 	firstUser := &User{
-		Id: 1,
+		ID: 1,
 	}
 	mockDB.ExpectQuery(`SELECT users.id, users.name, users.age, addresses.user_id, address_contents.address_id, address_contents.content`).
 		WithArgs(1).

@@ -22,8 +22,10 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/gertd/go-pluralize v0.1.7 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.3 // indirect

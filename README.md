@@ -105,9 +105,9 @@ for CRUD operations on 10000 records
 
 | ORM                                                    | Miliseconds |
 |--------------------------------------------------------|-------------|
-| Golobby                                                | 57250       |
-| [GORM](https://gorm.io/)                               | 91979       |
-| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 86998       |
+| Golobby                                                | 54862       |
+| [GORM](https://gorm.io/)                               | 82606       |
+| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 80189       |
 
 [benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
 
