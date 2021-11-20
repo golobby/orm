@@ -6,6 +6,9 @@ import (
 	"unsafe"
 )
 
+// ptrsFor does for each field in struct:
+// if field is primitive just allocate and add pointer
+// if field is struct call recursively and add all pointers
 func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
