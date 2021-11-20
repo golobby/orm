@@ -11,7 +11,10 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-// Entity
+// Entity interface is for sake of documentation, if you want to change orm behaviour for:
+// Table name generation -> implement Table for your model
+// GetPKValue -> returns value of primary key of model, implementing this helps with performance.
+// SetPKValue -> sets the value of primary key of mode, implementing this helps with performance.
 type Entity interface {
 	Table
 	GetPKValue
