@@ -2,6 +2,7 @@ package orm
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -43,46 +44,48 @@ func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []inter
 	return scanInto
 }
 
-// Bind binds given rows to the given object at v.
-func (o *ObjectMetadata) Bind(rows *sql.Rows, v interface{}) error {
+// Bind binds given rows to the given object at obj. obj should be a pointer
+func (o *ObjectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err
 	}
 
-	t := reflect.TypeOf(v)
-	vt := reflect.ValueOf(v)
-
-	if t.Kind() == reflect.Ptr {
-		vt = vt.Elem()
-		t = t.Elem()
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	if t.Kind() != reflect.Ptr {
+		return fmt.Errorf("obj should be a ptr")
 	}
-
-	var inputs [][]interface{}
-	if t.Kind() != reflect.Slice {
-		inputs = append(inputs, o.ptrsFor(reflect.ValueOf(v), cts))
-	} else {
-		for i := 0; i < vt.Len(); i++ {
-			p := vt.Index(i).Elem()
-			if p.Type().Kind() == reflect.Ptr {
-				p = p.Elem()
+	t = t.Elem()
+	v = v.Elem()
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+		for rows.Next() {
+			var rowValue reflect.Value
+			if t.Kind() == reflect.Ptr {
+				rowValue = reflect.New(t.Elem())
+			} else {
+				rowValue = reflect.New(t)
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs := o.ptrsFor(p, newCts)
-			inputs = append(inputs, ptrs)
+			ptrs := o.ptrsFor(rowValue, newCts)
+			err = rows.Scan(ptrs...)
+			if err != nil {
+				return err
+			}
+			v = reflect.Append(v, rowValue)
+		}
+	} else {
+		for rows.Next() {
+			ptrs := o.ptrsFor(v, cts)
+			err = rows.Scan(ptrs...)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	i := 0
-	for rows.Next() && i < len(inputs) {
-		err = rows.Scan(inputs[i]...)
-		if err != nil {
-			return err
-		}
-		i++
-	}
-
+	// v is either struct or slice
+	reflect.ValueOf(obj).Elem().Set(v)
 	return nil
-
 }

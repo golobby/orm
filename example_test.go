@@ -92,3 +92,35 @@ func TestExampleRepositoriesWithRelationHasOne(t *testing.T) {
 	assert.Equal(t, "amirreza", firstUser.Name)
 	assert.Equal(t, "ahvaz", firstUser.Address.AddressContent.Content)
 }
+
+func TestEntity_HasMany(t *testing.T) {
+	type Address struct {
+		ID      int64
+		Content string
+	}
+	type User struct {
+		ID      int64
+		Name    string
+		Age     int
+		Address Address `orm:"in_rel=true has=one left=id right=user_id"`
+	}
+	db, mockDB, err := sqlmock.New()
+	assert.NoError(t, err)
+	// create the repository using database connection and an instance of the type representing the table in database.
+	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
+	firstUser := &User{
+		ID: 1,
+	}
+	var addresses []*Address
+	mockDB.ExpectQuery(`SELECT addresses.id, addresses.content FROM addresses`).
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"addresses.id", "addresses.content"}).
+			AddRow(1, "ahvaz"))
+
+	err = userRepository.Entity(firstUser).HasMany(&addresses)
+	assert.NoError(t, err)
+	assert.Len(t, addresses, 1)
+}
+func TestEntity_HasOne(t *testing.T) {
+
+}

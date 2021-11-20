@@ -55,15 +55,13 @@ func TestBind(t *testing.T) {
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
-		amirreza := &User{}
-		milad := &User{}
-		md := ObjectMetadataFrom(amirreza, Sqlite3SQLDialect)
-
-		err = md.Bind(rows, []interface{}{amirreza, milad})
+		md := ObjectMetadataFrom(&User{}, Sqlite3SQLDialect)
+		var users []*User
+		err = md.Bind(rows, &users)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "amirreza", amirreza.Name)
-		assert.Equal(t, "milad", milad.Name)
+		assert.Equal(t, "amirreza", users[0].Name)
+		assert.Equal(t, "milad", users[1].Name)
 	})
 }
 
@@ -100,18 +98,16 @@ func TestBindNested(t *testing.T) {
 		rows, err := db.Query(`SELECT users.id, users.name, addresses.id, addresses.path FROM users INNER JOIN addresses ON addresses.user_id = users.id`)
 		assert.NoError(t, err)
 
-		amirreza := &ComplexUser{}
-		milad := &ComplexUser{}
-		md := ObjectMetadataFrom(amirreza, Sqlite3SQLDialect)
-
-		err = md.Bind(rows, []*ComplexUser{amirreza, milad})
+		md := ObjectMetadataFrom(&ComplexUser{}, Sqlite3SQLDialect)
+		var users []*ComplexUser
+		err = md.Bind(rows, &users)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "amirreza", amirreza.Name)
-		assert.Equal(t, "milad", milad.Name)
-		assert.Equal(t, "kianpars", amirreza.Address.Path)
-		assert.Equal(t, "delfan", milad.Address.Path)
-		assert.Equal(t, 2, milad.Address.ID)
-		assert.Equal(t, 1, amirreza.Address.ID)
+		assert.Equal(t, "amirreza", users[0].Name)
+		assert.Equal(t, "milad", users[1].Name)
+		assert.Equal(t, "kianpars", users[0].Address.Path)
+		assert.Equal(t, "delfan", users[1].Address.Path)
+		assert.Equal(t, 2, users[1].Address.ID)
+		assert.Equal(t, 1, users[0].Address.ID)
 	})
 }

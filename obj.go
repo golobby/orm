@@ -12,11 +12,11 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-// Entity interface is for sake of documentation, if you want to change orm behaviour for:
+// IEntity interface is for sake of documentation, if you want to change orm behaviour for:
 // Table name generation -> implement Table for your model
 // GetPKValue -> returns value of primary key of model, implementing this helps with performance.
 // SetPKValue -> sets the value of primary key of mode, implementing this helps with performance.
-type Entity interface {
+type IEntity interface {
 	Table
 	GetPKValue
 	SetPKValue
@@ -68,7 +68,7 @@ func tableName(v interface{}) string {
 		return hv.Table()
 	}
 	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 
@@ -77,8 +77,8 @@ func tableName(v interface{}) string {
 	return 	strcase.ToSnake(pluralize.NewClient().Plural(name))
 }
 
-func (r *Repository) pkName(v interface{}) string {
-	for _, field := range r.metadata.Fields {
+func (o *ObjectMetadata) pkName() string {
+	for _, field := range o.Fields {
 		if field.IsPK {
 			return field.Name
 		}
@@ -243,19 +243,19 @@ func fieldMetadataFromTag(t string) FieldTag {
 	}
 	return tag
 }
-
+func tableFromTypeName(name string) string {
+	return strcase.ToSnake(pluralize.NewClient().Plural(name))
+}
 func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()
 	}
 	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	if t.Kind() == reflect.Slice {
-		t = t.Elem()
-	}
+
 	var fms []*FieldMetadata
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
@@ -273,11 +273,13 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		if tagParsed.InRel == true {
 			fm.IsRel = true
 
-			fm.RelationMetadata = &RelationMetadata{}
+			fm.RelationMetadata = &RelationMetadata{Type: RelationTypeHasOne}
 			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface(), dialect)
 
 			if tagParsed.With != "" {
 				fm.RelationMetadata.Table = tagParsed.With
+			} else {
+				fm.RelationMetadata.Table = tableFromTypeName(ft.Name)
 			}
 			if tagParsed.Left != "" {
 				fm.RelationMetadata.LeftColumn = tagParsed.Left

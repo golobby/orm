@@ -16,6 +16,7 @@ type Repository struct {
 	metadata  *ObjectMetadata
 	eagerLoad bool
 }
+
 func (r *Repository) Schema() *ObjectMetadata {
 	return r.metadata
 }
@@ -29,6 +30,7 @@ func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}
 	}
 	return s
 }
+
 // Fill the struct
 func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 	var q string
@@ -42,14 +44,17 @@ func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 	builder := qb.NewSelect().
 		Select(s.metadata.Columns(true)...).
 		From(s.metadata.Table).
-		Where(qb.WhereHelpers.Equal(s.pkName(v), ph)).
+		Where(qb.WhereHelpers.Equal(s.metadata.pkName(), ph)).
 		WithArgs(pkValue)
 	if loadRelations {
 		for _, field := range s.metadata.Fields {
 			if field.RelationMetadata == nil {
 				continue
 			}
-			resolveRelations(builder, field)
+			// I have no way of allocating a slice before scanning. so now only singular relations can be load eagerly :(
+			if field.RelationMetadata.Type == RelationTypeHasOne {
+				resolveRelations(builder, field)
+			}
 		}
 	}
 	q, args = builder.
@@ -59,6 +64,9 @@ func (s *Repository) Fill(v interface{}, loadRelations bool) error {
 		return err
 	}
 	return s.metadata.Bind(rows, v)
+}
+func (s *Repository) SelectBuilder() *qb.SelectStmt {
+	return qb.NewSelect().From(s.metadata.Table).Select(s.metadata.Columns(true)...)
 }
 
 // Save given object
@@ -108,7 +116,7 @@ func (s *Repository) Update(v interface{}) error {
 		args = append(args, kv.Value)
 		counter++
 	}
-	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
+	query := qb.WhereHelpers.Equal(s.metadata.pkName(), ph)
 	q, args := qb.NewUpdate().
 		Table(s.metadata.Table).
 		Where(query).WithArgs(s.getPkValue(v)).
@@ -124,7 +132,7 @@ func (s *Repository) Delete(v interface{}) error {
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	query := qb.WhereHelpers.Equal(s.pkName(v), ph)
+	query := qb.WhereHelpers.Equal(s.metadata.pkName(), ph)
 	q, args := qb.NewDelete().
 		Table(s.metadata.Table).
 		Where(query).
