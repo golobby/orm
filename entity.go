@@ -26,23 +26,25 @@ func (e *Entity) HasMany(out interface{}) error {
 	if t.Kind() == reflect.Slice {
 		t = t.Elem()
 	}
+	ph := e.repo.dialect.PlaceholderChar
 	target := reflect.New(t).Interface()
 	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
 
 	var q string
 	var args []interface{}
-	for _, field := range e.repo.metadata.Fields {
-		if !field.IsRel {
-			continue
+	for idx, rel := range e.repo.relations {
+		if e.repo.dialect.IncludeIndexInPlaceholder {
+			ph = ph + fmt.Sprint(idx+1)
 		}
-		if field.RelationMetadata.Table == repo.metadata.Table {
+		if rel.Table == repo.metadata.Table {
 			q, args = qb.NewSelect().
-				From(field.RelationMetadata.Table).
-				Select(field.RelationMetadata.objectMetadata.Columns(true)...).
-				Where(qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, field.RelationMetadata.RightColumn)).
+				From(rel.Table).
+				Select(rel.Columns...).
+				Where(qb.WhereHelpers.Equal(rel.Lookup, ph)).
 				WithArgs(e.repo.getPkValue(e.obj)).
 				Build()
 		}
+
 	}
 	if q == "" {
 		return fmt.Errorf("cannot build the query")
@@ -58,21 +60,24 @@ func (e *Entity) HasOne(out interface{}) error {
 	}
 	target := reflect.New(t).Interface()
 	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
+	ph := e.repo.dialect.PlaceholderChar
 
 	var q string
 	var args []interface{}
-	for _, field := range e.repo.metadata.Fields {
-		if !field.IsRel {
-			continue
+	for idx, rel := range e.repo.relations {
+
+		if e.repo.dialect.IncludeIndexInPlaceholder {
+			ph = ph + fmt.Sprint(idx+1)
 		}
-		if field.RelationMetadata.Table == repo.metadata.Table {
+		if rel.Table == repo.metadata.Table {
 			q, args = qb.NewSelect().
-				From(field.RelationMetadata.Table).
-				Select(field.RelationMetadata.objectMetadata.Columns(true)...).
-				Where(qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, field.RelationMetadata.RightColumn)).
+				From(rel.Table).
+				Select(rel.Columns...).
+				Where(qb.WhereHelpers.Equal(e.repo.metadata.pkName(), ph)).
 				WithArgs(e.repo.getPkValue(e.obj)).
 				Build()
 		}
+
 	}
 	if q == "" {
 		return fmt.Errorf("cannot build the query")
@@ -85,7 +90,6 @@ func (e *Entity) Save() error {
 }
 func (e *Entity) Update() error {
 	return e.repo.Update(e.obj)
-
 }
 func (e *Entity) Delete()error {
 	return e.repo.Delete(e.obj)

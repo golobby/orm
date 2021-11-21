@@ -22,25 +22,21 @@ func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []inter
 	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
-			ft := t.Field(i)
-
-			if ft.Type.Kind() == reflect.Ptr {
-				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.ptrsFor(v.Field(i).Elem(), cts)...)
-			} else if ft.Type.Kind() == reflect.Struct {
-				return append(scanInto, o.Fields[i].RelationMetadata.objectMetadata.ptrsFor(v.Field(i), cts)...)
-			} else {
-				fieldName := o.Fields[i].Name
-				if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
-					ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
-					actualPtr := ptr.Elem().Addr().Interface()
-					scanInto = append(scanInto, actualPtr)
-					newcts := append(cts[:index], cts[index+1:]...)
-					return append(scanInto, o.ptrsFor(v, newcts)...)
-				}
+			if o.Fields[i].Virtual {
+				continue
+			}
+			fieldName := o.Fields[i].Name
+			if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
+				ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
+				actualPtr := ptr.Elem().Addr().Interface()
+				scanInto = append(scanInto, actualPtr)
+				newcts := append(cts[:index], cts[index+1:]...)
+				return append(scanInto, o.ptrsFor(v, newcts)...)
+			}
 			}
 
 		}
-	}
+
 	return scanInto
 }
 

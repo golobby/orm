@@ -44,12 +44,16 @@ func (s *Repository) valuesOf(o interface{}, withPK bool) []interface{} {
 		if field.IsPK {
 			pkIdx = i
 		}
+
 	}
 
 	var values []interface{}
 
 	for i := 0; i < t.NumField(); i++ {
 		if !withPK && i == pkIdx {
+			continue
+		}
+		if s.metadata.Fields[i].Virtual {
 			continue
 		}
 		values = append(values, v.Field(i).Interface())
@@ -63,6 +67,9 @@ type Table interface {
 }
 
 func tableName(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return strcase.ToSnake(pluralize.NewClient().Plural(s))
+	}
 	hv, isTableName := v.(Table)
 	if isTableName {
 		return hv.Table()
@@ -164,7 +171,7 @@ type ObjectMetadata struct {
 func (o *ObjectMetadata) Columns(withPK bool) []string {
 	var cols []string
 	for _, field := range o.Fields {
-		if field.IsRel {
+		if field.Virtual {
 			continue
 		}
 		if !withPK && field.IsPK {
@@ -179,36 +186,17 @@ func (o *ObjectMetadata) Columns(withPK bool) []string {
 	return cols
 }
 
-type RelationType uint8
-
-const (
-	RelationTypeHasOne = iota + 1
-	RelationTypeHasMany
-)
-
-type RelationMetadata struct {
-	Type           RelationType
-	Table          string
-	LeftColumn     string
-	RightColumn    string
-	objectMetadata *ObjectMetadata
-}
-
 type FieldMetadata struct {
 	Name             string
-	IsPK             bool
-	IsRel            bool
-	Type reflect.Type
-	RelationMetadata *RelationMetadata
+	IsPK    		 bool
+	Virtual 		 bool
+	Type    reflect.Type
 }
 
 type FieldTag struct {
 	Name  string
+	Virtual bool
 	PK    bool
-	InRel bool
-	With  string
-	Left  string
-	Right string
 }
 
 type HasFields interface {
@@ -229,31 +217,31 @@ func fieldMetadataFromTag(t string) FieldTag {
 		kv[key] = value
 		if key == "name" {
 			tag.Name = value
-		} else if key == "in_rel" {
-			tag.InRel = value == "true"
-		} else if key == "with" {
-			tag.With = value
-		} else if key == "left" {
-			tag.Left = value
-		} else if key == "right" {
-			tag.Right = value
 		} else if key == "pk" {
 			tag.PK = true
+		} else if key == "virtual" {
+			tag.Virtual = true
 		}
 	}
 	return tag
 }
-func tableFromTypeName(name string) string {
-	return strcase.ToSnake(pluralize.NewClient().Plural(name))
-}
+
 func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()
 	}
 	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
+		v = v.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
 	}
 
 	var fms []*FieldMetadata
@@ -270,23 +258,8 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
 			fm.IsPK = true
 		}
-		if tagParsed.InRel == true {
-			fm.IsRel = true
-
-			fm.RelationMetadata = &RelationMetadata{Type: RelationTypeHasOne}
-			fm.RelationMetadata.objectMetadata = ObjectMetadataFrom(reflect.New(ft.Type).Interface(), dialect)
-
-			if tagParsed.With != "" {
-				fm.RelationMetadata.Table = tagParsed.With
-			} else {
-				fm.RelationMetadata.Table = tableFromTypeName(ft.Name)
-			}
-			if tagParsed.Left != "" {
-				fm.RelationMetadata.LeftColumn = tagParsed.Left
-			}
-			if tagParsed.Right != "" {
-				fm.RelationMetadata.RightColumn = tagParsed.Right
-			}
+		if tagParsed.Virtual || ft.Type.Kind() == reflect.Struct || ft.Type.Kind() == reflect.Slice || ft.Type.Kind() == reflect.Ptr {
+			fm.Virtual = true
 		}
 		fms = append(fms, fm)
 	}
@@ -300,4 +273,26 @@ func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
 		Type: reflect.TypeOf(v),
 		Fields:  fieldsOf(v, dialect),
 	}
+}
+type RelationMetadata struct {
+	Table string
+	Lookup string
+	Columns []string
+}
+func (o *ObjectMetadata) relationsOf() []*RelationMetadata {
+	var relations []*RelationMetadata
+	for _, field := range o.Fields {
+		if ! field.Virtual {
+			continue
+		}
+		lookup := pluralize.NewClient().Singular(o.Table)+"_id"
+		v := reflect.New(field.Type).Interface()
+		md := ObjectMetadataFrom(v, o.dialect)
+		relations = append(relations, &RelationMetadata{
+			Table:   tableName(field.Name),
+			Lookup: lookup,
+			Columns: md.Columns(true),
+		})
+	}
+	return relations
 }

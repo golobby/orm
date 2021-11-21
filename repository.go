@@ -14,6 +14,7 @@ type Repository struct {
 	dialect   *Dialect
 	conn      *sql.DB
 	metadata  *ObjectMetadata
+	relations []*RelationMetadata
 	eagerLoad bool
 }
 
@@ -22,11 +23,13 @@ func (r *Repository) Schema() *ObjectMetadata {
 }
 
 func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
+	md := ObjectMetadataFrom(makeRepositoryFor, dialect)
 	s := &Repository{
 		conn:      conn,
-		metadata:  ObjectMetadataFrom(makeRepositoryFor, dialect),
+		metadata:  md,
 		dialect:   dialect,
 		eagerLoad: true,
+		relations: md.relationsOf(),
 	}
 	return s
 }
@@ -46,17 +49,6 @@ func (s *Repository) Fill(v interface{}) error {
 		From(s.metadata.Table).
 		Where(qb.WhereHelpers.Equal(s.metadata.pkName(), ph)).
 		WithArgs(pkValue)
-	//if loadRelations {
-	//	for _, field := range s.metadata.Fields {
-	//		if field.RelationMetadata == nil {
-	//			continue
-	//		}
-	//		// I have no way of allocating a slice before scanning. so now only singular relations can be load eagerly :(
-	//		if field.RelationMetadata.Type == RelationTypeHasOne {
-	//			resolveRelations(builder, field)
-	//		}
-	//	}
-	//}
 	q, args = builder.
 		Build()
 	rows, err := s.conn.Query(q, args...)
@@ -156,16 +148,4 @@ func (s *Repository) BindContext(ctx context.Context, out interface{}, q string,
 
 func (s *Repository) DB() *sql.DB {
 	return s.conn
-}
-
-func resolveRelations(builder *qb.SelectStmt, field *FieldMetadata) {
-	table := field.RelationMetadata.Table
-
-	builder.Select(field.RelationMetadata.objectMetadata.Columns(true)...)
-	builder.LeftJoin(table, qb.WhereHelpers.Equal(field.RelationMetadata.LeftColumn, table+"."+field.RelationMetadata.RightColumn))
-	for _, innerField := range field.RelationMetadata.objectMetadata.Fields {
-		if innerField.IsRel {
-			resolveRelations(builder, innerField)
-		}
-	}
 }

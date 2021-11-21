@@ -1,4 +1,4 @@
-module github.com/golobby/orm/examples
+module github.com/golobby/orm/examples/benchmark
 
 go 1.17
 
