@@ -47,7 +47,7 @@ func fieldMetadataFromTag(t string) fieldTag {
 	return tag
 }
 
-func fieldsOf(obj interface{}, dialect *Dialect) []*fieldMetadata {
+func fieldsOf(obj interface{}, dialect *dialect) []*fieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()

@@ -29,7 +29,7 @@ func golobby() {
 	start := time.Now()
 	// golobby
 	func() {
-		repo := orm.NewRepository(dbGolobby, orm.Sqlite3SQLDialect, &Record{})
+		repo := orm.NewRepository(dbGolobby, orm._Sqlite3SQLDialect, &Record{})
 
 		for i := 0; i < 10000; i++ {
 			m := &Record{

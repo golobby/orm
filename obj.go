@@ -15,10 +15,13 @@ import (
 // Table name generation -> implement Table for your model
 // GetPKValue -> returns value of primary key of model, implementing this helps with performance.
 // SetPKValue -> sets the value of primary key of mode, implementing this helps with performance.
+// HasFields -> returns a list of fieldMetadata to be used for query generations.
+// Values -> returns a list of pointers to type's fields to be used when scanning.
 type IEntity interface {
 	Table
 	GetPKValue
 	SetPKValue
+	HasFields
 	Values
 }
 
@@ -162,7 +165,7 @@ type objectMetadata struct {
 	// Name of the table that the object represents
 	Table   string
 	Type    reflect.Type
-	dialect *Dialect
+	dialect *dialect
 	Fields  []*fieldMetadata
 }
 
@@ -184,7 +187,7 @@ func (o *objectMetadata) Columns(withPK bool) []string {
 	return cols
 }
 
-func objectMetadataFrom(v interface{}, dialect *Dialect) *objectMetadata {
+func objectMetadataFrom(v interface{}, dialect *dialect) *objectMetadata {
 	return &objectMetadata{
 		Table:   tableName(v),
 		dialect: dialect,

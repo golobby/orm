@@ -18,7 +18,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
 	// create the repository using database connection and an instance of the type representing the table in database.
-	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
+	userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
 	firstUser := &User{
 		Name: "Amirreza",
 	}
@@ -82,7 +82,7 @@ func TestEntity_HasMany(t *testing.T) {
 	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
 	// create the repository using database connection and an instance of the type representing the table in database.
-	userRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &User{})
+	userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
 	firstUser := &User{
 		ID: 1,
 	}

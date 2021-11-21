@@ -1,23 +1,34 @@
 package orm
 
-type Dialect struct {
+type dialect struct {
 	PlaceholderChar           string
 	IncludeIndexInPlaceholder bool
 	AddTableNameInSelectColumns bool
 }
+type dialects struct {
+	MySQL *dialect
+	PostgreSQL *dialect
+	SQLite3 *dialect
+}
 
-var MySQLDialect = &Dialect{
+var Dialects = &dialects{
+	MySQL:      _MySQLDialect,
+	PostgreSQL: _PostgreSQLDialect,
+	SQLite3:    _Sqlite3SQLDialect,
+}
+
+var _MySQLDialect = &dialect{
 	PlaceholderChar:           "?",
 	IncludeIndexInPlaceholder: false,
 	AddTableNameInSelectColumns : true,
 
 }
-var PostgreSQLDialect = &Dialect{
+var _PostgreSQLDialect = &dialect{
 	PlaceholderChar:           "$",
 	IncludeIndexInPlaceholder: true,
 	AddTableNameInSelectColumns: true,
 }
-var Sqlite3SQLDialect = &Dialect{
+var _Sqlite3SQLDialect = &dialect{
 	PlaceholderChar:           "?",
 	IncludeIndexInPlaceholder: false,
 	AddTableNameInSelectColumns: false,

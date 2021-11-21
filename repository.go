@@ -7,7 +7,7 @@ import (
 )
 
 type Repository struct {
-	dialect   *Dialect
+	dialect   *dialect
 	conn      *sql.DB
 	metadata  *objectMetadata
 	relations []*RelationMetadata
@@ -18,7 +18,7 @@ func (r *Repository) Schema() *objectMetadata {
 	return r.metadata
 }
 
-func NewRepository(conn *sql.DB, dialect *Dialect, makeRepositoryFor interface{}) *Repository {
+func NewRepository(conn *sql.DB, dialect *dialect, makeRepositoryFor interface{}) *Repository {
 	md := objectMetadataFrom(makeRepositoryFor, dialect)
 	s := &Repository{
 		conn:      conn,
@@ -55,6 +55,15 @@ func (s *Repository) Fill(v interface{}) error {
 }
 func (s *Repository) SelectBuilder() *selectStmt {
 	return newSelect().From(s.metadata.Table).Select(s.metadata.Columns(true)...)
+}
+func (s *Repository) InsertBuilder() *insertStmt {
+	return newInsert().Table(s.metadata.Table).Into(s.metadata.Columns(true)...)
+}
+func (s *Repository) UpdateBuilder() *updateStmt {
+	return newUpdate().Table(s.metadata.Table)
+}
+func (s *Repository) DeleteBuilder() *deleteStmt {
+	return newDelete().Table(s.metadata.Table)
 }
 
 // Save given object
@@ -128,10 +137,6 @@ func (s *Repository) Delete(v interface{}) error {
 		Build()
 	_, err := s.conn.Exec(q, args...)
 	return err
-}
-
-func (s *Repository) Bind(out interface{}, q string, args ...interface{}) error {
-	return s.BindContext(context.Background(), out, q, args...)
 }
 
 func (s *Repository) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {

@@ -39,8 +39,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	postRepository := orm.NewRepository(dbGolobby, orm.Sqlite3SQLDialect, &Post{})
-	commentRepository := orm.NewRepository(dbGolobby, orm.Sqlite3SQLDialect, &Comment{})
+	postRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Post{})
+	commentRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Comment{})
 	firstPost := &Post{
 		Content: "salam donya",
 	}
@@ -63,7 +63,7 @@ func main() {
 	}
 	fmt.Printf("Loaded post %d comment -> %+v\n", firstPost.ID, firstPost.Comments[0])
 	var newPost Post
-	err = commentRepository.Entity(firstComment).HasOne(&newPost)
+	err = commentRepository.Entity(firstComment).BelongsTo(&newPost)
 	if err != nil {
 	  panic(err)
 	}
