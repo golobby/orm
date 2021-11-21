@@ -70,6 +70,9 @@ func (o *ObjectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
 			if err != nil {
 				return err
 			}
+			if rowValue.Kind() != v.Type().Elem().Kind() && rowValue.Type().Kind() == reflect.Ptr {
+				rowValue = rowValue.Elem()
+			}
 			v = reflect.Append(v, rowValue)
 		}
 	} else {

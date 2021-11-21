@@ -3,21 +3,21 @@ package main
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/golobby/orm"
 	_ "github.com/mattn/go-sqlite3"
-
 )
 
 type Post struct {
 	ID       int64
-	Comments []*Comment
+	Comments []Comment
 	Content  string
 }
 
 type Comment struct {
 	ID int64
 	PostID int64
-	Post *Post
+	Post Post
 	Content string
 }
 
@@ -62,7 +62,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("Loaded post %d comment -> %+v\n", firstPost.ID, firstPost.Comments[0])
-	err = commentRepository.Entity(firstComment).HasOne(&firstComment.Post)
+	var newPost Post
+	err = commentRepository.Entity(firstComment).HasOne(&newPost)
 	if err != nil {
 	  panic(err)
 	}
