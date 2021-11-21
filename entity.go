@@ -3,6 +3,7 @@ package orm
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/golobby/orm/qb"
 )
@@ -10,6 +11,11 @@ import (
 type Entity struct {
 	repo *Repository
 	obj  interface{}
+}
+type BaseModel struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
 func (r *Repository) Entity(obj interface{}) *Entity {

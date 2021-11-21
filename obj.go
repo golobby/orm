@@ -61,7 +61,7 @@ func (s *Repository) valuesOf(o interface{}, withPK bool) []interface{} {
 	return values
 }
 
-// Table defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach
+// Table defines how a type should return it's coresponding table name, if not implemented sql will fallback to reflection based approach (plural snake case).
 type Table interface {
 	Table() string
 }
@@ -105,7 +105,6 @@ func (s *Repository) getPkValue(v interface{}) interface{} {
 	t := reflect.TypeOf(v)
 	val := reflect.ValueOf(v)
 	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
 		val = val.Elem()
 	}
 	for i, field := range s.metadata.Fields {

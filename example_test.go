@@ -44,7 +44,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.Equal(t, "amirreza", secondUser.Name)
 	assert.Equal(t, 19, secondUser.Age)
 
-	//// Update the entity in database.
+	// Update the entity in database.
 	secondUser.Age = 11
 	mockDB.ExpectExec(`UPDATE users`).WithArgs(2, 2, "amirreza", 11).WillReturnResult(sqlmock.NewResult(1, 1))
 	err = userRepository.Update(secondUser)
@@ -52,7 +52,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.NoError(t, mockDB.ExpectationsWereMet())
 	assert.NoError(t, err)
 
-	//// Delete the entity from database.
+	// Delete the entity from database.
 	mockDB.ExpectExec(`DELETE FROM users`).WithArgs(2).WillReturnResult(sqlmock.NewResult(0, 1))
 	err = userRepository.Delete(secondUser)
 	assert.NoError(t, err)
@@ -95,7 +95,4 @@ func TestEntity_HasMany(t *testing.T) {
 	err = userRepository.Entity(firstUser).HasMany(&addresses)
 	assert.NoError(t, err)
 	assert.Len(t, addresses, 1)
-}
-func TestEntity_HasOne(t *testing.T) {
-
 }
