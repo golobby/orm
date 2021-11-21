@@ -52,16 +52,19 @@ func (o *ObjectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
 	if t.Kind() != reflect.Ptr {
 		return fmt.Errorf("obj should be a ptr")
 	}
+	// since passed input is always a pointer on deref is necessary
 	t = t.Elem()
 	v = v.Elem()
 	if t.Kind() == reflect.Slice {
+		// getting slice elemnt type -> slice[t]
 		t = t.Elem()
 		for rows.Next() {
 			var rowValue reflect.Value
-			if t.Kind() == reflect.Ptr {
-				rowValue = reflect.New(t.Elem())
-			} else {
-				rowValue = reflect.New(t)
+			// Since reflect.New returns a pointer to the type, we need to unwrap it to get actual
+			rowValue = reflect.New(t).Elem()
+			// till we reach a not pointer type continue newing the underlying type.
+			for rowValue.IsZero() && rowValue.Type().Kind() == reflect.Ptr {
+				rowValue = reflect.New(rowValue.Type().Elem()).Elem()
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
@@ -70,8 +73,10 @@ func (o *ObjectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
 			if err != nil {
 				return err
 			}
-			if rowValue.Kind() != v.Type().Elem().Kind() && rowValue.Type().Kind() == reflect.Ptr {
-				rowValue = rowValue.Elem()
+			for rowValue.Type() != t {
+				tmp := reflect.New(rowValue.Type())
+				tmp.Elem().Set(rowValue)
+				rowValue = tmp
 			}
 			v = reflect.Append(v, rowValue)
 		}

@@ -10,7 +10,7 @@ import (
 
 type Post struct {
 	ID       int64
-	Comments []Comment
+	Comments []*Comment
 	Content  string
 }
 

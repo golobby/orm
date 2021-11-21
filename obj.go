@@ -232,10 +232,9 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		return hasFields.Fields()
 	}
 	t := reflect.TypeOf(obj)
-	v := reflect.ValueOf(obj)
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
-		v = v.Elem()
+
 	}
 	if t.Kind() == reflect.Slice {
 		t = t.Elem()
