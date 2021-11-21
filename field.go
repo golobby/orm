@@ -7,30 +7,29 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-
-type FieldMetadata struct {
+type fieldMetadata struct {
 	Name             string
 	IsPK    		 bool
 	Virtual 		 bool
 	Type    reflect.Type
 }
 
-type FieldTag struct {
+type fieldTag struct {
 	Name  string
 	Virtual bool
 	PK    bool
 }
 
 type HasFields interface {
-	Fields() []*FieldMetadata
+	Fields() []*fieldMetadata
 }
 
-func fieldMetadataFromTag(t string) FieldTag {
+func fieldMetadataFromTag(t string) fieldTag {
 	if t == "" {
-		return FieldTag{}
+		return fieldTag{}
 	}
 	tuples := strings.Split(t, " ")
-	var tag FieldTag
+	var tag fieldTag
 	kv := map[string]string{}
 	for _, tuple := range tuples {
 		parts := strings.Split(tuple, "=")
@@ -48,7 +47,7 @@ func fieldMetadataFromTag(t string) FieldTag {
 	return tag
 }
 
-func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
+func fieldsOf(obj interface{}, dialect *Dialect) []*fieldMetadata {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()
@@ -65,11 +64,11 @@ func fieldsOf(obj interface{}, dialect *Dialect) []*FieldMetadata {
 		}
 	}
 
-	var fms []*FieldMetadata
+	var fms []*fieldMetadata
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
-		fm := &FieldMetadata{}
+		fm := &fieldMetadata{}
 		fm.Type = ft.Type
 		if tagParsed.Name != "" {
 			fm.Name = tagParsed.Name

@@ -5,17 +5,17 @@ import (
 	"strings"
 )
 
-type DeleteStmt struct {
+type deleteStmt struct {
 	table string
 	where string
 	args  []interface{}
 }
 
-func (q *DeleteStmt) WithArgs(args ...interface{}) *DeleteStmt {
+func (q *deleteStmt) WithArgs(args ...interface{}) *deleteStmt {
 	q.args = append(q.args, args...)
 	return q
 }
-func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
+func (q *deleteStmt) Where(parts ...string) *deleteStmt {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
 		return q
@@ -24,24 +24,24 @@ func (q *DeleteStmt) Where(parts ...string) *DeleteStmt {
 	return q
 }
 
-func (q *DeleteStmt) OrWhere(parts ...string) *DeleteStmt {
+func (q *deleteStmt) OrWhere(parts ...string) *deleteStmt {
 	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
-func (q *DeleteStmt) AndWhere(parts ...string) *DeleteStmt {
+func (q *deleteStmt) AndWhere(parts ...string) *deleteStmt {
 	return q.Where(parts...)
 }
 
-func (d *DeleteStmt) Build() (string, []interface{}) {
+func (d *deleteStmt) Build() (string, []interface{}) {
 	return fmt.Sprintf("DELETE FROM %s WHERE %s", d.table, d.where), d.args
 }
 
-func (d *DeleteStmt) Table(t string) *DeleteStmt {
+func (d *deleteStmt) Table(t string) *deleteStmt {
 	d.table = t
 	return d
 }
 
-func newDelete() *DeleteStmt {
-	return &DeleteStmt{}
+func newDelete() *deleteStmt {
+	return &deleteStmt{}
 }

@@ -7,18 +7,18 @@ import (
 
 type M = map[string]interface{}
 
-type UpdateStmt struct {
+type updateStmt struct {
 	table string
 	where string
-	set   []KV
+	set   []keyValue
 	args  []interface{}
 }
 
-func (q *UpdateStmt) WithArgs(args ...interface{}) *UpdateStmt {
+func (q *updateStmt) WithArgs(args ...interface{}) *updateStmt {
 	q.args = append(q.args, args...)
 	return q
 }
-func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
+func (q *updateStmt) Where(parts ...string) *updateStmt {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
 		return q
@@ -27,21 +27,21 @@ func (q *UpdateStmt) Where(parts ...string) *UpdateStmt {
 	return q
 }
 
-func (q *UpdateStmt) OrWhere(parts ...string) *UpdateStmt {
+func (q *updateStmt) OrWhere(parts ...string) *updateStmt {
 	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
-func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
+func (q *updateStmt) AndWhere(parts ...string) *updateStmt {
 	return q.Where(parts...)
 }
 
-func (u *UpdateStmt) Set(kvs ...KV) *UpdateStmt {
+func (u *updateStmt) Set(kvs ...keyValue) *updateStmt {
 	u.set = append(u.set, kvs...)
 	return u
 }
 
-func (u *UpdateStmt) Build() (string, []interface{}) {
+func (u *updateStmt) Build() (string, []interface{}) {
 	var pairs []string
 	for _, kv := range u.set {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", kv.Key, fmt.Sprint(kv.Value)))
@@ -49,10 +49,10 @@ func (u *UpdateStmt) Build() (string, []interface{}) {
 	return fmt.Sprintf("UPDATE %s SET %s WHERE %s", u.table, strings.Join(pairs, ","), u.where), u.args
 }
 
-func (u *UpdateStmt) Table(table string) *UpdateStmt {
+func (u *updateStmt) Table(table string) *updateStmt {
 	u.table = table
 	return u
 }
-func newUpdate() *UpdateStmt {
-	return &UpdateStmt{}
+func newUpdate() *updateStmt {
+	return &updateStmt{}
 }

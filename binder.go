@@ -10,7 +10,7 @@ import (
 // ptrsFor does for each field in struct:
 // if field is primitive just allocate and add pointer
 // if field is struct call recursively and add all pointers
-func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+func (o *objectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	t := v.Type()
 
 	if t.Kind() == reflect.Ptr {
@@ -41,7 +41,7 @@ func (o *ObjectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []inter
 }
 
 // Bind binds given rows to the given object at obj. obj should be a pointer
-func (o *ObjectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
+func (o *objectMetadata) Bind(rows *sql.Rows, obj interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err

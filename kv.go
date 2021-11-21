@@ -1,6 +1,6 @@
 package orm
 
-type KV struct {
+type keyValue struct {
 	Key   string
 	Value interface{}
 }

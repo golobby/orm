@@ -38,7 +38,7 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 
 		u := &User{}
-		md := ObjectMetadataFrom(u, Sqlite3SQLDialect)
+		md := objectMetadataFrom(u, Sqlite3SQLDialect)
 		err = md.Bind(rows, u)
 		assert.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestBind(t *testing.T) {
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
-		md := ObjectMetadataFrom(&User{}, Sqlite3SQLDialect)
+		md := objectMetadataFrom(&User{}, Sqlite3SQLDialect)
 		var users []*User
 		err = md.Bind(rows, &users)
 		assert.NoError(t, err)

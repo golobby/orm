@@ -15,7 +15,7 @@ type whereHelpers struct {
 	And     func(conds ...string) string
 	Or      func(conds ...string) string
 	Not     func(cond ...string) string
-	ForKV   func(kvs ...[]KV) string
+	ForKV   func(kvs ...[]keyValue) string
 }
 
 var WhereHelpers = &whereHelpers{
@@ -30,17 +30,6 @@ var WhereHelpers = &whereHelpers{
 	And:     and,
 }
 
-func forKV(kvs ...KV) string {
-	var parts []string
-	for _, kv := range kvs {
-		if _, isString := kv.Value.(string); isString {
-			parts = append(parts, fmt.Sprintf(`%s="%s"`, fmt.Sprint(kv.Key), kv.Value))
-		} else {
-			parts = append(parts, fmt.Sprintf(`%s=%s`, fmt.Sprint(kv.Key), fmt.Sprint(kv.Value)))
-		}
-	}
-	return strings.Join(parts, " AND ")
-}
 func less(column, value string) string {
 	return fmt.Sprintf("%s < %s", column, value)
 }

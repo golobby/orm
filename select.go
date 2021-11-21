@@ -21,53 +21,53 @@ const (
 	ClauseType_Having        = "HAVING"
 )
 
-type Clause struct {
+type clause struct {
 	typ       ClauseType
 	parts     []string
 	delimiter string
 }
 
-func (c *Clause) String() string {
+func (c *clause) String() string {
 	if c.delimiter == "" {
 		c.delimiter = " "
 	}
 	return fmt.Sprintf("%s %s", c.typ, strings.Join(c.parts, c.delimiter))
 }
 
-type SelectClause struct {
-	*Clause
+type selectClause struct {
+	*clause
 	distinct bool
 }
 
-func (s *SelectClause) String() string {
+func (s *selectClause) String() string {
 	if s.distinct {
-		s.Clause.typ += " DISTINCT"
+		s.clause.typ += " DISTINCT"
 	}
-	return s.Clause.String()
+	return s.clause.String()
 }
 
-type SelectStmt struct {
+type selectStmt struct {
 	table    string
-	subQuery *SelectStmt
-	selected *SelectClause
-	where    *Clause
-	orderBy  *Clause
-	groupBy  *Clause
-	joins    []*Clause
-	limit    *Clause
-	offset   *Clause
-	having   *Clause
+	subQuery *selectStmt
+	selected *selectClause
+	where    *clause
+	orderBy  *clause
+	groupBy  *clause
+	joins    []*clause
+	limit    *clause
+	offset   *clause
+	having   *clause
 	args     []interface{}
 }
 
-func (s *SelectStmt) WithArgs(args ...interface{}) *SelectStmt {
+func (s *selectStmt) WithArgs(args ...interface{}) *selectStmt {
 	s.args = append(s.args, args...)
 	return s
 }
 
-func (q *SelectStmt) Having(cond ...string) *SelectStmt {
+func (q *selectStmt) Having(cond ...string) *selectStmt {
 	if q.having == nil {
-		q.having = &Clause{
+		q.having = &clause{
 			typ:   ClauseType_Having,
 			parts: cond,
 		}
@@ -79,58 +79,58 @@ func (q *SelectStmt) Having(cond ...string) *SelectStmt {
 	return q
 }
 
-func (q *SelectStmt) Limit(n int) *SelectStmt {
-	q.limit = &Clause{typ: ClauseType_Limit, parts: []string{fmt.Sprint(n)}}
+func (q *selectStmt) Limit(n int) *selectStmt {
+	q.limit = &clause{typ: ClauseType_Limit, parts: []string{fmt.Sprint(n)}}
 	return q
 }
 
-func (q *SelectStmt) Offset(n int) *SelectStmt {
-	q.offset = &Clause{typ: ClauseType_Offset, parts: []string{fmt.Sprint(n)}}
+func (q *selectStmt) Offset(n int) *selectStmt {
+	q.offset = &clause{typ: ClauseType_Offset, parts: []string{fmt.Sprint(n)}}
 	return q
 }
 
-func (q *SelectStmt) Skip(n int) *SelectStmt {
+func (q *selectStmt) Skip(n int) *selectStmt {
 	return q.Offset(n)
 }
 
-func (q *SelectStmt) Take(n int) *SelectStmt {
+func (q *selectStmt) Take(n int) *selectStmt {
 	return q.Limit(n)
 }
 
-func (q *SelectStmt) InnerJoin(table string, conds ...string) *SelectStmt {
+func (q *selectStmt) InnerJoin(table string, conds ...string) *selectStmt {
 	arg := []string{table, "ON"}
 	arg = append(arg, conds...)
-	j := &Clause{typ: ClauseType_InnerJoin, parts: arg}
+	j := &clause{typ: ClauseType_InnerJoin, parts: arg}
 	q.joins = append(q.joins, j)
 	return q
 }
 
-func (q *SelectStmt) RightJoin(table string, conds ...string) *SelectStmt {
+func (q *selectStmt) RightJoin(table string, conds ...string) *selectStmt {
 	arg := []string{table, "ON"}
 	arg = append(arg, conds...)
-	j := &Clause{typ: ClauseType_RightJoin, parts: arg}
+	j := &clause{typ: ClauseType_RightJoin, parts: arg}
 	q.joins = append(q.joins, j)
 	return q
 }
-func (q *SelectStmt) LeftJoin(table string, conds ...string) *SelectStmt {
+func (q *selectStmt) LeftJoin(table string, conds ...string) *selectStmt {
 	arg := []string{table, "ON"}
 	arg = append(arg, conds...)
-	j := &Clause{typ: ClauseType_LeftJoin, parts: arg}
+	j := &clause{typ: ClauseType_LeftJoin, parts: arg}
 	q.joins = append(q.joins, j)
 	return q
 }
-func (q *SelectStmt) FullOuterJoin(table string, conds ...string) *SelectStmt {
+func (q *selectStmt) FullOuterJoin(table string, conds ...string) *selectStmt {
 	arg := []string{table, "ON"}
 	arg = append(arg, conds...)
-	j := &Clause{typ: ClauseType_FullOuterJoin, parts: arg}
+	j := &clause{typ: ClauseType_FullOuterJoin, parts: arg}
 	q.joins = append(q.joins, j)
 	return q
 
 }
 
-func (q *SelectStmt) OrderBy(column, order string) *SelectStmt {
+func (q *selectStmt) OrderBy(column, order string) *selectStmt {
 	if q.orderBy == nil {
-		q.orderBy = &Clause{
+		q.orderBy = &clause{
 			typ:       ClauseType_OrderBy,
 			parts:     []string{fmt.Sprintf("%s %s", column, order)},
 			delimiter: ", ",
@@ -141,10 +141,10 @@ func (q *SelectStmt) OrderBy(column, order string) *SelectStmt {
 	return q
 }
 
-func (q *SelectStmt) Select(columns ...string) *SelectStmt {
+func (q *selectStmt) Select(columns ...string) *selectStmt {
 	if q.selected == nil {
-		q.selected = &SelectClause{
-			Clause: &Clause{
+		q.selected = &selectClause{
+			clause: &clause{
 				typ:       ClauseType_Select,
 				parts:     columns,
 				delimiter: ", ",
@@ -155,24 +155,24 @@ func (q *SelectStmt) Select(columns ...string) *SelectStmt {
 	return q
 }
 
-func (s *SelectStmt) Distinct() *SelectStmt {
+func (s *selectStmt) Distinct() *selectStmt {
 	s.selected.distinct = true
 	return s
 }
 
-func (q *SelectStmt) From(t string) *SelectStmt {
+func (q *selectStmt) From(t string) *selectStmt {
 	q.table = t
 	return q
 }
 
-func (q *SelectStmt) FromQuery(sub *SelectStmt) *SelectStmt {
+func (q *selectStmt) FromQuery(sub *selectStmt) *selectStmt {
 	q.subQuery = sub
 	return q
 }
 
-func (q *SelectStmt) GroupBy(columns ...string) *SelectStmt {
+func (q *selectStmt) GroupBy(columns ...string) *selectStmt {
 	if q.groupBy == nil {
-		q.groupBy = &Clause{
+		q.groupBy = &clause{
 			typ:       ClauseType_GroupBy,
 			parts:     columns,
 			delimiter: ", ",
@@ -184,9 +184,9 @@ func (q *SelectStmt) GroupBy(columns ...string) *SelectStmt {
 	return q
 }
 
-func (q *SelectStmt) Where(parts ...string) *SelectStmt {
+func (q *selectStmt) Where(parts ...string) *selectStmt {
 	if q.where == nil {
-		q.where = &Clause{
+		q.where = &clause{
 			typ:   ClauseType_Where,
 			parts: parts,
 		}
@@ -198,7 +198,7 @@ func (q *SelectStmt) Where(parts ...string) *SelectStmt {
 	return q
 }
 
-func (q *SelectStmt) OrWhere(parts ...string) *SelectStmt {
+func (q *selectStmt) OrWhere(parts ...string) *selectStmt {
 	if q.where == nil {
 		return q.Where(parts...)
 	}
@@ -208,15 +208,15 @@ func (q *SelectStmt) OrWhere(parts ...string) *SelectStmt {
 	return q
 }
 
-func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
+func (q *selectStmt) AndWhere(parts ...string) *selectStmt {
 	return q.Where(parts...)
 }
 
-func (q *SelectStmt) Build() (string, []interface{}) {
+func (q *selectStmt) Build() (string, []interface{}) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
-		q.selected = &SelectClause{Clause: &Clause{typ: ClauseType_Select, parts: []string{"*"}}}
+		q.selected = &selectClause{clause: &clause{typ: ClauseType_Select, parts: []string{"*"}}}
 	}
 
 	sections = append(sections, q.selected.String())
@@ -262,7 +262,7 @@ func (q *SelectStmt) Build() (string, []interface{}) {
 	return strings.Join(sections, " "), q.args
 }
 
-func newSelect() *SelectStmt {
-	s := &SelectStmt{}
+func newSelect() *selectStmt {
+	s := &selectStmt{}
 	return s
 }

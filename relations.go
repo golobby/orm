@@ -19,7 +19,7 @@ type RelationMetadata struct {
 	Lookup string
 	Columns []string
 }
-func (o *ObjectMetadata) relationsOf() []*RelationMetadata {
+func (o *objectMetadata) relationsOf() []*RelationMetadata {
 	var relations []*RelationMetadata
 	for _, field := range o.Fields {
 		if ! field.Virtual {
@@ -27,7 +27,7 @@ func (o *ObjectMetadata) relationsOf() []*RelationMetadata {
 		}
 		lookup := pluralize.NewClient().Singular(o.Table)+"_id"
 		v := reflect.New(field.Type).Interface()
-		md := ObjectMetadataFrom(v, o.dialect)
+		md := objectMetadataFrom(v, o.dialect)
 		relations = append(relations, &RelationMetadata{
 			Table:   tableName(field.Name),
 			Lookup: lookup,

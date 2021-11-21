@@ -5,10 +5,10 @@ type SQL interface {
 }
 
 type _QueryBuilder struct {
-	SelectBuilder func() *SelectStmt
-	InsertBuilder func() *InsertStmt
-	UpdateBuilder func() *UpdateStmt
-	DeleteBuilder func() *DeleteStmt
+	SelectBuilder func() *selectStmt
+	InsertBuilder func() *insertStmt
+	UpdateBuilder func() *updateStmt
+	DeleteBuilder func() *deleteStmt
 }
 
 var QueryBuilder = _QueryBuilder{

@@ -83,7 +83,7 @@ func tableName(v interface{}) string {
 	return strcase.ToSnake(pluralize.NewClient().Plural(name))
 }
 
-func (o *ObjectMetadata) pkName() string {
+func (o *objectMetadata) pkName() string {
 	for _, field := range o.Fields {
 		if field.IsPK {
 			return field.Name
@@ -145,12 +145,12 @@ func (s *Repository) setPkValue(v interface{}, value interface{}) {
 	}
 }
 
-func (s *Repository) toMap(obj interface{}) []KV {
-	var kvs []KV
+func (s *Repository) toMap(obj interface{}) []keyValue {
+	var kvs []keyValue
 	vs := s.valuesOf(obj, true)
 	cols := s.metadata.Columns(true)
 	for i, col := range cols {
-		kvs = append(kvs, KV{
+		kvs = append(kvs, keyValue{
 			Key:   col,
 			Value: vs[i],
 		})
@@ -158,15 +158,15 @@ func (s *Repository) toMap(obj interface{}) []KV {
 	return kvs
 }
 
-type ObjectMetadata struct {
+type objectMetadata struct {
 	// Name of the table that the object represents
 	Table   string
 	Type    reflect.Type
 	dialect *Dialect
-	Fields  []*FieldMetadata
+	Fields  []*fieldMetadata
 }
 
-func (o *ObjectMetadata) Columns(withPK bool) []string {
+func (o *objectMetadata) Columns(withPK bool) []string {
 	var cols []string
 	for _, field := range o.Fields {
 		if field.Virtual {
@@ -184,8 +184,8 @@ func (o *ObjectMetadata) Columns(withPK bool) []string {
 	return cols
 }
 
-func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
-	return &ObjectMetadata{
+func objectMetadataFrom(v interface{}, dialect *Dialect) *objectMetadata {
+	return &objectMetadata{
 		Table:   tableName(v),
 		dialect: dialect,
 		Type:    reflect.TypeOf(v),

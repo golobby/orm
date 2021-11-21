@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/golobby/orm/qb"
 )
 
 type Entity struct {
@@ -43,7 +42,7 @@ func (e *Entity) HasMany(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.newSelect().
+			q, args = newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
 				Where(WhereHelpers.Equal(rel.Lookup, ph)).
@@ -76,7 +75,7 @@ func (e *Entity) HasOne(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.newSelect().
+			q, args = newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
 				Where(WhereHelpers.Equal(rel.Lookup, ph)).
@@ -110,7 +109,7 @@ func (e *Entity) BelongsTo(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.newSelect().
+			q, args = newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
 				Where(WhereHelpers.Equal(rel.Lookup, ph)).

@@ -12,7 +12,7 @@ func TestUpdate(t *testing.T) {
 		s, args := newUpdate().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
-			Set(KV{
+			Set(keyValue{
 				Key:   "name",
 				Value: "$2",
 			}).
