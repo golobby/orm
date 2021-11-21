@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/golobby/orm/ds"
-
 	"github.com/golobby/orm/qb"
 )
 
@@ -44,10 +42,10 @@ func (s *Repository) Fill(v interface{}) error {
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	builder := qb.NewSelect().
+	builder := qb.newSelect().
 		Select(s.metadata.Columns(true)...).
 		From(s.metadata.Table).
-		Where(qb.WhereHelpers.Equal(s.metadata.pkName(), ph)).
+		Where(WhereHelpers.Equal(s.metadata.pkName(), ph)).
 		WithArgs(pkValue)
 	q, args = builder.
 		Build()
@@ -57,8 +55,8 @@ func (s *Repository) Fill(v interface{}) error {
 	}
 	return s.metadata.Bind(rows, v)
 }
-func (s *Repository) SelectBuilder() *qb.SelectStmt {
-	return qb.NewSelect().From(s.metadata.Table).Select(s.metadata.Columns(true)...)
+func (s *Repository) SelectBuilder() *SelectStmt {
+	return qb.newSelect().From(s.metadata.Table).Select(s.metadata.Columns(true)...)
 }
 
 // Save given object
@@ -67,11 +65,11 @@ func (s *Repository) Save(v interface{}) error {
 	values := s.valuesOf(v, false)
 	var phs []string
 	if s.dialect.PlaceholderChar == "$" {
-		phs = qb.PlaceHolderGenerators.Postgres(len(cols))
+		phs = PlaceHolderGenerators.Postgres(len(cols))
 	} else {
-		phs = qb.PlaceHolderGenerators.MySQL(len(cols))
+		phs = PlaceHolderGenerators.MySQL(len(cols))
 	}
-	q, args := qb.NewInsert().
+	q, args := qb.newInsert().
 		Table(s.metadata.Table).
 		Into(cols...).
 		Values(phs...).
@@ -97,19 +95,19 @@ func (s *Repository) Update(v interface{}) error {
 	}
 	counter := 2
 	kvs := s.toMap(v)
-	var kvsWithPh []ds.KV
+	var kvsWithPh []KV
 	var args []interface{}
 	for _, kv := range kvs {
 		thisPh := s.dialect.PlaceholderChar
 		if s.dialect.IncludeIndexInPlaceholder {
 			thisPh += fmt.Sprint(counter)
 		}
-		kvsWithPh = append(kvsWithPh, ds.KV{Key: kv.Key, Value: thisPh})
+		kvsWithPh = append(kvsWithPh, KV{Key: kv.Key, Value: thisPh})
 		args = append(args, kv.Value)
 		counter++
 	}
-	query := qb.WhereHelpers.Equal(s.metadata.pkName(), ph)
-	q, args := qb.NewUpdate().
+	query := WhereHelpers.Equal(s.metadata.pkName(), ph)
+	q, args := qb.newUpdate().
 		Table(s.metadata.Table).
 		Where(query).WithArgs(s.getPkValue(v)).
 		Set(kvsWithPh...).WithArgs(args...).
@@ -124,8 +122,8 @@ func (s *Repository) Delete(v interface{}) error {
 	if s.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	query := qb.WhereHelpers.Equal(s.metadata.pkName(), ph)
-	q, args := qb.NewDelete().
+	query := WhereHelpers.Equal(s.metadata.pkName(), ph)
+	q, args := qb.newDelete().
 		Table(s.metadata.Table).
 		Where(query).
 		WithArgs(s.getPkValue(v)).

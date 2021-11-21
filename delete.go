@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"fmt"
@@ -42,6 +42,6 @@ func (d *DeleteStmt) Table(t string) *DeleteStmt {
 	return d
 }
 
-func NewDelete() *DeleteStmt {
+func newDelete() *DeleteStmt {
 	return &DeleteStmt{}
 }

@@ -1,8 +1,7 @@
-package qb
+package orm
 
 import (
 	"fmt"
-	"github.com/golobby/orm/ds"
 	"strings"
 )
 
@@ -11,8 +10,8 @@ type M = map[string]interface{}
 type UpdateStmt struct {
 	table string
 	where string
-	set   []ds.KV
-	args []interface{}
+	set   []KV
+	args  []interface{}
 }
 
 func (q *UpdateStmt) WithArgs(args ...interface{}) *UpdateStmt {
@@ -37,7 +36,7 @@ func (q *UpdateStmt) AndWhere(parts ...string) *UpdateStmt {
 	return q.Where(parts...)
 }
 
-func (u *UpdateStmt) Set(kvs ...ds.KV) *UpdateStmt {
+func (u *UpdateStmt) Set(kvs ...KV) *UpdateStmt {
 	u.set = append(u.set, kvs...)
 	return u
 }
@@ -54,6 +53,6 @@ func (u *UpdateStmt) Table(table string) *UpdateStmt {
 	u.table = table
 	return u
 }
-func NewUpdate() *UpdateStmt {
+func newUpdate() *UpdateStmt {
 	return &UpdateStmt{}
 }

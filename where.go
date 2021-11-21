@@ -1,8 +1,7 @@
-package qb
+package orm
 
 import (
 	"fmt"
-	"github.com/golobby/orm/ds"
 	"strings"
 )
 
@@ -16,7 +15,7 @@ type whereHelpers struct {
 	And     func(conds ...string) string
 	Or      func(conds ...string) string
 	Not     func(cond ...string) string
-	ForKV   func(kvs ...[]ds.KV) string
+	ForKV   func(kvs ...[]KV) string
 }
 
 var WhereHelpers = &whereHelpers{
@@ -31,7 +30,7 @@ var WhereHelpers = &whereHelpers{
 	And:     and,
 }
 
-func forKV(kvs ...ds.KV) string {
+func forKV(kvs ...KV) string {
 	var parts []string
 	for _, kv := range kvs {
 		if _, isString := kv.Value.(string); isString {

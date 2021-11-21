@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"fmt"

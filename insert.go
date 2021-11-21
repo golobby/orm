@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type InsertStmt struct {
 	args   []interface{}
 }
 
-func NewInsert() *InsertStmt {
+func newInsert() *InsertStmt {
 	return &InsertStmt{}
 }
 

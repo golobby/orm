@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"fmt"
@@ -38,6 +38,7 @@ type SelectClause struct {
 	*Clause
 	distinct bool
 }
+
 func (s *SelectClause) String() string {
 	if s.distinct {
 		s.Clause.typ += " DISTINCT"
@@ -211,7 +212,7 @@ func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
 	return q.Where(parts...)
 }
 
-func (q *SelectStmt) Build() (string, []interface{}, ) {
+func (q *SelectStmt) Build() (string, []interface{}) {
 	sections := []string{}
 	// handle select
 	if q.selected == nil {
@@ -261,10 +262,7 @@ func (q *SelectStmt) Build() (string, []interface{}, ) {
 	return strings.Join(sections, " "), q.args
 }
 
-func NewSelect(opts ...func(stmt *SelectStmt)) *SelectStmt {
+func newSelect() *SelectStmt {
 	s := &SelectStmt{}
-	for _, opt := range opts {
-		opt(s)
-	}
 	return s
 }

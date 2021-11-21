@@ -1,7 +1,6 @@
-package qb
+package orm
 
 import (
-	"github.com/golobby/orm/ds"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,10 +9,10 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, args := NewUpdate().
+		s, args := newUpdate().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
-			Set(ds.KV{
+			Set(KV{
 				Key:   "name",
 				Value: "$2",
 			}).

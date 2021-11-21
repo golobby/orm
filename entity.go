@@ -43,10 +43,10 @@ func (e *Entity) HasMany(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.NewSelect().
+			q, args = qb.newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
-				Where(qb.WhereHelpers.Equal(rel.Lookup, ph)).
+				Where(WhereHelpers.Equal(rel.Lookup, ph)).
 				WithArgs(e.repo.getPkValue(e.obj)).
 				Build()
 		}
@@ -76,10 +76,10 @@ func (e *Entity) HasOne(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.NewSelect().
+			q, args = qb.newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
-				Where(qb.WhereHelpers.Equal(rel.Lookup, ph)).
+				Where(WhereHelpers.Equal(rel.Lookup, ph)).
 				WithArgs(e.repo.getPkValue(e.obj)).
 				Build()
 		}
@@ -110,10 +110,10 @@ func (e *Entity) BelongsTo(out interface{}) error {
 			ph = ph + fmt.Sprint(idx+1)
 		}
 		if rel.Table == repo.metadata.Table {
-			q, args = qb.NewSelect().
+			q, args = qb.newSelect().
 				From(rel.Table).
 				Select(rel.Columns...).
-				Where(qb.WhereHelpers.Equal(rel.Lookup, ph)).
+				Where(WhereHelpers.Equal(rel.Lookup, ph)).
 				WithArgs(e.repo.getPkValue(e.obj)).
 				Build()
 		}
@@ -131,6 +131,6 @@ func (e *Entity) Save() error {
 func (e *Entity) Update() error {
 	return e.repo.Update(e.obj)
 }
-func (e *Entity) Delete()error {
+func (e *Entity) Delete() error {
 	return e.repo.Delete(e.obj)
 }

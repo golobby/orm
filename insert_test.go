@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 func TestInsert(t *testing.T) {
 
 	t.Run("simple insert for psql", func(t *testing.T) {
-		sql, args := NewInsert().
+		sql, args := newInsert().
 			Table("users").
 			Into("name", "password").
 			Values("$1", "$2").
@@ -21,7 +21,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("simple insert for mysql", func(t *testing.T) {
-		sql, args := NewInsert().
+		sql, args := newInsert().
 			Table("users").
 			Into("name", "password").
 			Values("?", "?").

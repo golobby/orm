@@ -8,7 +8,6 @@ import (
 
 	"github.com/gertd/go-pluralize"
 
-	"github.com/golobby/orm/ds"
 	"github.com/iancoleman/strcase"
 )
 
@@ -81,7 +80,7 @@ func tableName(v interface{}) string {
 
 	parts := strings.Split(t.Name(), ".")
 	name := parts[len(parts)-1]
-	return 	strcase.ToSnake(pluralize.NewClient().Plural(name))
+	return strcase.ToSnake(pluralize.NewClient().Plural(name))
 }
 
 func (o *ObjectMetadata) pkName() string {
@@ -146,12 +145,12 @@ func (s *Repository) setPkValue(v interface{}, value interface{}) {
 	}
 }
 
-func (s *Repository) toMap(obj interface{}) []ds.KV {
-	var kvs []ds.KV
+func (s *Repository) toMap(obj interface{}) []KV {
+	var kvs []KV
 	vs := s.valuesOf(obj, true)
 	cols := s.metadata.Columns(true)
 	for i, col := range cols {
-		kvs = append(kvs, ds.KV{
+		kvs = append(kvs, KV{
 			Key:   col,
 			Value: vs[i],
 		})
@@ -162,7 +161,7 @@ func (s *Repository) toMap(obj interface{}) []ds.KV {
 type ObjectMetadata struct {
 	// Name of the table that the object represents
 	Table   string
-	Type reflect.Type
+	Type    reflect.Type
 	dialect *Dialect
 	Fields  []*FieldMetadata
 }
@@ -185,13 +184,11 @@ func (o *ObjectMetadata) Columns(withPK bool) []string {
 	return cols
 }
 
-
 func ObjectMetadataFrom(v interface{}, dialect *Dialect) *ObjectMetadata {
 	return &ObjectMetadata{
 		Table:   tableName(v),
 		dialect: dialect,
-		Type: reflect.TypeOf(v),
+		Type:    reflect.TypeOf(v),
 		Fields:  fieldsOf(v, dialect),
 	}
 }
-

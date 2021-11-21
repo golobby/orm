@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 func TestQueryBuilding(t *testing.T) {
 
 	t.Run("select with all aggregator functions", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("id", "name", Aggregators.Max("age"), Aggregators.Min("weight"), Aggregators.Sum("balance"), Aggregators.Avg("height"), Aggregators.Count("name")).
 			Build()
@@ -18,7 +18,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with comparison where", func(t *testing.T) {
-		sql, args := NewSelect().From("users").
+		sql, args := newSelect().From("users").
 			Select("id", "name").
 			Where("id", "=", "$1").
 			WithArgs(1).
@@ -28,7 +28,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with not operator", func(t *testing.T) {
-		sql, args := NewSelect().From("users").
+		sql, args := newSelect().From("users").
 			Select("id", "name").
 			Where(WhereHelpers.Not("id", "=", "$1")).
 			WithArgs(1).
@@ -38,7 +38,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with multiple AND, OR", func(t *testing.T) {
-		sql, args := NewSelect().From("users").
+		sql, args := newSelect().From("users").
 			Select("id", "name").
 			Where(WhereHelpers.And(
 				WhereHelpers.Or(
@@ -53,7 +53,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with Like", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("id").
 			Where(WhereHelpers.Like("name", "%a")).Build()
@@ -62,7 +62,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select WHERE IN", func(t *testing.T) {
-		sql, args := NewSelect().From("users").
+		sql, args := newSelect().From("users").
 			Select("id", "name").
 			Where(WhereHelpers.And(WhereHelpers.In("name", "$1", "$2"))).
 			WithArgs("'jafar'", "'khadije'").
@@ -72,7 +72,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select BETWEEN", func(t *testing.T) {
-		sql, args := NewSelect().From("users").
+		sql, args := newSelect().From("users").
 			Select("id", "name").
 			Where(WhereHelpers.Between("age", "$1", "$2")).WithArgs(10, 18).Build()
 
@@ -81,7 +81,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select orderby desc", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("id", "name").
 			OrderBy("created_at", "DESC").
@@ -92,7 +92,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select distinct", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("name").
 			Distinct().
@@ -104,7 +104,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select orderby asc", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("id", "name").
 			OrderBy("created_at", "ASC").
@@ -114,13 +114,13 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with groupby", func(t *testing.T) {
-		sql, args := NewSelect().From("users").Select("id").GroupBy("name", "age").Build()
+		sql, args := newSelect().From("users").Select("id").GroupBy("name", "age").Build()
 		assert.Empty(t, args)
 		assert.Equal(t, `SELECT id FROM users GROUP BY name, age`, sql)
 	})
 
 	t.Run("select with join", func(t *testing.T) {
-		sql, args := NewSelect().
+		sql, args := newSelect().
 			From("users").
 			Select("id", "name").
 			RightJoin("addresses", "users.id", "=", "addresses.user_id").
@@ -130,7 +130,7 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with multiple joins", func(t *testing.T) {
-		sql, args := NewSelect().From("users").Select("id", "name").
+		sql, args := newSelect().From("users").Select("id", "name").
 			RightJoin("addresses", "users.id", "=", "addresses.user_id").
 			LeftJoin("user_credits", "users.id", "=", "user_credits.user_id").
 			Build()
@@ -139,14 +139,14 @@ func TestQueryBuilding(t *testing.T) {
 	})
 
 	t.Run("select with limit and offset", func(t *testing.T) {
-		sql, args := NewSelect().From("users").Take(10).Skip(10).Build()
+		sql, args := newSelect().From("users").Take(10).Skip(10).Build()
 		assert.Empty(t, args)
 		assert.Equal(t, `SELECT * FROM users LIMIT 10 OFFSET 10`, sql)
 
 	})
 
 	t.Run("select with having", func(t *testing.T) {
-		sql, args := NewSelect().From("users").Having("COUNT(users) > 10").Build()
+		sql, args := newSelect().From("users").Having("COUNT(users) > 10").Build()
 		assert.Empty(t, args)
 		assert.Equal(t, `SELECT * FROM users HAVING COUNT(users) > 10`, sql)
 	})

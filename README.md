@@ -4,9 +4,24 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
 [![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
 
-# ORM
+# golobby/orm
 
-GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe ORM.
+GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
+
+## Why not an ORM ?
+I started this project as an ORM, but soon after playing with relations for days, I understand that there are two ways,
+one is like GORM, magical struct tag stuff + opinionated naming conventions and loading, or way of sqlboiler and generating everything in a
+database-first approach.
+
+### Why not GORM ?
+- GORM is so magical with it's usage of struct tags and sometimes you are basically writing code inside the struct tag.
+- GORM uses lots and lots of reflection which makes it slow compare to `database/sql`.
+- GORM does not follow go's idiomatic way of error handling.
+
+### Why not SQLBoiler ?
+I love sqlboiler, it's safe and generated code is really clean but it has flaws also. 
+- sqlboiler uses reflection as well, less than GORM but still in hot-paths there are reflections happening.
+- sqlboiler is not comfortable for starting a project from scratch with all the wiring it needs, and also complexity of having a compelete replica of production database in your local env.
 
 ## Documentation
 
@@ -23,77 +38,7 @@ go get github.com/golobby/orm
 ```
 
 ### Quick Start
-#### Creating repository
-first step to use golobby/orm is creating
-a new repository.
-```go
-db, _ := sql.Open("postgres", "")
-modelRepository := orm.NewRepository(db, orm.PostgreSQLDialect, &Model{})
-```
-##### Defining our model
-```go
-type Model struct {
-	ID int
-	Name string
-}
-```
-##### Inserting a new record
-```go
-amirreza := &Model{
-    Name: "Amirreza",
-}
-err := modelRepository.Save(amirreza)
-if err != nil {
-    panic(err)
-}
-fmt.Println(amirreza.ID) // primary key is now set to last inserted id
-```
-##### Fetching a record from database
-```go
-amirreza := &Model{
-    ID: 1,
-}
-err := modelRepository.Fill(amirreza)
-if err != nil {
-    panic(err)
-}
-fmt.Println(amirreza.Name) // primary key is now set to last inserted id
-```
-##### Updating a record
-```go
-amirreza := &Model{
-    ID: 1,
-}
-amirreza.Name = "comrade"
-err := modelRepository.Update(amirreza)
-if err != nil {
-    panic(err)
-}
-```
-##### Deleting a record
-```go
-err := modelRepository.Delete(&Model{
-    ID: 1,
-})
-if err != nil {
-    panic(err)
-}
-```
-#### Custom queries
-Sometimes you need custom queries but you want the power of orm with you.
-##### Binding query result to model
-```go
-var models []*Model
-err = modelRepository.Bind(qb.NewSelect().
-    From("users").
-    Select("id", "name").
-    OrderBy("created_at", "DESC"), models)
-if err != nil {
-    panic(err)
-}
-```
-you can use `Bind`, `Query`, `Exec` and also their `Context` version methods on repository to execute any query you
-want whether you build them with `qb` or you just write them by hand.
+
 # Benchmarks
 for CRUD operations on 10000 records
 - Create
