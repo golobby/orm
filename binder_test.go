@@ -13,14 +13,6 @@ type User struct {
 	ID   int
 	Name string
 }
-type ComplexUser struct {
-	ID      int
-	Name    string
-	Address Address `orm:"in_rel=true with=addresses left=id right=user_id"`
-}
-func (c ComplexUser) Table() string {
-	return "users"
-}
 
 type Address struct {
 	ID   int

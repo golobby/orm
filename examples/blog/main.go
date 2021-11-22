@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-
 	"github.com/golobby/orm"
 	_ "github.com/mattn/go-sqlite3"
 )

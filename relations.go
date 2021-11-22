@@ -192,3 +192,63 @@ func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) er
 
 	return repo.BindContext(context.Background(), out, q, args...)
 }
+type ManyToManyConfig struct {
+	IntermediateTable string
+	IntermediateLocalColumn string
+	IntermediateForeignColumn string
+	ForeignTable string
+	ForeignLookupColumn string
+
+}
+type ManyToManyConfigurator func(config *ManyToManyConfig)
+type _ManyToManyConfigurators struct {
+	IntermediateTable func(name string) ManyToManyConfigurator
+	IntermediateLocalColumn func(name string)  ManyToManyConfigurator
+	IntermediateForeignColumn func(name string)  ManyToManyConfigurator
+
+}
+var ManyToManyConfigurators = &_ManyToManyConfigurators{
+	IntermediateTable: func(name string) ManyToManyConfigurator {
+		return func(config *ManyToManyConfig) {
+			config.IntermediateTable = name
+		}
+	},
+	IntermediateLocalColumn: func(name string) ManyToManyConfigurator {
+		return func(config *ManyToManyConfig) {
+			config.IntermediateLocalColumn = name
+		}
+	},
+	IntermediateForeignColumn: func(name string) ManyToManyConfigurator {
+		return func(config *ManyToManyConfig) {
+			config.IntermediateForeignColumn = name
+		}
+	},
+}
+func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator ) error {
+	c := &ManyToManyConfig{}
+	for _, config := range configs {
+		config(c)
+	}
+	if c.IntermediateTable == "" {
+		return fmt.Errorf("no way to infer many to many intermediate table yet.")
+	}
+	if c.IntermediateLocalColumn == "" {
+
+	}
+
+	if c.IntermediateForeignColumn == "" {
+
+	}
+	if c.ForeignTable == "" {
+
+	}
+	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.repo.getPkValue(e.obj))).Build()
+	q, args := newSelect().
+		From(c.ForeignTable).
+		Where(c.ForeignLookupColumn, "in", sub).
+		Build()
+
+	return NewRepository(e.repo.conn, e.repo.dialect, out).
+		BindContext(context.Background(), out, q, args...)
+
+}
