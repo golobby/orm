@@ -12,6 +12,7 @@ type Post struct {
 	ID       int64
 	Comments []*Comment
 	Content  string
+	Categories []*Category
 }
 
 type Comment struct {
@@ -19,6 +20,12 @@ type Comment struct {
 	PostID int64
 	Post Post
 	Content string
+}
+
+type Category struct {
+	ID int64
+	Title string
+	Posts []*Post
 }
 
 func main() {
@@ -68,4 +75,10 @@ func main() {
 	  panic(err)
 	}
 	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstPost)
+
+	//err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.Categories)
 }

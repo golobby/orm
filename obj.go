@@ -80,9 +80,15 @@ func tableName(v interface{}) string {
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-
-	parts := strings.Split(t.Name(), ".")
-	name := parts[len(parts)-1]
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	name := t.Name()
+	if name == "" {
+		name = t.String()
+	}
+	parts := strings.Split(name, ".")
+	name = parts[len(parts)-1]
 	return strcase.ToSnake(pluralize.NewClient().Plural(name))
 }
 

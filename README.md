@@ -8,7 +8,7 @@
 
 GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
-## Why not an ORM ?
+## Why another ORM ?
 I started this project as an ORM, but soon after playing with relations for days, I understand that there are two ways,
 one is like GORM, magical struct tag stuff + opinionated naming conventions and loading, or way of sqlboiler and generating everything in a
 database-first approach.

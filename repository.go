@@ -10,7 +10,6 @@ type Repository struct {
 	dialect   *dialect
 	conn      *sql.DB
 	metadata  *objectMetadata
-	relations []*RelationMetadata
 	eagerLoad bool
 }
 
@@ -25,7 +24,6 @@ func NewRepository(conn *sql.DB, dialect *dialect, makeRepositoryFor interface{}
 		metadata:  md,
 		dialect:   dialect,
 		eagerLoad: true,
-		relations: md.relationsOf(),
 	}
 	return s
 }

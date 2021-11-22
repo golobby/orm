@@ -7,7 +7,7 @@ import (
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
 )
-
+//TODO: break this into smaller tests
 func TestExampleRepositoriesNoRel(t *testing.T) {
 	type User struct {
 		Id   int64
@@ -58,16 +58,6 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-type AddressContent struct {
-	AddressID string
-	Content   string
-}
-
-type Address struct {
-	UserID         string
-	AddressContent AddressContent `orm:"in_rel=true with=address_content has=one left=id right=address_id"`
-}
-
 func TestEntity_HasMany(t *testing.T) {
 	type Address struct {
 		ID      int64
@@ -77,7 +67,7 @@ func TestEntity_HasMany(t *testing.T) {
 		ID      int64
 		Name    string
 		Age     int
-		Address Address `orm:"in_rel=true has=one left=id right=user_id"`
+		Address Address
 	}
 	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -87,12 +77,119 @@ func TestEntity_HasMany(t *testing.T) {
 		ID: 1,
 	}
 	var addresses []*Address
-	mockDB.ExpectQuery(`SELECT addresses.id, addresses.content FROM addresses`).
+	mockDB.ExpectQuery(`SELECT .* FROM addresses`).
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"addresses.id", "addresses.content"}).
 			AddRow(1, "ahvaz"))
 
-	err = userRepository.Entity(firstUser).HasMany(&addresses)
+	err = userRepository.
+		Entity(firstUser).
+		HasMany(&addresses, orm.HasManyConfigurators.PropertyTable("addresses"))
+
 	assert.NoError(t, err)
 	assert.Len(t, addresses, 1)
+}
+
+func TestEntity_HasOne(t *testing.T) {
+	type Address struct {
+		ID      int64
+		Content string
+	}
+	type User struct {
+		ID      int64
+		Name    string
+		Age     int
+		Address Address
+	}
+	t.Run("with reflection", func(t *testing.T) {
+		db, mockDB, err := sqlmock.New()
+		assert.NoError(t, err)
+		// create the repository using database connection and an instance of the type representing the table in database.
+		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		var address Address
+		mockDB.ExpectQuery(`SELECT .* FROM addresses`).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"addresses.id", "addresses.content"}).
+				AddRow(1, "ahvaz"))
+
+		err = userRepository.
+			Entity(&User{
+				ID: 1,
+			}).
+			HasMany(&address)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "ahvaz", address.Content)
+	})
+	t.Run("without reflection", func(t *testing.T) {
+		db, mockDB, err := sqlmock.New()
+		assert.NoError(t, err)
+		// create the repository using database connection and an instance of the type representing the table in database.
+		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		firstUser := &User{
+			ID: 1,
+		}
+		var address Address
+		mockDB.ExpectQuery(`SELECT .* FROM addresses`).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"addresses.id", "addresses.content"}).
+				AddRow(1, "ahvaz"))
+
+		err = userRepository.
+			Entity(firstUser).
+			HasMany(&address, orm.HasManyConfigurators.PropertyTable("addresses"), orm.HasManyConfigurators.PropertyForeignKey("user_id"))
+
+		assert.NoError(t, err)
+		assert.Equal(t, "ahvaz", address.Content)
+	})
+}
+
+func TestEntity_BelongsTo(t *testing.T) {
+	type Address struct {
+		ID      int64
+		UserID  int64
+		Content string
+	}
+	type User struct {
+		ID      int
+		Name    string
+		Age     int
+		Address Address
+	}
+	t.Run("with reflection", func(t *testing.T) {
+		db, mockDB, err := sqlmock.New()
+		assert.NoError(t, err)
+		// create the repository using database connection and an instance of the type representing the table in database.
+		addressRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &Address{})
+
+		mockDB.ExpectQuery(`SELECT .* FROM users`).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age"}).
+				AddRow(1, "amirreza", 23))
+		var user User
+		err = addressRepository.Entity(&Address{
+			Content: "ahvaz",
+			UserID:  1,
+		}).BelongsTo(&user)
+		assert.NoError(t, err)
+		assert.Equal(t, user.ID, 1)
+	})
+	t.Run("without reflection", func(t *testing.T) {
+		db, mockDB, err := sqlmock.New()
+		assert.NoError(t, err)
+		// create the repository using database connection and an instance of the type representing the table in database.
+		addressRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &Address{})
+
+		mockDB.ExpectQuery(`SELECT .* FROM users`).
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"users.id", "users.name", "users.age"}).
+				AddRow(1, "amirreza", 23))
+		var user User
+		err = addressRepository.Entity(&Address{
+			Content: "ahvaz",
+			UserID:  1,
+		}).BelongsTo(&user)
+		assert.NoError(t, err)
+		assert.Equal(t, user.ID, 1)
+	})
 }
