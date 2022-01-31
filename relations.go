@@ -6,6 +6,7 @@ import (
 	"github.com/gertd/go-pluralize"
 	"reflect"
 )
+
 type HasManyConfig struct {
 	PropertyTable      string
 	PropertyForeignKey string
@@ -15,6 +16,7 @@ type _HasManyDefaultConfigurators struct {
 	PropertyTable      func(name string) HasManyConfigurator
 	PropertyForeignKey func(name string) HasManyConfigurator
 }
+
 var HasManyConfigurators = &_HasManyDefaultConfigurators{
 	PropertyTable: func(name string) HasManyConfigurator {
 		return func(config *HasManyConfig) {
@@ -27,7 +29,8 @@ var HasManyConfigurators = &_HasManyDefaultConfigurators{
 		}
 	},
 }
-func (e *entity) HasMany(out interface{}, configs...HasManyConfigurator) error {
+
+func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error {
 	c := &HasManyConfig{}
 	for _, config := range configs {
 		config(c)
@@ -37,7 +40,7 @@ func (e *entity) HasMany(out interface{}, configs...HasManyConfigurator) error {
 		c.PropertyTable = tableName(out)
 	}
 	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table)+"_id"
+		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table) + "_id"
 	}
 	t := reflect.TypeOf(out)
 	v := reflect.ValueOf(out)
@@ -68,6 +71,7 @@ func (e *entity) HasMany(out interface{}, configs...HasManyConfigurator) error {
 	}
 	return repo.BindContext(context.Background(), out, q, args...)
 }
+
 type HasOneConfig struct {
 	PropertyTable      string
 	PropertyForeignKey string
@@ -77,6 +81,7 @@ type _HasOneDefaultConfigurators struct {
 	PropertyTable      func(name string) HasOneConfigurator
 	PropertyForeignKey func(name string) HasOneConfigurator
 }
+
 var HasOneConfigurators = &_HasOneDefaultConfigurators{
 	PropertyTable: func(name string) HasOneConfigurator {
 		return func(config *HasOneConfig) {
@@ -100,7 +105,7 @@ func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
 		c.PropertyTable = tableName(out)
 	}
 	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table)+"_id"
+		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table) + "_id"
 	}
 	t := reflect.TypeOf(out)
 	v := reflect.ValueOf(out)
@@ -131,15 +136,19 @@ func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
 	}
 	return repo.BindContext(context.Background(), out, q, args...)
 }
+
 type BelongsToConfig struct {
-	OwnerTable      string
-	LocalForeignKey string
+	OwnerTable        string
+	LocalForeignKey   string
+	ForeignColumnName string
 }
 type BelongsToConfigurator func(config *BelongsToConfig)
 type _BelongsToConfigurator struct {
-	OwnerTable      func(name string) BelongsToConfigurator
-	LocalKey func(name string) BelongsToConfigurator
+	OwnerTable        func(name string) BelongsToConfigurator
+	LocalKey          func(name string) BelongsToConfigurator
+	ForeignColumnName func(name string) BelongsToConfigurator
 }
+
 var BelongsToConfigurators = &_BelongsToConfigurator{
 	OwnerTable: func(name string) BelongsToConfigurator {
 		return func(config *BelongsToConfig) {
@@ -151,7 +160,13 @@ var BelongsToConfigurators = &_BelongsToConfigurator{
 			config.LocalForeignKey = name
 		}
 	},
+	ForeignColumnName: func(name string) BelongsToConfigurator {
+		return func(config *BelongsToConfig) {
+			config.ForeignColumnName = name
+		}
+	},
 }
+
 func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) error {
 	c := &BelongsToConfig{}
 	for _, config := range configs {
@@ -160,8 +175,11 @@ func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) er
 	if c.OwnerTable == "" {
 		c.OwnerTable = tableName(out)
 	}
-	if c.LocalForeignKey == ""{
-		c.LocalForeignKey = pluralize.NewClient().Singular(c.OwnerTable)+"_id"
+	if c.LocalForeignKey == "" {
+		c.LocalForeignKey = pluralize.NewClient().Singular(c.OwnerTable) + "_id"
+	}
+	if c.ForeignColumnName == "" {
+		c.ForeignColumnName = "id"
 	}
 	t := reflect.TypeOf(out)
 	v := reflect.ValueOf(out)
@@ -171,7 +189,7 @@ func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) er
 	}
 	ph := e.repo.dialect.PlaceholderChar
 	if e.repo.dialect.IncludeIndexInPlaceholder {
-		ph = ph+"1"
+		ph = ph + "1"
 	}
 	target := reflect.New(t).Interface()
 	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
@@ -183,30 +201,30 @@ func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) er
 		}
 	}
 
-	ownerID:=e.repo.valuesOf(e.obj, true)[ownerIDidx]
+	ownerID := e.repo.valuesOf(e.obj, true)[ownerIDidx]
 
 	q, args := newSelect().
 		From(c.OwnerTable).
-		Where(WhereHelpers.Equal(c.LocalForeignKey, ph)).
+		Where(WhereHelpers.Equal(c.ForeignColumnName, ph)).
 		WithArgs(ownerID).Build()
 
 	return repo.BindContext(context.Background(), out, q, args...)
 }
-type ManyToManyConfig struct {
-	IntermediateTable string
-	IntermediateLocalColumn string
-	IntermediateForeignColumn string
-	ForeignTable string
-	ForeignLookupColumn string
 
+type ManyToManyConfig struct {
+	IntermediateTable         string
+	IntermediateLocalColumn   string
+	IntermediateForeignColumn string
+	ForeignTable              string
+	ForeignLookupColumn       string
 }
 type ManyToManyConfigurator func(config *ManyToManyConfig)
 type _ManyToManyConfigurators struct {
-	IntermediateTable func(name string) ManyToManyConfigurator
-	IntermediateLocalColumn func(name string)  ManyToManyConfigurator
-	IntermediateForeignColumn func(name string)  ManyToManyConfigurator
-
+	IntermediateTable         func(name string) ManyToManyConfigurator
+	IntermediateLocalColumn   func(name string) ManyToManyConfigurator
+	IntermediateForeignColumn func(name string) ManyToManyConfigurator
 }
+
 var ManyToManyConfigurators = &_ManyToManyConfigurators{
 	IntermediateTable: func(name string) ManyToManyConfigurator {
 		return func(config *ManyToManyConfig) {
@@ -224,7 +242,8 @@ var ManyToManyConfigurators = &_ManyToManyConfigurators{
 		}
 	},
 }
-func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator ) error {
+
+func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) error {
 	c := &ManyToManyConfig{}
 	for _, config := range configs {
 		config(c)

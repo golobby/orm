@@ -5,29 +5,31 @@ import (
 	"fmt"
 	"github.com/golobby/orm"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 )
 
 type Post struct {
-	ID       int64
-	Comments []*Comment
-	Content  string
+	ID         int64
+	Comments   []*Comment
+	Content    string
 	Categories []*Category
 }
 
 type Comment struct {
-	ID int64
-	PostID int64
-	Post Post
+	ID      int64
+	PostID  int64
+	Post    Post
 	Content string
 }
 
 type Category struct {
-	ID int64
+	ID    int64
 	Title string
 	Posts []*Post
 }
 
 func main() {
+	_ = os.Remove("blog.db")
 	dbGolobby, err := sql.Open("sqlite3", "blog.db")
 	if err != nil {
 		panic(err)
@@ -52,7 +54,7 @@ func main() {
 	}
 	err = postRepository.Entity(firstPost).Save()
 	if err != nil {
-	    panic(err)
+		panic(err)
 	}
 	fmt.Println("Post primary key is ", firstPost.ID)
 	firstComment := &Comment{
@@ -71,11 +73,11 @@ func main() {
 	var newPost Post
 	err = commentRepository.Entity(firstComment).BelongsTo(&newPost)
 	if err != nil {
-	  panic(err)
+		panic(err)
 	}
 	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstPost)
 
-	//err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories)
+	//err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.)
 	//if err != nil {
 	//	panic(err)
 	//}
