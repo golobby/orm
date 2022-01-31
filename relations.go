@@ -243,6 +243,8 @@ var ManyToManyConfigurators = &_ManyToManyConfigurators{
 	},
 }
 
+var tableer = reflect.TypeOf((Table)(nil))
+
 func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) error {
 	c := &ManyToManyConfig{}
 	for _, config := range configs {
@@ -252,15 +254,24 @@ func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) 
 		return fmt.Errorf("no way to infer many to many intermediate table yet.")
 	}
 	if c.IntermediateLocalColumn == "" {
-
+		table := e.repo.metadata.Table
+		table = pluralize.NewClient().Singular(table)
+		c.IntermediateLocalColumn = table + "_id"
 	}
+	t := reflect.TypeOf(out)
+	v := reflect.New(t).Interface()
 
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 	if c.IntermediateForeignColumn == "" {
-
+		table := tableName(v)
+		c.IntermediateForeignColumn = pluralize.NewClient().Singular(table) + "_id"
 	}
 	if c.ForeignTable == "" {
-
+		c.IntermediateForeignColumn = tableName(v)
 	}
+
 	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.repo.getPkValue(e.obj))).Build()
 	q, args := newSelect().
 		From(c.ForeignTable).

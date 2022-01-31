@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+type keyValue struct {
+	Key   string
+	Value interface{}
+}
+
 type PlaceholderGenerator func(n int) []string
 type placeHolderGenerators struct {
 	Postgres PlaceholderGenerator

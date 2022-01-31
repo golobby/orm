@@ -7,10 +7,9 @@ import (
 )
 
 type Repository struct {
-	dialect   *dialect
-	conn      *sql.DB
-	metadata  *objectMetadata
-	eagerLoad bool
+	dialect  *dialect
+	conn     *sql.DB
+	metadata *objectMetadata
 }
 
 func (r *Repository) Schema() *objectMetadata {
@@ -20,10 +19,9 @@ func (r *Repository) Schema() *objectMetadata {
 func NewRepository(conn *sql.DB, dialect *dialect, makeRepositoryFor interface{}) *Repository {
 	md := objectMetadataFrom(makeRepositoryFor, dialect)
 	s := &Repository{
-		conn:      conn,
-		metadata:  md,
-		dialect:   dialect,
-		eagerLoad: true,
+		conn:     conn,
+		metadata: md,
+		dialect:  dialect,
 	}
 	return s
 }
