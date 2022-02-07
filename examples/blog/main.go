@@ -25,7 +25,6 @@ type Comment struct {
 type Category struct {
 	ID    int64
 	Title string
-	Posts []*Post
 }
 
 func main() {
@@ -39,11 +38,21 @@ func main() {
 	}
 	createPosts := `CREATE TABLE IF NOT EXISTS posts (id integer primary key, content text);`
 	createComments := `CREATE TABLE IF NOT EXISTS comments (id integer primary key, post_id integer, content text);`
+	createCategories := `CREATE TABLE IF NOT EXISTS categories (id integer primary key, name text);`
+	createPostCategories := `CREATE TABLE IF NOT EXISTS post_categories(id integer primary key, post_id int, category_id int)`
 	_, err = dbGolobby.Exec(createPosts)
 	if err != nil {
 		panic(err)
 	}
 	_, err = dbGolobby.Exec(createComments)
+	if err != nil {
+		panic(err)
+	}
+	_, err = dbGolobby.Exec(createCategories)
+	if err != nil {
+		panic(err)
+	}
+	_, err = dbGolobby.Exec(createPostCategories)
 	if err != nil {
 		panic(err)
 	}
@@ -77,9 +86,9 @@ func main() {
 	}
 	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstPost)
 
-	//err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.Categories)
+	err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.IntermediateTable("post_categories"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.Categories)
 }
