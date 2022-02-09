@@ -186,9 +186,7 @@ func main() {
 
 	err = userRepository.
 		Entity(firstUser).
-		HasMany(&addresses, 
-			orm.HasManyConfigurators.PropertyTable("addresses"),
-		)
+		HasMany(&addresses)
 
 }
 ```
@@ -218,9 +216,7 @@ func main() {
 
 	err = userRepository.
 		Entity(firstUser).
-		HasOne(address, 
-			orm.HasOneConfigurators.PropertyTable("addresses"),
-		)
+		HasOne(address)
 
 }
 ```
@@ -250,9 +246,7 @@ func main() {
 
 	err = addressRepository.
 		Entity(firstAddress).
-		BelongsTo(user, 
-			orm.BelongsToConfigurators.OwnerTable("addresses"),
-		)
+		BelongsTo(user)
 
 }
 ```

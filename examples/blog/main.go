@@ -86,7 +86,9 @@ func main() {
 	}
 	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstPost)
 
-	err = postRepository.Entity(firstPost).ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.IntermediateTable("post_categories"))
+	err = postRepository.
+		Entity(firstPost).
+		ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.IntermediateTable("post_categories"))
 	if err != nil {
 		panic(err)
 	}

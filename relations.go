@@ -246,6 +246,7 @@ var ManyToManyConfigurators = &_ManyToManyConfigurators{
 var tableer = reflect.TypeOf((Table)(nil))
 
 func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) error {
+	fmt.Println("Inaj")
 	c := &ManyToManyConfig{}
 	for _, config := range configs {
 		config(c)
@@ -278,6 +279,7 @@ func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) 
 		Where(c.ForeignLookupColumn, "in", sub).
 		Build()
 
+	fmt.Println(q)
 	return NewRepository(e.repo.conn, e.repo.dialect, out).
 		BindContext(context.Background(), out, q, args...)
 
