@@ -33,9 +33,9 @@ func (o *objectMetadata) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []inter
 				newcts := append(cts[:index], cts[index+1:]...)
 				return append(scanInto, o.ptrsFor(v, newcts)...)
 			}
-			}
-
 		}
+
+	}
 
 	return scanInto
 }

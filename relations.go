@@ -7,31 +7,30 @@ import (
 	"reflect"
 )
 
-type HasManyConfig struct {
+type hasManyConfig struct {
 	PropertyTable      string
 	PropertyForeignKey string
 }
-type HasManyConfigurator func(config *HasManyConfig)
-type _HasManyDefaultConfigurators struct {
+type HasManyConfigurator func(config *hasManyConfig)
+
+var HasManyConfigurators = &struct {
 	PropertyTable      func(name string) HasManyConfigurator
 	PropertyForeignKey func(name string) HasManyConfigurator
-}
-
-var HasManyConfigurators = &_HasManyDefaultConfigurators{
+}{
 	PropertyTable: func(name string) HasManyConfigurator {
-		return func(config *HasManyConfig) {
+		return func(config *hasManyConfig) {
 			config.PropertyTable = name
 		}
 	},
 	PropertyForeignKey: func(name string) HasManyConfigurator {
-		return func(config *HasManyConfig) {
+		return func(config *hasManyConfig) {
 			config.PropertyForeignKey = name
 		}
 	},
 }
 
 func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error {
-	c := &HasManyConfig{}
+	c := &hasManyConfig{}
 	for _, config := range configs {
 		config(c)
 	}
@@ -77,12 +76,11 @@ type HasOneConfig struct {
 	PropertyForeignKey string
 }
 type HasOneConfigurator func(config *HasOneConfig)
-type _HasOneDefaultConfigurators struct {
+
+var HasOneConfigurators = &struct {
 	PropertyTable      func(name string) HasOneConfigurator
 	PropertyForeignKey func(name string) HasOneConfigurator
-}
-
-var HasOneConfigurators = &_HasOneDefaultConfigurators{
+}{
 	PropertyTable: func(name string) HasOneConfigurator {
 		return func(config *HasOneConfig) {
 			config.PropertyTable = name
@@ -143,13 +141,12 @@ type BelongsToConfig struct {
 	ForeignColumnName string
 }
 type BelongsToConfigurator func(config *BelongsToConfig)
-type _BelongsToConfigurator struct {
+
+var BelongsToConfigurators = &struct {
 	OwnerTable        func(name string) BelongsToConfigurator
 	LocalKey          func(name string) BelongsToConfigurator
 	ForeignColumnName func(name string) BelongsToConfigurator
-}
-
-var BelongsToConfigurators = &_BelongsToConfigurator{
+}{
 	OwnerTable: func(name string) BelongsToConfigurator {
 		return func(config *BelongsToConfig) {
 			config.OwnerTable = name
@@ -219,13 +216,12 @@ type ManyToManyConfig struct {
 	ForeignLookupColumn       string
 }
 type ManyToManyConfigurator func(config *ManyToManyConfig)
-type _ManyToManyConfigurators struct {
+
+var ManyToManyConfigurators = &struct {
 	IntermediateTable         func(name string) ManyToManyConfigurator
 	IntermediateLocalColumn   func(name string) ManyToManyConfigurator
 	IntermediateForeignColumn func(name string) ManyToManyConfigurator
-}
-
-var ManyToManyConfigurators = &_ManyToManyConfigurators{
+}{
 	IntermediateTable: func(name string) ManyToManyConfigurator {
 		return func(config *ManyToManyConfig) {
 			config.IntermediateTable = name

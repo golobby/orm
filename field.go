@@ -8,16 +8,16 @@ import (
 )
 
 type fieldMetadata struct {
-	Name             string
-	IsPK    		 bool
-	Virtual 		 bool
+	Name    string
+	IsPK    bool
+	Virtual bool
 	Type    reflect.Type
 }
 
 type fieldTag struct {
-	Name  string
+	Name    string
 	Virtual bool
-	PK    bool
+	PK      bool
 }
 
 type HasFields interface {

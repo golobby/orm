@@ -22,8 +22,8 @@ const (
 )
 
 type clause struct {
-	typ   clauseType
-	parts []string
+	typ       clauseType
+	parts     []string
 	delimiter string
 }
 
