@@ -7,7 +7,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-type fieldMetadata struct {
+type Field struct {
 	Name    string
 	IsPK    bool
 	Virtual bool
@@ -21,7 +21,7 @@ type fieldTag struct {
 }
 
 type HasFields interface {
-	Fields() []*fieldMetadata
+	Fields() []*Field
 }
 
 func fieldMetadataFromTag(t string) fieldTag {
@@ -47,7 +47,7 @@ func fieldMetadataFromTag(t string) fieldTag {
 	return tag
 }
 
-func fieldsOf(obj interface{}, dialect *dialect) []*fieldMetadata {
+func fieldsOf(obj interface{}, dialect *dialect) []*Field {
 	hasFields, is := obj.(HasFields)
 	if is {
 		return hasFields.Fields()
@@ -64,11 +64,11 @@ func fieldsOf(obj interface{}, dialect *dialect) []*fieldMetadata {
 		}
 	}
 
-	var fms []*fieldMetadata
+	var fms []*Field
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
-		fm := &fieldMetadata{}
+		fm := &Field{}
 		fm.Type = ft.Type
 		if tagParsed.Name != "" {
 			fm.Name = tagParsed.Name

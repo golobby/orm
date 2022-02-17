@@ -19,7 +19,7 @@ func TestExampleRepositoriesNoRel(t *testing.T) {
 	db, mockDB, err := sqlmock.New()
 	assert.NoError(t, err)
 	// create the repository using database connection and an instance of the type representing the table in database.
-	userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+	userRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &User{})
 	firstUser := &User{
 		Name: "Amirreza",
 	}
@@ -74,7 +74,7 @@ func TestEntity_HasMany(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		userRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &User{})
 		firstUser := &User{
 			ID: 1,
 		}
@@ -95,7 +95,7 @@ func TestEntity_HasMany(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		userRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &User{})
 		firstUser := &User{
 			ID: 1,
 		}
@@ -129,7 +129,7 @@ func TestEntity_HasOne(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		userRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &User{})
 		var address Address
 		mockDB.ExpectQuery(`SELECT .* FROM addresses`).
 			WithArgs(1).
@@ -149,7 +149,7 @@ func TestEntity_HasOne(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
+		userRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &User{})
 		firstUser := &User{
 			ID: 1,
 		}
@@ -184,7 +184,7 @@ func TestEntity_BelongsTo(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		addressRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &Address{})
+		addressRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &Address{})
 
 		mockDB.ExpectQuery(`SELECT .* FROM users`).
 			WithArgs(1).
@@ -202,7 +202,7 @@ func TestEntity_BelongsTo(t *testing.T) {
 		db, mockDB, err := sqlmock.New()
 		assert.NoError(t, err)
 		// create the repository using database connection and an instance of the type representing the table in database.
-		addressRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &Address{})
+		addressRepository := orm.Initialize(db, orm.dialects.PostgreSQL, &Address{})
 
 		mockDB.ExpectQuery(`SELECT .* FROM users`).
 			WithArgs(1).

@@ -29,7 +29,8 @@ var HasManyConfigurators = &struct {
 	},
 }
 
-func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error {
+func (e *entity) HasMany(out IEntity, configs ...HasManyConfigurator) error {
+	s := _globalORM.metadatas[out.Table()]
 	c := &hasManyConfig{}
 	for _, config := range configs {
 		config(c)
@@ -39,7 +40,7 @@ func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error 
 		c.PropertyTable = tableName(out)
 	}
 	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table) + "_id"
+		c.PropertyForeignKey = pluralize.NewClient().Singular(s.Table) + "_id"
 	}
 	t := reflect.TypeOf(out)
 	v := reflect.ValueOf(out)
@@ -50,10 +51,10 @@ func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error 
 	if t.Kind() == reflect.Slice {
 		t = t.Elem()
 	}
-	ph := e.repo.dialect.PlaceholderChar
+	ph := _globalORM.dialect.PlaceholderChar
 	target := reflect.New(t).Interface()
-	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
-	if e.repo.dialect.IncludeIndexInPlaceholder {
+	repo := Initialize(_globalORM.conn, _globalORM.dialect, target)
+	if _globalORM.dialect.IncludeIndexInPlaceholder {
 		ph = ph + fmt.Sprint(1)
 	}
 	var q string
@@ -62,13 +63,13 @@ func (e *entity) HasMany(out interface{}, configs ...HasManyConfigurator) error 
 	q, args = newSelect().
 		From(c.PropertyTable).
 		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(e.repo.getPkValue(e.obj)).
+		WithArgs(_globalORM.getPkValue(e.obj)).
 		Build()
 
 	if q == "" {
 		return fmt.Errorf("cannot build the query")
 	}
-	return repo.BindContext(context.Background(), out, q, args...)
+	return s.BindContext(context.Background(), out, q, args...)
 }
 
 type HasOneConfig struct {
@@ -93,7 +94,8 @@ var HasOneConfigurators = &struct {
 	},
 }
 
-func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
+func (e *entity) HasOne(out IEntity, configs ...HasOneConfigurator) error {
+	s := _globalORM.metadatas[out.Table()]
 	c := &HasOneConfig{}
 	for _, config := range configs {
 		config(c)
@@ -103,7 +105,7 @@ func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
 		c.PropertyTable = tableName(out)
 	}
 	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(e.repo.metadata.Table) + "_id"
+		c.PropertyForeignKey = pluralize.NewClient().Singular(s.Table) + "_id"
 	}
 	t := reflect.TypeOf(out)
 	v := reflect.ValueOf(out)
@@ -114,10 +116,10 @@ func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
 	if t.Kind() == reflect.Slice {
 		t = t.Elem()
 	}
-	ph := e.repo.dialect.PlaceholderChar
+	ph := _globalORM.dialect.PlaceholderChar
 	target := reflect.New(t).Interface()
-	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
-	if e.repo.dialect.IncludeIndexInPlaceholder {
+	repo := Initialize(_globalORM.conn, _globalORM.dialect, target)
+	if _globalORM.dialect.IncludeIndexInPlaceholder {
 		ph = ph + fmt.Sprint(1)
 	}
 	var q string
@@ -126,7 +128,7 @@ func (e *entity) HasOne(out interface{}, configs ...HasOneConfigurator) error {
 	q, args = newSelect().
 		From(c.PropertyTable).
 		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(e.repo.getPkValue(e.obj)).
+		WithArgs(_globalORM.getPkValue(e.obj)).
 		Build()
 
 	if q == "" {
@@ -184,21 +186,21 @@ func (e *entity) BelongsTo(out interface{}, configs ...BelongsToConfigurator) er
 		t = t.Elem()
 		v = v.Elem()
 	}
-	ph := e.repo.dialect.PlaceholderChar
-	if e.repo.dialect.IncludeIndexInPlaceholder {
+	ph := _globalORM.dialect.PlaceholderChar
+	if _globalORM.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	target := reflect.New(t).Interface()
-	repo := NewRepository(e.repo.conn, e.repo.dialect, target)
+	repo := Initialize(_globalORM.conn, _globalORM.dialect, target)
 
 	ownerIDidx := 0
-	for idx, field := range e.repo.metadata.Fields {
+	for idx, field := range _globalORM.metadata.Fields {
 		if field.Name == c.LocalForeignKey {
 			ownerIDidx = idx
 		}
 	}
 
-	ownerID := e.repo.valuesOf(e.obj, true)[ownerIDidx]
+	ownerID := _globalORM.valuesOf(e.obj, true)[ownerIDidx]
 
 	q, args := newSelect().
 		From(c.OwnerTable).
@@ -251,7 +253,7 @@ func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) 
 		return fmt.Errorf("no way to infer many to many intermediate table yet.")
 	}
 	if c.IntermediateLocalColumn == "" {
-		table := e.repo.metadata.Table
+		table := _globalORM.metadata.Table
 		table = pluralize.NewClient().Singular(table)
 		c.IntermediateLocalColumn = table + "_id"
 	}
@@ -269,14 +271,14 @@ func (e *entity) ManyToMany(out interface{}, configs ...ManyToManyConfigurator) 
 		c.IntermediateForeignColumn = tableName(v)
 	}
 
-	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.repo.getPkValue(e.obj))).Build()
+	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(_globalORM.getPkValue(e.obj))).Build()
 	q, args := newSelect().
 		From(c.ForeignTable).
 		Where(c.ForeignLookupColumn, "in", sub).
 		Build()
 
 	fmt.Println(q)
-	return NewRepository(e.repo.conn, e.repo.dialect, out).
+	return Initialize(_globalORM.conn, _globalORM.dialect, out).
 		BindContext(context.Background(), out, q, args...)
 
 }

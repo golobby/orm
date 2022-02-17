@@ -73,7 +73,6 @@ func main() {
 	// Filling an object
 	user1 := &User{Id: 1}
 	err := userRepository.Fill(user1)
-
 	// binding result of query to object
 	q, err := userRepository.
 		SelectBuilder().

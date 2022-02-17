@@ -56,8 +56,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	postRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Post{})
-	commentRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Comment{})
+	postRepository := orm.Initialize(dbGolobby, orm.dialects.SQLite3, &Post{})
+	commentRepository := orm.Initialize(dbGolobby, orm.dialects.SQLite3, &Comment{})
 	firstPost := &Post{
 		Content: "salam donya",
 	}

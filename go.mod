@@ -1,6 +1,6 @@
 module github.com/golobby/orm
 
-go 1.16
+go 1.18
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
