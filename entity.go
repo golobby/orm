@@ -4,35 +4,36 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gertd/go-pluralize"
 	"reflect"
 	"unsafe"
 )
 
-type entity struct {
+type Entity[T any] struct {
 	obj IsEntity
 }
 
-func Entity(obj IsEntity) *entity {
-	return &entity{obj: obj}
+func AsEntity(obj IsEntity) *Entity {
+	return &Entity{obj: obj}
 }
-func (e *entity) getMetadata() *objectMetadata {
+func (e *Entity) getMetadata() *objectMetadata {
 	db := e.getDB()
 	return db.metadatas[e.getTable()]
 }
 
-func (e *entity) getTable() string {
+func (e *Entity) getTable() string {
 	return e.obj.EntityConfig().Table
 }
 
-func (e *entity) getConnection() *sql.DB {
+func (e *Entity) getConnection() *sql.DB {
 	return e.getDB().conn
 }
 
-func (e *entity) getDialect() *dialect {
+func (e *Entity) getDialect() *Dialect {
 	return e.getMetadata().dialect
 }
 
-func (e *entity) getDB() *DB {
+func (e *Entity) getDB() *DB {
 	if len(globalORM) > 1 && (e.obj.EntityConfig().Connection == "" || e.getTable() == "") {
 		panic("need table and connection name when having more than 1 connection registered")
 	}
@@ -48,7 +49,7 @@ func (e *entity) getDB() *DB {
 
 }
 
-func (e *entity) getFields() []*Field {
+func (e *Entity) getFields() []*Field {
 	var fields []*Field
 	if e.obj.EntityConfig().GetFields != nil {
 		fields = e.obj.EntityConfig().GetFields()
@@ -62,7 +63,7 @@ type IsEntity interface {
 	EntityConfig() EntityConfig
 }
 
-func (e *entity) getValues(o interface{}, withPK bool) []interface{} {
+func (e *Entity) getValues(o interface{}, withPK bool) []interface{} {
 	if e.obj.EntityConfig().Values != nil {
 		return e.obj.EntityConfig().Values(o, withPK)
 	}
@@ -96,7 +97,7 @@ func (e *entity) getValues(o interface{}, withPK bool) []interface{} {
 }
 
 // Fill the struct
-func (e *entity) Fill() error {
+func (e *Entity) Fill() error {
 	var q string
 	var args []interface{}
 	var err error
@@ -119,24 +120,24 @@ func (e *entity) Fill() error {
 	return e.getMetadata().Bind(rows, e.obj)
 }
 
-func (e *entity) SelectBuilder() *selectStmt {
+func (e *Entity) SelectBuilder() *selectStmt {
 	return newSelect().From(e.getTable()).Select(e.getMetadata().Columns(true)...)
 }
 
-func (e *entity) InsertBuilder() *insertStmt {
+func (e *Entity) InsertBuilder() *insertStmt {
 	return newInsert().Table(e.getTable()).Into(e.getMetadata().Columns(true)...)
 }
 
-func (e *entity) UpdateBuilder() *updateStmt {
+func (e *Entity) UpdateBuilder() *updateStmt {
 	return newUpdate().Table(e.getTable())
 }
 
-func (e *entity) DeleteBuilder() *deleteStmt {
+func (e *Entity) DeleteBuilder() *deleteStmt {
 	return newDelete().Table(e.getTable())
 }
 
 // Save given object
-func (e *entity) Save() error {
+func (e *Entity) Save() error {
 	cols := e.getMetadata().Columns(false)
 	values := e.getValues(e.obj, false)
 	var phs []string
@@ -164,7 +165,7 @@ func (e *entity) Save() error {
 }
 
 // Update object in database
-func (e *entity) Update() error {
+func (e *Entity) Update() error {
 	ph := e.getDialect().PlaceholderChar
 	if e.getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
@@ -193,7 +194,7 @@ func (e *entity) Update() error {
 }
 
 // Delete the object from database
-func (e *entity) Delete() error {
+func (e *Entity) Delete() error {
 	ph := e.getDialect().PlaceholderChar
 	if e.getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
@@ -208,12 +209,188 @@ func (e *entity) Delete() error {
 	return err
 }
 
-func (e *entity) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {
+func (e *Entity) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {
 	rows, err := e.getConnection().QueryContext(ctx, q, args...)
 	if err != nil {
 		return err
 	}
 	return e.getMetadata().Bind(rows, out)
+}
+
+// BaseEntity contains common behaviours for entity structs.
+type BaseEntity[T any] struct{}
+
+type Relation func(e *Entity) error
+
+func (e *Entity) Load(r Relation) error {
+	return r(e)
+}
+
+type HasManyConfig struct {
+	PropertyTable      string
+	PropertyForeignKey string
+}
+
+func (b BaseEntity) HasMany(out []IsEntity, config HasManyConfig) func(e *Entity) error {
+	return func(e *Entity) error {
+		return e.HasMany(out, config)
+	}
+}
+func (e *Entity) HasMany(out []IsEntity, c HasManyConfig) error {
+	outEntity := &Entity{obj: reflect.New(reflect.TypeOf(out).Elem()).Interface().(IsEntity)}
+	//settings default config values
+	if c.PropertyTable == "" {
+		c.PropertyTable = outEntity.getTable()
+	}
+	if c.PropertyForeignKey == "" {
+		c.PropertyForeignKey = pluralize.NewClient().Singular(e.getTable()) + "_id"
+	}
+
+	ph := e.getDialect().PlaceholderChar
+	if e.getDialect().IncludeIndexInPlaceholder {
+		ph = ph + fmt.Sprint(1)
+	}
+	var q string
+	var args []interface{}
+
+	q, args = newSelect().
+		From(c.PropertyTable).
+		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		WithArgs(e.getPkValue(e.obj)).
+		Build()
+
+	if q == "" {
+		return fmt.Errorf("cannot build the query")
+	}
+
+	return outEntity.BindContext(context.Background(), out, q, args...)
+}
+
+type HasOneConfig struct {
+	PropertyTable      string
+	PropertyForeignKey string
+}
+
+func (b BaseEntity) HasOne(output IsEntity, config HasOneConfig) func(e *Entity) error {
+	return func(e *Entity) error {
+		return e.HasOne(output, config)
+	}
+}
+
+func (e *Entity) HasOne(out IsEntity, c HasOneConfig) error {
+	outEntity := &Entity{obj: out}
+	//settings default config values
+	if c.PropertyTable == "" {
+		c.PropertyTable = outEntity.getTable()
+	}
+	if c.PropertyForeignKey == "" {
+		c.PropertyForeignKey = pluralize.NewClient().Singular(e.getTable()) + "_id"
+	}
+
+	ph := e.getDialect().PlaceholderChar
+	if e.getDialect().IncludeIndexInPlaceholder {
+		ph = ph + fmt.Sprint(1)
+	}
+	var q string
+	var args []interface{}
+
+	q, args = newSelect().
+		From(c.PropertyTable).
+		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		WithArgs(e.getPkValue(e.obj)).
+		Build()
+
+	if q == "" {
+		return fmt.Errorf("cannot build the query")
+	}
+	return e.BindContext(context.Background(), out, q, args...)
+}
+
+type BelongsToConfig struct {
+	OwnerTable        string
+	LocalForeignKey   string
+	ForeignColumnName string
+}
+
+func (b BaseEntity) BelongsTo(output IsEntity, config BelongsToConfig) func(e *Entity) error {
+	return func(e *Entity) error {
+		return e.BelongsTo(output, config)
+	}
+}
+func (e *Entity) BelongsTo(out IsEntity, c BelongsToConfig) error {
+	outEntity := &Entity{obj: out}
+	if c.OwnerTable == "" {
+		c.OwnerTable = outEntity.getTable()
+	}
+	if c.LocalForeignKey == "" {
+		c.LocalForeignKey = pluralize.NewClient().Singular(outEntity.getTable()) + "_id"
+	}
+	if c.ForeignColumnName == "" {
+		c.ForeignColumnName = "id"
+	}
+
+	ph := e.getDialect().PlaceholderChar
+	if e.getDialect().IncludeIndexInPlaceholder {
+		ph = ph + "1"
+	}
+	ownerIDidx := 0
+	for idx, field := range e.getFields() {
+		if field.Name == c.LocalForeignKey {
+			ownerIDidx = idx
+		}
+	}
+
+	ownerID := e.getValues(e.obj, true)[ownerIDidx]
+
+	q, args := newSelect().
+		From(c.OwnerTable).
+		Where(WhereHelpers.Equal(c.ForeignColumnName, ph)).
+		WithArgs(ownerID).Build()
+
+	return e.BindContext(context.Background(), out, q, args...)
+}
+
+type ManyToManyConfig struct {
+	IntermediateTable         string
+	IntermediateLocalColumn   string
+	IntermediateForeignColumn string
+	ForeignTable              string
+	ForeignLookupColumn       string
+}
+
+func (b BaseEntity) ManyToMany(output []IsEntity, config ManyToManyConfig) func(e *Entity) error {
+	return func(e *Entity) error {
+		return e.ManyToMany(output, config)
+	}
+}
+
+func (e *Entity) ManyToMany(out []IsEntity, c ManyToManyConfig) error {
+	outEntity := &Entity{obj: reflect.New(reflect.TypeOf(out).Elem()).Interface().(IsEntity)}
+	if c.IntermediateTable == "" {
+		return fmt.Errorf("no way to infer many to many intermediate table yet.")
+	}
+	if c.IntermediateLocalColumn == "" {
+		table := e.getTable()
+		table = pluralize.NewClient().Singular(table)
+		c.IntermediateLocalColumn = table + "_id"
+	}
+	if c.IntermediateForeignColumn == "" {
+		table := outEntity.getTable()
+		c.IntermediateForeignColumn = pluralize.NewClient().Singular(table) + "_id"
+	}
+	if c.ForeignTable == "" {
+		c.IntermediateForeignColumn = outEntity.getTable()
+	}
+	//TODO: this logic is wrong
+	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.getPkValue(e.obj))).Build()
+	q, args := newSelect().
+		From(c.ForeignTable).
+		Where(c.ForeignLookupColumn, "in", sub).
+		Build()
+
+	return e.
+		BindContext(context.Background(), out, q, args...)
+
 }
 
 type EntityConfig[T any, PK any] struct {
@@ -234,7 +411,7 @@ func (o *objectMetadata) pkName() string {
 	return ""
 }
 
-func (e *entity) getPkValue(v interface{}) interface{} {
+func (e *Entity) getPkValue(v interface{}) interface{} {
 
 	if e.obj.EntityConfig().GetPK != nil {
 		c := e.obj.EntityConfig()
@@ -260,7 +437,7 @@ type SetPKValue interface {
 	SetPKValue(pk interface{})
 }
 
-func (e *entity) setPkValue(v interface{}, value interface{}) {
+func (e *Entity) setPkValue(v interface{}, value interface{}) {
 	if e.obj.EntityConfig().SetPK != nil {
 		e.obj.EntityConfig().SetPK(v, value)
 		return
@@ -286,7 +463,7 @@ func (e *entity) setPkValue(v interface{}, value interface{}) {
 	}
 }
 
-func (e *entity) toMap(obj interface{}) []keyValue {
+func (e *Entity) toMap(obj interface{}) []keyValue {
 	var kvs []keyValue
 	vs := e.getValues(obj, true)
 	cols := e.getMetadata().Columns(true)
@@ -303,7 +480,7 @@ type objectMetadata struct {
 	// DriverName of the table that the object represents
 	Table   string
 	Type    reflect.Type
-	dialect *dialect
+	dialect *Dialect
 	Fields  []*Field
 }
 
@@ -325,13 +502,9 @@ func (o *objectMetadata) Columns(withPK bool) []string {
 	return cols
 }
 
-func objectMetadataFrom(v IsEntity, dialect *dialect) *objectMetadata {
-	e := &entity{obj: v}
-	if len(e.getTable()) == 0 {
-		panic("You should specify table name.")
-	}
+func objectMetadataFrom(v IsEntity, dialect *Dialect) *objectMetadata {
 	return &objectMetadata{
-		Table:   e.getTable(),
+		Table:   initTableName(v),
 		dialect: dialect,
 		Type:    reflect.TypeOf(v),
 		Fields:  fieldsOf(v, dialect),
