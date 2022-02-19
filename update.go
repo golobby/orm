@@ -36,8 +36,11 @@ func (q *updateStmt) AndWhere(parts ...string) *updateStmt {
 	return q.Where(parts...)
 }
 
-func (u *updateStmt) Set(kvs ...keyValue) *updateStmt {
-	u.set = append(u.set, kvs...)
+func (u *updateStmt) Set(key string, value interface{}) *updateStmt {
+	u.set = append(u.set, keyValue{
+		Key:   key,
+		Value: value,
+	})
 	return u
 }
 
@@ -53,6 +56,6 @@ func (u *updateStmt) Table(table string) *updateStmt {
 	u.table = table
 	return u
 }
-func newUpdate() *updateStmt {
+func Update() *updateStmt {
 	return &updateStmt{}
 }

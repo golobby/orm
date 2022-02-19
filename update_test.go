@@ -9,7 +9,7 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, args := newUpdate().
+		s, args := Update().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
 			Set(keyValue{

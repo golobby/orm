@@ -9,7 +9,7 @@ import (
 	"unsafe"
 )
 
-type Entity[T any] struct {
+type Entity struct {
 	obj IsEntity
 }
 
@@ -106,7 +106,7 @@ func (e *Entity) Fill() error {
 	if e.getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	builder := newSelect().
+	builder := Select().
 		Select(e.getMetadata().Columns(true)...).
 		From(e.getMetadata().Table).
 		Where(WhereHelpers.Equal(e.getMetadata().pkName(), ph)).
@@ -120,22 +120,6 @@ func (e *Entity) Fill() error {
 	return e.getMetadata().Bind(rows, e.obj)
 }
 
-func (e *Entity) SelectBuilder() *selectStmt {
-	return newSelect().From(e.getTable()).Select(e.getMetadata().Columns(true)...)
-}
-
-func (e *Entity) InsertBuilder() *insertStmt {
-	return newInsert().Table(e.getTable()).Into(e.getMetadata().Columns(true)...)
-}
-
-func (e *Entity) UpdateBuilder() *updateStmt {
-	return newUpdate().Table(e.getTable())
-}
-
-func (e *Entity) DeleteBuilder() *deleteStmt {
-	return newDelete().Table(e.getTable())
-}
-
 // Save given object
 func (e *Entity) Save() error {
 	cols := e.getMetadata().Columns(false)
@@ -146,7 +130,7 @@ func (e *Entity) Save() error {
 	} else {
 		phs = PlaceHolderGenerators.MySQL(len(cols))
 	}
-	q, args := newInsert().
+	q, args := Insert().
 		Table(e.getTable()).
 		Into(cols...).
 		Values(phs...).
@@ -174,21 +158,21 @@ func (e *Entity) Update() error {
 	kvs := e.toMap(e.obj)
 	var kvsWithPh []keyValue
 	var args []interface{}
+	whereClause := WhereHelpers.Equal(e.getMetadata().pkName(), ph)
+	query := Update().
+		Table(e.getTable()).
+		Where(whereClause).WithArgs(e.getPkValue(e.obj))
 	for _, kv := range kvs {
 		thisPh := e.getDialect().PlaceholderChar
 		if e.getDialect().IncludeIndexInPlaceholder {
 			thisPh += fmt.Sprint(counter)
 		}
 		kvsWithPh = append(kvsWithPh, keyValue{Key: kv.Key, Value: thisPh})
-		args = append(args, kv.Value)
+		query.Set(kv.Key, thisPh)
+		query.WithArgs(kv.Value)
 		counter++
 	}
-	query := WhereHelpers.Equal(e.getMetadata().pkName(), ph)
-	q, args := newUpdate().
-		Table(e.getTable()).
-		Where(query).WithArgs(e.getPkValue(e.obj)).
-		Set(kvsWithPh...).WithArgs(args...).
-		Build()
+	q, args := query.Build()
 	_, err := e.getConnection().Exec(q, args...)
 	return err
 }
@@ -200,7 +184,7 @@ func (e *Entity) Delete() error {
 		ph = ph + "1"
 	}
 	query := WhereHelpers.Equal(e.getMetadata().pkName(), ph)
-	q, args := newDelete().
+	q, args := Delete().
 		Table(e.getTable()).
 		Where(query).
 		WithArgs(e.getPkValue(e.obj)).
@@ -218,12 +202,27 @@ func (e *Entity) BindContext(ctx context.Context, out interface{}, q string, arg
 }
 
 // BaseEntity contains common behaviours for entity structs.
-type BaseEntity[T any] struct{}
+type BaseEntity struct{}
 
-type Relation func(e *Entity) error
+type RelationLoader func(output interface{}) ExecutableQuery
+type ExecutableQuery func(e *Entity) error
 
-func (e *Entity) Load(r Relation) error {
-	return r(e)
+type loader struct {
+	e              *Entity
+	output         interface{}
+	relationLoader RelationLoader
+}
+
+func (l *loader) Scan(output interface{}) error {
+	return l.relationLoader(output)(l.e)
+}
+
+func (e *Entity) Load(r RelationLoader) *loader {
+	return &loader{
+		e:              e,
+		output:         nil,
+		relationLoader: r,
+	}
 }
 
 type HasManyConfig struct {
@@ -231,12 +230,12 @@ type HasManyConfig struct {
 	PropertyForeignKey string
 }
 
-func (b BaseEntity) HasMany(out []IsEntity, config HasManyConfig) func(e *Entity) error {
+func (b BaseEntity) HasMany(out interface{}, config HasManyConfig) func(e *Entity) error {
 	return func(e *Entity) error {
-		return e.HasMany(out, config)
+		return e.hasMany(out.([]IsEntity), config)
 	}
 }
-func (e *Entity) HasMany(out []IsEntity, c HasManyConfig) error {
+func (e *Entity) hasMany(out []IsEntity, c HasManyConfig) error {
 	outEntity := &Entity{obj: reflect.New(reflect.TypeOf(out).Elem()).Interface().(IsEntity)}
 	//settings default config values
 	if c.PropertyTable == "" {
@@ -253,7 +252,7 @@ func (e *Entity) HasMany(out []IsEntity, c HasManyConfig) error {
 	var q string
 	var args []interface{}
 
-	q, args = newSelect().
+	q, args = Select().
 		From(c.PropertyTable).
 		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(e.getPkValue(e.obj)).
@@ -271,13 +270,13 @@ type HasOneConfig struct {
 	PropertyForeignKey string
 }
 
-func (b BaseEntity) HasOne(output IsEntity, config HasOneConfig) func(e *Entity) error {
+func (b BaseEntity) HasOne(output interface{}, config HasOneConfig) func(e *Entity) error {
 	return func(e *Entity) error {
-		return e.HasOne(output, config)
+		return e.hasOne(output.(IsEntity), config)
 	}
 }
 
-func (e *Entity) HasOne(out IsEntity, c HasOneConfig) error {
+func (e *Entity) hasOne(out IsEntity, c HasOneConfig) error {
 	outEntity := &Entity{obj: out}
 	//settings default config values
 	if c.PropertyTable == "" {
@@ -294,7 +293,7 @@ func (e *Entity) HasOne(out IsEntity, c HasOneConfig) error {
 	var q string
 	var args []interface{}
 
-	q, args = newSelect().
+	q, args = Select().
 		From(c.PropertyTable).
 		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(e.getPkValue(e.obj)).
@@ -314,10 +313,10 @@ type BelongsToConfig struct {
 
 func (b BaseEntity) BelongsTo(output IsEntity, config BelongsToConfig) func(e *Entity) error {
 	return func(e *Entity) error {
-		return e.BelongsTo(output, config)
+		return e.belongsTo(output, config)
 	}
 }
-func (e *Entity) BelongsTo(out IsEntity, c BelongsToConfig) error {
+func (e *Entity) belongsTo(out IsEntity, c BelongsToConfig) error {
 	outEntity := &Entity{obj: out}
 	if c.OwnerTable == "" {
 		c.OwnerTable = outEntity.getTable()
@@ -342,7 +341,7 @@ func (e *Entity) BelongsTo(out IsEntity, c BelongsToConfig) error {
 
 	ownerID := e.getValues(e.obj, true)[ownerIDidx]
 
-	q, args := newSelect().
+	q, args := Select().
 		From(c.OwnerTable).
 		Where(WhereHelpers.Equal(c.ForeignColumnName, ph)).
 		WithArgs(ownerID).Build()
@@ -360,11 +359,11 @@ type ManyToManyConfig struct {
 
 func (b BaseEntity) ManyToMany(output []IsEntity, config ManyToManyConfig) func(e *Entity) error {
 	return func(e *Entity) error {
-		return e.ManyToMany(output, config)
+		return e.manyToMany(output, config)
 	}
 }
 
-func (e *Entity) ManyToMany(out []IsEntity, c ManyToManyConfig) error {
+func (e *Entity) manyToMany(out []IsEntity, c ManyToManyConfig) error {
 	outEntity := &Entity{obj: reflect.New(reflect.TypeOf(out).Elem()).Interface().(IsEntity)}
 	if c.IntermediateTable == "" {
 		return fmt.Errorf("no way to infer many to many intermediate table yet.")
@@ -382,8 +381,8 @@ func (e *Entity) ManyToMany(out []IsEntity, c ManyToManyConfig) error {
 		c.IntermediateForeignColumn = outEntity.getTable()
 	}
 	//TODO: this logic is wrong
-	sub, _ := newSelect().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.getPkValue(e.obj))).Build()
-	q, args := newSelect().
+	sub, _ := Select().From(c.IntermediateTable).Where(c.IntermediateLocalColumn, "=", fmt.Sprint(e.getPkValue(e.obj))).Build()
+	q, args := Select().
 		From(c.ForeignTable).
 		Where(c.ForeignLookupColumn, "in", sub).
 		Build()
@@ -393,13 +392,12 @@ func (e *Entity) ManyToMany(out []IsEntity, c ManyToManyConfig) error {
 
 }
 
-type EntityConfig[T any, PK any] struct {
+type EntityConfig struct {
 	Table      string
 	Connection string
-	SetPK      func(obj T, pk interface{})
-	GetPK      func(obj interface{}) PK
+	PKPtr      func(obj interface{}) *interface{}
 	GetFields  func() []*Field
-	Values     func(obj T, withPK bool) []interface{}
+	Values     func(obj interface{}, withPK bool) []interface{}
 }
 
 func (o *objectMetadata) pkName() string {
@@ -413,9 +411,9 @@ func (o *objectMetadata) pkName() string {
 
 func (e *Entity) getPkValue(v interface{}) interface{} {
 
-	if e.obj.EntityConfig().GetPK != nil {
+	if e.obj.EntityConfig().PKPtr != nil {
 		c := e.obj.EntityConfig()
-		c.GetPK(e.obj)
+		return c.PKPtr(e.obj)
 	}
 
 	t := reflect.TypeOf(v)
@@ -438,8 +436,8 @@ type SetPKValue interface {
 }
 
 func (e *Entity) setPkValue(v interface{}, value interface{}) {
-	if e.obj.EntityConfig().SetPK != nil {
-		e.obj.EntityConfig().SetPK(v, value)
+	if e.obj.EntityConfig().PKPtr != nil {
+		*(e.obj.EntityConfig().PKPtr(v)) = value
 		return
 	}
 	t := reflect.TypeOf(v)

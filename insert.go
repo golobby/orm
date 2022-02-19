@@ -12,7 +12,7 @@ type insertStmt struct {
 	args   []interface{}
 }
 
-func newInsert() *insertStmt {
+func Insert() *insertStmt {
 	return &insertStmt{}
 }
 
