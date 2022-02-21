@@ -12,10 +12,7 @@ func TestUpdate(t *testing.T) {
 		s, args := Update().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
-			Set(keyValue{
-				Key:   "name",
-				Value: "$2",
-			}).
+			Set("name", "$2").
 			WithArgs(2).
 			Build()
 

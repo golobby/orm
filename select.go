@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -47,17 +48,18 @@ func (s *selectClause) String() string {
 }
 
 type SelectStmt struct {
-	table    string
-	subQuery *SelectStmt
-	selected *selectClause
-	where    *clause
-	orderBy  *clause
-	groupBy  *clause
-	joins    []*clause
-	limit    *clause
-	offset   *clause
-	having   *clause
-	args     []interface{}
+	table           string
+	referenceEntity IsEntity
+	subQuery        *SelectStmt
+	selected        *selectClause
+	where           *clause
+	orderBy         *clause
+	groupBy         *clause
+	joins           []*clause
+	limit           *clause
+	offset          *clause
+	having          *clause
+	args            []interface{}
 }
 
 func (s *SelectStmt) WithArgs(args ...interface{}) *SelectStmt {
@@ -183,32 +185,38 @@ func (q *SelectStmt) GroupBy(columns ...string) *SelectStmt {
 	q.groupBy.parts = append(q.groupBy.parts, columns...)
 	return q
 }
-
-func (q *SelectStmt) Where(parts ...string) *SelectStmt {
+func interfaceSliceToStringAndArgs(is []interface{}) []string {
+	var parts []string
+	for _, i := range is {
+		parts = append(parts, fmt.Sprint(i))
+	}
+	return parts
+}
+func (q *SelectStmt) Where(parts ...interface{}) *SelectStmt {
 	if q.where == nil {
 		q.where = &clause{
 			typ:   _ClauseType_Where,
-			parts: parts,
+			parts: interfaceSliceToStringAndArgs(parts),
 		}
 		return q
 	}
 
 	q.where.parts = append(q.where.parts, "AND")
-	q.where.parts = append(q.where.parts, parts...)
+	q.where.parts = append(q.where.parts, interfaceSliceToStringAndArgs(parts)...)
 	return q
 }
 
-func (q *SelectStmt) OrWhere(parts ...string) *SelectStmt {
+func (q *SelectStmt) OrWhere(parts ...interface{}) *SelectStmt {
 	if q.where == nil {
 		return q.Where(parts...)
 	}
 
 	q.where.parts = append(q.where.parts, "OR")
-	q.where.parts = append(q.where.parts, parts...)
+	q.where.parts = append(q.where.parts, interfaceSliceToStringAndArgs(parts)...)
 	return q
 }
 
-func (q *SelectStmt) AndWhere(parts ...string) *SelectStmt {
+func (q *SelectStmt) AndWhere(parts ...interface{}) *SelectStmt {
 	return q.Where(parts...)
 }
 
@@ -260,6 +268,33 @@ func (q *SelectStmt) Build() (string, []interface{}) {
 	}
 
 	return strings.Join(sections, " "), q.args
+}
+
+func (s *SelectStmt) WithEntity(e IsEntity) *SelectStmt {
+	s.referenceEntity = e
+	return s
+}
+
+func (s *SelectStmt) Query(output interface{}) error {
+	q, args := s.Build()
+	return (&Entity{obj: s.referenceEntity}).BindContext(context.Background(), output, q, args...)
+}
+
+func (s *SelectStmt) First(output interface{}) error {
+	s.Limit(1)
+	s.OrderBy("id", "asc")
+
+	return s.Query(output)
+}
+
+func (s *SelectStmt) Last(output interface{}) error {
+	if _, ok := output.(IsEntity); ok {
+		s.referenceEntity = output.(IsEntity)
+	}
+	s.Limit(1)
+	s.OrderBy("id", "desc")
+
+	return s.Query(output)
 }
 
 func Select() *SelectStmt {

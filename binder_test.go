@@ -13,7 +13,9 @@ type User struct {
 	ID   int
 	Name string
 }
-
+func (u *User) E() *BaseEntity {
+	return &BaseEntity{}
+}
 type Address struct {
 	ID   int
 	Path string
