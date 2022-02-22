@@ -3,9 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/golobby/orm"
 	_ "github.com/mattn/go-sqlite3"
-	"os"
 )
 
 type Post struct {
@@ -92,7 +93,7 @@ func main() {
 	firstPost := &Post{
 		Content: "salam donya",
 	}
-	err = orm.AsEntity(firstPost).Save()
+	err = orm.AsEntity(firstPost).Fill()
 	if err != nil {
 		panic(err)
 	}
@@ -128,5 +129,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.Categories)
+	fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.categories)
 }

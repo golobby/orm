@@ -3,9 +3,10 @@ package orm
 import (
 	"context"
 	"fmt"
-	"github.com/gertd/go-pluralize"
 	"reflect"
 	"unsafe"
+
+	"github.com/gertd/go-pluralize"
 )
 
 type Entity struct {
@@ -83,7 +84,6 @@ func (e *Entity) getValues(o interface{}, withPK bool) []interface{} {
 func (e *Entity) Fill() error {
 	var q string
 	var args []interface{}
-	var err error
 	pkValue := e.getPkValue(e.obj)
 	ph := e.obj.E().getDialect().PlaceholderChar
 	if e.obj.E().getDialect().IncludeIndexInPlaceholder {
@@ -94,13 +94,17 @@ func (e *Entity) Fill() error {
 		From(e.obj.E().getMetadata().Table).
 		Where(WhereHelpers.Equal(e.obj.E().getMetadata().pkName(), ph)).
 		WithArgs(pkValue)
+
 	q, args = builder.
 		Build()
-	rows, err := e.obj.E().getConnection().Query(q, args...)
-	if err != nil {
-		return err
+
+	eq := &ExecutableQuery{
+		q:      q,
+		args:   args,
+		bindTo: e.obj,
 	}
-	return e.obj.E().getMetadata().Bind(rows, e.obj)
+
+	return eq.Exec()
 }
 
 // Save given object
@@ -235,7 +239,14 @@ func (e *Entity) hasMany(out []IsEntity, c HasManyConfig) error {
 		return fmt.Errorf("cannot build the query")
 	}
 
-	return outEntity.BindContext(context.Background(), out, q, args...)
+	eq := &ExecutableQuery{
+		q:      q,
+		args:   args,
+		bindTo: out,
+	}
+
+	return eq.Exec()
+
 }
 
 type HasOneConfig struct {
@@ -269,6 +280,7 @@ func (e *Entity) hasOne(out IsEntity, c HasOneConfig) error {
 	if q == "" {
 		return fmt.Errorf("cannot build the query")
 	}
+
 	return e.BindContext(context.Background(), out, q, args...)
 }
 
