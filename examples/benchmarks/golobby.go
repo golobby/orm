@@ -13,8 +13,8 @@ type Record struct {
 	Name string `orm:"name=name"`
 }
 
-func (r *Record) E() *orm.BaseEntity {
-	return &orm.BaseEntity{}
+func (r *Record) MD() *orm.MetaData {
+	return &orm.MetaData{}
 }
 func golobby() {
 
@@ -38,7 +38,7 @@ func golobby() {
 		err := orm.Initialize(orm.ConnectionConfig{
 			Name:     "test",
 			DB:       dbGolobby,
-			Entities: []orm.IsEntity{&Record{}},
+			Entities: []orm.Entity{&Record{}},
 		})
 		if err != nil {
 			panic(err)

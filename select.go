@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
@@ -49,7 +48,7 @@ func (s *selectClause) String() string {
 
 type SelectStmt struct {
 	table           string
-	referenceEntity IsEntity
+	referenceEntity Entity
 	subQuery        *SelectStmt
 	selected        *selectClause
 	where           *clause
@@ -270,31 +269,9 @@ func (q *SelectStmt) Build() (string, []interface{}) {
 	return strings.Join(sections, " "), q.args
 }
 
-func (s *SelectStmt) WithEntity(e IsEntity) *SelectStmt {
+func (s *SelectStmt) WithEntity(e Entity) *SelectStmt {
 	s.referenceEntity = e
 	return s
-}
-
-func (s *SelectStmt) Query(output interface{}) error {
-	q, args := s.Build()
-	return (&Entity{obj: s.referenceEntity}).BindContext(context.Background(), output, q, args...)
-}
-
-func (s *SelectStmt) First(output interface{}) error {
-	s.Limit(1)
-	s.OrderBy("id", "asc")
-
-	return s.Query(output)
-}
-
-func (s *SelectStmt) Last(output interface{}) error {
-	if _, ok := output.(IsEntity); ok {
-		s.referenceEntity = output.(IsEntity)
-	}
-	s.Limit(1)
-	s.OrderBy("id", "desc")
-
-	return s.Query(output)
 }
 
 func Select() *SelectStmt {

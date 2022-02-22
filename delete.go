@@ -42,6 +42,6 @@ func (d *deleteStmt) Table(t string) *deleteStmt {
 	return d
 }
 
-func Delete() *deleteStmt {
+func DeleteStmt() *deleteStmt {
 	return &deleteStmt{}
 }

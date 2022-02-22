@@ -6,8 +6,8 @@ import (
 	"fmt"
 )
 
-// BaseEntity contains common behaviours for entity structs.
-type BaseEntity struct {
+// BaseMetadata contains common behaviours for entity structs.
+type BaseMetadata struct {
 	table      string
 	connection string
 	getPK      func(obj interface{}) interface{}
@@ -16,35 +16,24 @@ type BaseEntity struct {
 	values     func(obj interface{}, withPK bool) []interface{}
 }
 
-func NewBaseEntity() {
-
-}
-
-func (b *BaseEntity) HasOne(output interface{}, config HasOneConfig) Relation {
-	return Relation{
-		output: output,
-		c:      config,
-	}
-}
-
-func (e *BaseEntity) getMetadata() *objectMetadata {
+func (e *BaseMetadata) getMetadata() *EntityMetadata {
 	db := e.getDB()
 	return db.metadatas[e.getTable()]
 }
 
-func (e *BaseEntity) getTable() string {
+func (e *BaseMetadata) getTable() string {
 	return e.table
 }
 
-func (e *BaseEntity) getConnection() *sql.DB {
+func (e *BaseMetadata) getConnection() *sql.DB {
 	return e.getDB().conn
 }
 
-func (e *BaseEntity) getDialect() *Dialect {
+func (e *BaseMetadata) getDialect() *Dialect {
 	return e.getMetadata().dialect
 }
 
-func (e *BaseEntity) getDB() *DB {
+func (e *BaseMetadata) getDB() *DB {
 	if len(globalORM) > 1 && (e.connection == "" || e.getTable() == "") {
 		panic("need table and connection name when having more than 1 connection registered")
 	}
@@ -60,14 +49,7 @@ func (e *BaseEntity) getDB() *DB {
 
 }
 
-func (b *BaseEntity) HasMany(out interface{}, config HasManyConfig) Relation {
-	return Relation{
-		output: out,
-		c:      config,
-	}
-}
-
-func (e *BaseEntity) getFields() []*Field {
+func (e *BaseMetadata) getFields() []*Field {
 	var fields []*Field
 	if e.fields != nil {
 		fields = e.fields()
@@ -76,30 +58,14 @@ func (e *BaseEntity) getFields() []*Field {
 	}
 	return fields
 }
-func (e *BaseEntity) QueryContext(ctx context.Context, q string, args ...interface{}) (*sql.Rows, error) {
+func (e *BaseMetadata) QueryContext(ctx context.Context, q string, args ...interface{}) (*sql.Rows, error) {
 	return e.getConnection().QueryContext(ctx, q, args...)
 }
 
-func (b *BaseEntity) BelongsTo(output IsEntity, config BelongsToConfig) Relation {
-	return Relation{
-		typ:    relationTypeBelongsTo,
-		output: output,
-		c:      config,
-	}
-}
-
-func (b *BaseEntity) ManyToMany(output interface{}, config ManyToManyConfig) Relation {
-	return Relation{
-		typ:    relationTypeMany2Many,
-		output: output,
-		c:      config,
-	}
-}
-func (e *BaseEntity) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {
+func (e *BaseMetadata) BindContext(ctx context.Context, out interface{}, q string, args ...interface{}) error {
 	rows, err := e.QueryContext(ctx, q, args...)
 	if err != nil {
 		return err
 	}
 	return e.getMetadata().Bind(rows, out)
 }
-func (e *BaseEntity) ExecContext() {}

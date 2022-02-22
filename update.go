@@ -56,6 +56,6 @@ func (u *updateStmt) Table(table string) *updateStmt {
 	u.table = table
 	return u
 }
-func Update() *updateStmt {
+func UpdateStmt() *updateStmt {
 	return &updateStmt{}
 }

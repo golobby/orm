@@ -13,9 +13,11 @@ type User struct {
 	ID   int
 	Name string
 }
-func (u *User) E() *BaseEntity {
-	return &BaseEntity{}
+
+func (u *User) MD() *BaseMetadata {
+	return &BaseMetadata{}
 }
+
 type Address struct {
 	ID   int
 	Path string
@@ -32,7 +34,7 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 
 		u := &User{}
-		md := objectMetadataFrom(u, Dialects.SQLite3)
+		md := EntityMetadataFor(u, Dialects.SQLite3)
 		err = md.Bind(rows, u)
 		assert.NoError(t, err)
 
@@ -49,7 +51,7 @@ func TestBind(t *testing.T) {
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
-		md := objectMetadataFrom(&User{}, Dialects.SQLite3)
+		md := EntityMetadataFor(&User{}, Dialects.SQLite3)
 		var users []*User
 		err = md.Bind(rows, &users)
 		assert.NoError(t, err)

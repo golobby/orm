@@ -9,7 +9,7 @@ import (
 func TestDelete(t *testing.T) {
 
 	t.Run("simple delete equality of id", func(t *testing.T) {
-		s, args := Delete().
+		s, args := DeleteStmt().
 			Table("users").
 			Where("id", "=", "$1").WithArgs(1).
 			Build()

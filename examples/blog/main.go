@@ -16,8 +16,8 @@ type Post struct {
 	categories []*Category
 }
 
-func (p *Post) E() *orm.BaseEntity {
-	return &orm.BaseEntity{}
+func (p *Post) MD() *orm.MetaData {
+	return &orm.MetaData{}
 }
 
 func (p *Post) Comments(e *orm.Entity) orm.Relation {
@@ -39,8 +39,8 @@ func (c *Comment) Post(e *orm.Entity) orm.Relation {
 	return e.BelongsTo(c.post, orm.BelongsToConfig{})
 }
 
-func (c *Comment) E() *orm.BaseEntity {
-	return &orm.BaseEntity{}
+func (c *Comment) MD() *orm.MetaData {
+	return &orm.MetaData{}
 }
 
 type Category struct {
@@ -53,8 +53,8 @@ func (c *Category) Posts(e *orm.Entity) orm.Relation {
 	return e.ManyToMany(c.posts, orm.ManyToManyConfig{IntermediateTable: "post_categories"})
 }
 
-func (c *Category) E() *orm.BaseEntity {
-	return &orm.BaseEntity{}
+func (c *Category) MD() *orm.MetaData {
+	return &orm.MetaData{}
 }
 func main() {
 	_ = os.Remove("blog.db")
@@ -87,7 +87,7 @@ func main() {
 	}
 
 	// Initializing ORM
-	orm.Initialize(orm.ConnectionConfig{DB: dbGolobby, Name: "test", Entities: []orm.IsEntity{&Post{}, &Comment{}}})
+	orm.Initialize(orm.ConnectionConfig{DB: dbGolobby, Name: "test", Entities: []orm.Entity{&Post{}, &Comment{}}})
 
 	// Saving first Post
 	firstPost := &Post{
