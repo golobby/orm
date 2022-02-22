@@ -8,11 +8,16 @@ import (
 	"time"
 )
 
+type Record struct {
+	ID   int64  `orm:"name=id pk=true"`
+	Name string `orm:"name=name"`
+}
+
+func (r *Record) E() *orm.BaseEntity {
+	return &orm.BaseEntity{}
+}
 func golobby() {
-	type Record struct {
-		ID   int64  `orm:"name=id pk=true"`
-		Name string `orm:"name=name"`
-	}
+
 	dbGolobby, err := sql.Open("sqlite3", "golobby.db")
 	if err != nil {
 		panic(err)
@@ -27,32 +32,40 @@ func golobby() {
 		panic(err)
 	}
 	start := time.Now()
+
 	// golobby
 	func() {
-		repo := orm.Initialize(dbGolobby, orm.dialects.SQLite3, &Record{})
-
+		err := orm.Initialize(orm.ConnectionConfig{
+			Name:     "test",
+			DB:       dbGolobby,
+			Entities: []orm.IsEntity{&Record{}},
+		})
+		if err != nil {
+			panic(err)
+		}
 		for i := 0; i < 10000; i++ {
 			m := &Record{
 				Name: "comrade-" + fmt.Sprint(i),
 			}
-			err := repo.Save(m)
+			entity := orm.AsEntity(m)
+			err := entity.Save()
 			if err != nil {
 				log.Println("sGolobby error : ", err.Error())
 				continue
 			}
-			err = repo.Fill(m)
+			err = entity.Fill()
 			if err != nil {
 				log.Println("rGolobby error : ", err.Error())
 				continue
 			}
 			m.Name = m.Name + " updated"
-			err = repo.Update(m)
+			err = entity.Update()
 			if err != nil {
 				log.Println("uGolobby error : ", err.Error())
 				continue
 			}
 
-			err = repo.Delete(m)
+			err = entity.Delete()
 			if err != nil {
 				log.Println("dGolobby error : ", err.Error())
 				continue

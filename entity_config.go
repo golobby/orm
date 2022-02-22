@@ -88,7 +88,7 @@ func (b *BaseEntity) BelongsTo(output IsEntity, config BelongsToConfig) Relation
 	}
 }
 
-func (b *BaseEntity) ManyToMany(output []IsEntity, config ManyToManyConfig) Relation {
+func (b *BaseEntity) ManyToMany(output interface{}, config ManyToManyConfig) Relation {
 	return Relation{
 		typ:    relationTypeMany2Many,
 		output: output,
