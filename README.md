@@ -124,7 +124,7 @@ func deletePost(p *Post) error {
 
 ```
 
-now that we have our post in database, let's add some comments to it.
+now that we have our post in database, let's add some comments to it. notice that comments are in relation with posts and the relation from posts view is a hasMany relationship and from comments is a belongsTo relationship.
 
 ```go
 package main
