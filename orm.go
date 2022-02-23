@@ -4,23 +4,29 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
 
-	"github.com/gertd/go-pluralize"
+	//Drivers
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type DB struct {
-	name    string
-	dialect *querybuilder.Dialect
-	conn    *sql.DB
-	schemas map[string]*Schema
+type Connection struct {
+	Name       string
+	Dialect    *querybuilder.Dialect
+	Connection *sql.DB
+	Schemas    map[string]*Schema
 }
 
-func (d *DB) getSchema(t string) *Schema {
-	return d.schemas[t]
+func (d *Connection) getSchema(t string) *Schema {
+	return d.Schemas[t]
 }
 
-var globalORM = map[string]*DB{}
+var globalORM = map[string]*Connection{}
+
+func GetConnection(name string) *Connection {
+	return globalORM[name]
+}
 
 type ConnectionConfig struct {
 	Name             string
@@ -61,17 +67,20 @@ func Initialize(confs ...ConnectionConfig) error {
 	return nil
 }
 
-func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities []Entity) *DB {
+func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities []Entity) *Connection {
 	metadatas := map[string]*Schema{}
 	for _, entity := range entities {
 		md := schemaOf(entity)
+		if md.Dialect == nil {
+			md.Dialect = dialect
+		}
 		metadatas[fmt.Sprintf("%s", initTableName(entity))] = md
 	}
-	s := &DB{
-		name:    name,
-		conn:    db,
-		schemas: metadatas,
-		dialect: dialect,
+	s := &Connection{
+		Name:       name,
+		Connection: db,
+		Schemas:    metadatas,
+		Dialect:    dialect,
 	}
 	globalORM[fmt.Sprintf("%s", name)] = s
 	return s
@@ -89,7 +98,7 @@ func getDialect(driver string) (*querybuilder.Dialect, error) {
 	switch driver {
 	case "mysql":
 		return querybuilder.Dialects.MySQL, nil
-	case "sqlite":
+	case "sqlite", "sqlite3":
 		return querybuilder.Dialects.SQLite3, nil
 	case "postgres":
 		return querybuilder.Dialects.PostgreSQL, nil
@@ -101,7 +110,7 @@ func getDialect(driver string) (*querybuilder.Dialect, error) {
 // Insert given Entity
 func Insert(obj Entity) error {
 	cols := obj.Schema().Get().Columns(false)
-	values := genericGetPkValue(obj, false)
+	values := obj.Schema().Get().Values(obj, false)
 	var phs []string
 	if obj.Schema().Get().getDialect().PlaceholderChar == "$" {
 		phs = PlaceHolderGenerators.Postgres(len(cols))
@@ -115,7 +124,7 @@ func Insert(obj Entity) error {
 		Values(phs...).
 		WithArgs(values...).Build()
 
-	res, err := obj.Schema().Get().getConnection().Exec(q, args...)
+	res, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
 	if err != nil {
 		return err
 	}
@@ -142,7 +151,7 @@ func SaveAll(objs ...Entity) error {
 func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
-	md := GetSchema[T]()
+	md := (*out).Schema().Get()
 	var args []interface{}
 	ph := md.Dialect.PlaceholderChar
 	if md.Dialect.IncludeIndexInPlaceholder {
@@ -169,7 +178,7 @@ func Find[T Entity](id interface{}) (T, error) {
 
 func toMap(obj Entity) []keyValue {
 	var kvs []keyValue
-	vs := genericGetPkValue(obj, true)
+	vs := obj.Schema().Get().Values(obj, true)
 	cols := obj.Schema().Get().Columns(true)
 	for i, col := range cols {
 		kvs = append(kvs, keyValue{
@@ -193,7 +202,7 @@ func Update(obj Entity) error {
 	whereClause := querybuilder.WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
 	query := querybuilder.UpdateStmt().
 		Table(obj.Schema().getTable()).
-		Where(whereClause).WithArgs(getPkValue(obj))
+		Where(whereClause).WithArgs(obj.Schema().Get().GetPK(obj))
 	for _, kv := range kvs {
 		thisPh := obj.Schema().getDialect().PlaceholderChar
 		if obj.Schema().getDialect().IncludeIndexInPlaceholder {
@@ -205,7 +214,7 @@ func Update(obj Entity) error {
 		counter++
 	}
 	q, args := query.Build()
-	_, err := schemaOf(obj).getConnection().Exec(q, args...)
+	_, err := schemaOf(obj).getSQLDB().Exec(q, args...)
 	return err
 }
 
@@ -220,15 +229,15 @@ func Delete(obj Entity) error {
 	q, args := qb.
 		Table(obj.Schema().getTable()).
 		Where(query).
-		WithArgs(getPkValue(obj)).
+		WithArgs(obj.Schema().Get().GetPK(obj)).
 		Build()
-	_, err := obj.Schema().getConnection().Exec(q, args...)
+	_, err := obj.Schema().getSQLDB().Exec(q, args...)
 	return err
 }
 
 func bindContext[T Entity](ctx context.Context, output interface{}, q string, args []interface{}) error {
 	outputMD := GetSchema[T]()
-	rows, err := outputMD.getDB().conn.QueryContext(ctx, q, args...)
+	rows, err := outputMD.getConnection().Connection.QueryContext(ctx, q, args...)
 	if err != nil {
 		return err
 	}
@@ -261,7 +270,7 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 	q, args = qb.
 		From(c.PropertyTable).
 		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(getPkValue(owner)).
+		WithArgs(owner.Schema().Get().GetPK(owner)).
 		Build()
 
 	if q == "" {
@@ -303,7 +312,7 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 	q, args = qb.
 		From(c.PropertyTable).
 		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(getPkValue(owner)).
+		WithArgs(owner.Schema().Get().GetPK(owner)).
 		Build()
 
 	if q == "" {
@@ -345,7 +354,7 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 		}
 	}
 
-	ownerID := genericGetPkValue(property, true)[ownerIDidx]
+	ownerID := genericValuesOf(property, true)[ownerIDidx]
 	qb := &querybuilder.Select{}
 	q, args := qb.
 		From(c.OwnerTable).
@@ -377,6 +386,7 @@ const (
 	RelationType_ManyToMany
 	RelationType_BelongsTo
 )
+
 // Add is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
 func Add[T Entity](to Entity, relationType RelationType, items ...T) error {
 	//TODO

@@ -3,14 +3,19 @@ package orm_test
 import (
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
+
 	"testing"
 )
 
 type Post struct {
+	ID   int64
+	Body string
 }
 
 func (p Post) Schema() *orm.Schema {
-	return &orm.Schema{}
+	return &orm.Schema{
+		Table: "posts",
+	}
 }
 
 func (p *Post) Categories() ([]Category, error) {
@@ -23,11 +28,11 @@ func (p *Post) Comments() ([]Comment, error) {
 
 type Comment struct {
 	ID   int
-	Text string
+	Body string
 }
 
 func (c Comment) Schema() *orm.Schema {
-	return &orm.Schema{}
+	return &orm.Schema{Table: "comments"}
 }
 
 func (c *Comment) Post() (Post, error) {
@@ -35,44 +40,60 @@ func (c *Comment) Post() (Post, error) {
 }
 
 type Category struct {
+	ID    int
+	Title string
 }
 
 func (c Category) Schema() *orm.Schema {
-	return &orm.Schema{}
+	return &orm.Schema{Table: "categories"}
 }
 
 func (c Category) Posts() ([]Post, error) {
 	return orm.BelongsToMany[Post](c, orm.BelongsToManyConfig{})
 }
 
+// enough models let's test
+
 func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
-		Name:             "sqlite3",
+		Name:             "default",
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}},
 	})
+
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 	assert.NoError(t, err)
 
 }
 
 func TestFind(t *testing.T) {
 	setup(t)
-	comment, err := orm.Find[Comment](1)
+	err := orm.Insert(&Post{
+		Body: "my body for insert",
+	})
 	assert.NoError(t, err)
-	assert.Equal(t, "comment 1", comment.Text)
-	assert.Equal(t, 1, comment.ID)
+
+	post, err := orm.Find[Post](1)
+	assert.NoError(t, err)
+	assert.Equal(t, "my body for insert", post.Body)
+	assert.Equal(t, int64(1), post.ID)
 }
 
-func TestSave(t *testing.T) {
+func TestInsert(t *testing.T) {
 	setup(t)
-	err := orm.Insert(&Post{})
-	var p Post
-
-	cs, err := p.Comments()
-
+	post := &Post{
+		Body: "my body for insert",
+	}
+	err := orm.Insert(post)
 	assert.NoError(t, err)
+	assert.Equal(t, int64(1), post.ID)
+	var p Post
+	assert.NoError(t,
+		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.Body))
 
-	// Query
-	orm.Find[Post](1)
+	assert.Equal(t, "my body for insert", p.Body)
 }

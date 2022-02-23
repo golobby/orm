@@ -121,14 +121,14 @@ func genericFieldsOf(obj interface{}) []*Field {
 	}
 	return fms
 }
-func genericGetPkValue(o Entity, withPK bool) []interface{} {
+func genericValuesOf(o Entity, withPK bool) []interface{} {
 	t := reflect.TypeOf(o)
 	v := reflect.ValueOf(o)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 		v = v.Elem()
 	}
-	fields := o.Schema().Fields
+	fields := o.Schema().Get().Fields
 	pkIdx := -1
 	for i, field := range fields {
 		if field.IsPK {
@@ -159,7 +159,7 @@ func genericSetPkValue(obj Entity, value interface{}) {
 		val = val.Elem()
 	}
 	pkIdx := -1
-	for i, field := range obj.Schema().Fields {
+	for i, field := range obj.Schema().Get().Fields {
 		if field.IsPK {
 			pkIdx = i
 		}
@@ -169,16 +169,15 @@ func genericSetPkValue(obj Entity, value interface{}) {
 	if t.Field(pkIdx).Type.AssignableTo(ptr.Type()) {
 		ptr.Set(toSetValue)
 	} else {
-		panic(fmt.Sprintf("value of type %s is not assignable to %s", t.Field(pkIdx).Type.String(), ptr.Type()))
+		if t.Field(pkIdx).Type.ConvertibleTo(ptr.Type()) {
+			ptr.Set(toSetValue.Convert(ptr.Type()))
+		} else {
+			panic(fmt.Sprintf("value of type %s is not assignable to %s", t.Field(pkIdx).Type.String(), ptr.Type()))
+		}
 	}
 }
 
-func getPkValue(obj Entity) interface{} {
-	if obj.Schema().GetPK != nil {
-		c := obj.Schema()
-		return c.GetPK(obj)
-	}
-
+func genericGetPKValue(obj Entity) interface{} {
 	t := reflect.TypeOf(obj)
 	val := reflect.ValueOf(obj)
 	if t.Kind() == reflect.Ptr {
@@ -222,7 +221,7 @@ func schemaOf(v Entity) *Schema {
 
 	// Fill in the blanks
 	if schema.GetPK == nil {
-		schema.GetPK = getPkValue
+		schema.GetPK = genericGetPKValue
 	}
 
 	if schema.SetPK == nil {
@@ -230,7 +229,7 @@ func schemaOf(v Entity) *Schema {
 	}
 
 	if schema.Values == nil {
-		schema.Values = genericGetPkValue
+		schema.Values = genericValuesOf
 	}
 
 	if schema.Table == "" {
@@ -251,15 +250,15 @@ func (e *Schema) getTable() string {
 	return e.Table
 }
 
-func (e *Schema) getConnection() *sql.DB {
-	return e.getDB().conn
+func (e *Schema) getSQLDB() *sql.DB {
+	return e.getConnection().Connection
 }
 
 func (e *Schema) getDialect() *querybuilder.Dialect {
 	return e.Dialect
 }
 
-func (e *Schema) getDB() *DB {
+func (e *Schema) getConnection() *Connection {
 	if len(globalORM) > 1 && (e.Connection == "" || e.getTable() == "") {
 		panic("need Table and Connection name when having more than 1 Connection registered")
 	}
@@ -276,5 +275,5 @@ func (e *Schema) getDB() *DB {
 }
 
 func (s *Schema) Get() *Schema {
-	return s.getDB().getSchema(s.Table)
+	return s.getConnection().getSchema(s.Table)
 }
