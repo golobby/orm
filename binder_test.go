@@ -15,7 +15,7 @@ type User struct {
 }
 
 func (u *User) Schema() *Schema {
-	return &Schema{}
+	return &Schema{Table: "users"}
 }
 
 type Address struct {
