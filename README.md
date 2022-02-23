@@ -194,12 +194,12 @@ a really nice type-safe api.
 
 
 - Basic CRUD APIs
-	- Delete(obj Entity) error
-	- Insert(obj Entity) error
-	- Save(obj Entity) error
-	- SaveAll(objs ...Entity) error
-	- Update(obj Entity) error
-	- Find[T Entity](id interface{}) (T, error)
+	- `Insert`
+	- `Find`
+	- `Save`
+	- `SaveAll`
+	- `Update`
+	- `Delete`
 
 - Relationships
 	- `Add`: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
