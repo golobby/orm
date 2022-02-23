@@ -9,7 +9,7 @@ import (
 func TestInsert(t *testing.T) {
 
 	t.Run("simple insert for psql", func(t *testing.T) {
-		sql, args := Insert().
+		sql, args := (&Insert{}).
 			Table("users").
 			Into("name", "password").
 			Values("$1", "$2").
@@ -21,7 +21,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("simple insert for mysql", func(t *testing.T) {
-		sql, args := Insert().
+		sql, args := (&Insert{}).
 			Table("users").
 			Into("name", "password").
 			Values("?", "?").

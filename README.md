@@ -34,7 +34,7 @@ go install github.com/golobby/orm
   - ManyToMany
 
 ### Getting Started
-
+#### Blog Example
 Let's imagine we are going to build a simple blogging application that has 3 entities, `Comment`, `Post`, `Category`. To
 start using ORM you need to call **Initialize** method. It gets array of of **ConnectionConfig** objects which has:
 
@@ -130,7 +130,7 @@ now that we have our post in database, let's add some comments to it.
 package main
 
 func addCommentsToPost(post *Post, comments []Comment) error {
-	return orm.Add[Comment](post, orm.HasManyRelation, comments)
+	return orm.Add[Comment](post, orm.BelongsToRelation, comments)
 }
 
 func addComments(comments []Comment) error {
@@ -181,6 +181,60 @@ func getTodayPosts() ([]Post, error) {
 }
 ```
 
+
+#### API Documentation
+If you prefer (like myself) a more api oriented document this part is for you. Almost all functionalities of ORM is exposed thorough
+simple functions of ORM, there are 2 or 3 types you need to know about:
+- `Schema`: All data that ORM needs for working with a struct as database model, all of it's fields can be infered at startup except `Table` which is mandatory. Ofcourse you can fill any field you want and instead of ORM default that one would be used through your application.
+
+- `Entity`: Interface which all structs that are database entities should implement, it has only one method and that just returns the `Schema` that we talk about in `Schema` section above.
+
+Now let's talk about ORM functions.
+
+- Add[T Entity](to Entity, relationType RelationType, items ...Entity) error
+
+- BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error)
+
+- BelongsToMany[TARGET any](obj Entity, c BelongsToManyConfig) ([]TARGET, error)
+
+- Delete(obj Entity) error
+
+- Exec(stmt querybuilder.SQL) (int, int, error)
+
+- ExecRaw(q string, args ...interface{}) (int, int, error)
+
+- Find[T Entity](id interface{}) (T, error)
+
+- HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error)
+
+- HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error)
+
+- Initialize(confs ...ConnectionConfig) error
+
+- Insert(obj Entity) error
+
+- Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error)
+
+- RawQuery[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error)
+
+- Save(obj Entity) error
+
+- SaveAll(objs ...Entity) error
+
+- Update(obj Entity) error
+
+
+- type BelongsToConfig struct{ ... }
+- type BelongsToManyConfig struct{ ... }
+- type ConnectionConfig struct{ ... }
+- type Field struct{ ... }
+- type HasManyConfig struct{ ... }
+- type HasOneConfig struct{ ... }
+- type PlaceholderGenerator func(n int) []string
+- type RelationType int
+    const RelationType_HasMany RelationType = iota + 1 ...
+- type Schema struct{ ... }
+    func GetSchema[T Entity]() *Schema
 
 ## License
 

@@ -13,6 +13,10 @@ func (p Post) Schema() *orm.Schema {
 	return &orm.Schema{}
 }
 
+func (p *Post) Categories() ([]Category, error) {
+	return orm.BelongsToMany[Category](p, orm.BelongsToManyConfig{})
+}
+
 func (p *Post) Comments() ([]Comment, error) {
 	return orm.HasMany[Comment](p, orm.HasManyConfig{})
 }
@@ -38,7 +42,7 @@ func (c Category) Schema() *orm.Schema {
 }
 
 func (c Category) Posts() ([]Post, error) {
-	return orm.ManyToMany[Post](c, orm.ManyToManyConfig{})
+	return orm.BelongsToMany[Post](c, orm.BelongsToManyConfig{})
 }
 
 func setup(t *testing.T) {

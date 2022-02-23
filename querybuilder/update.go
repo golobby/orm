@@ -2,7 +2,6 @@ package querybuilder
 
 import (
 	"fmt"
-	"github.com/golobby/orm"
 	"strings"
 )
 
@@ -11,7 +10,7 @@ type M = map[string]interface{}
 type Update struct {
 	table string
 	where string
-	set   []orm.keyValue
+	set   []keyValue
 	args  []interface{}
 }
 
@@ -38,7 +37,7 @@ func (q *Update) AndWhere(parts ...string) *Update {
 }
 
 func (u *Update) Set(key string, value interface{}) *Update {
-	u.set = append(u.set, orm.keyValue{
+	u.set = append(u.set, keyValue{
 		Key:   key,
 		Value: value,
 	})

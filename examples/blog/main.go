@@ -25,7 +25,7 @@ func (p *Post) Comments(e *orm.Entity) orm.Relation {
 }
 
 func (p *Post) Categories(e *orm.Entity) orm.Relation {
-	return e.ManyToMany(p.categories, orm.ManyToManyConfig{IntermediateTable: "post_categories"})
+	return e.ManyToMany(p.categories, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 type Comment struct {
@@ -50,7 +50,7 @@ type Category struct {
 }
 
 func (c *Category) Posts(e *orm.Entity) orm.Relation {
-	return e.ManyToMany(c.posts, orm.ManyToManyConfig{IntermediateTable: "post_categories"})
+	return e.ManyToMany(c.posts, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 func (c *Category) MD() *orm.MetaData {

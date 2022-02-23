@@ -356,7 +356,7 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 	return *out, err
 }
 
-type ManyToManyConfig struct {
+type BelongsToManyConfig struct {
 	IntermediateTable         string
 	IntermediateLocalColumn   string
 	IntermediateForeignColumn string
@@ -364,7 +364,7 @@ type ManyToManyConfig struct {
 	ForeignLookupColumn       string
 }
 
-func ManyToMany[TARGET any](obj Entity, c ManyToManyConfig) ([]TARGET, error) {
+func BelongsToMany[TARGET any](obj Entity, c BelongsToManyConfig) ([]TARGET, error) {
 	// TODO: Impl me
 	return nil, nil
 }
