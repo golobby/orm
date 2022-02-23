@@ -14,7 +14,7 @@ type User struct {
 	Name string
 }
 
-func (u *User) MD() *BaseMetadata {
+func (u *User) Schema() *BaseMetadata {
 	return &BaseMetadata{}
 }
 
@@ -34,8 +34,8 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 
 		u := &User{}
-		md := EntityMetadataFor(u, Dialects.SQLite3)
-		err = md.Bind(rows, u)
+		md := schemaOf(u, Dialects.SQLite3)
+		err = md.bind(rows, u)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", u.Name)
@@ -51,9 +51,9 @@ func TestBind(t *testing.T) {
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
-		md := EntityMetadataFor(&User{}, Dialects.SQLite3)
+		md := schemaOf(&User{}, Dialects.SQLite3)
 		var users []*User
-		err = md.Bind(rows, &users)
+		err = md.bind(rows, &users)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", users[0].Name)
