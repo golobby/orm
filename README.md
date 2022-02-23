@@ -8,24 +8,6 @@
 
 GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
-## Why another ORM ?
-
-GoLobby ORM
-
-### Why not GORM ?
-
-- GORM is so magical with it's usage of struct tags and sometimes you are basically writing code inside the struct tag.
-- GORM uses lots and lots of reflection which makes it slow compare to `database/sql`.
-- GORM does not follow go's idiomatic way of error handling.
-
-### Why not SQLBoiler ?
-
-I love sqlboiler, it's safe and generated code is really clean but it has flaws also.
-
-- sqlboiler uses reflection as well, less than GORM but still in hot-paths there are reflections happening.
-- sqlboiler is not comfortable for starting a project from scratch with all the wiring it needs, and also complexity of
-  having a compelete replica of production database in your local env.
-
 ## Documentation
 
 ### Required Go Version
@@ -188,7 +170,7 @@ func getTodayPosts() ([]Post, error) {
 }
 ```
 basically you can use all orm power to run any custom query, you can build any custom query using orm query builder but you can even run raw queries and use orm power to bind them to your entities.
-
+You can see querybuilder docs in [query builder package](https://github.com/golobby/orm/tree/master/querybuilder)
 ```go
 package main
 

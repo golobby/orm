@@ -1,24 +1,25 @@
-package orm
+package querybuilder
 
 import (
 	"fmt"
+	"github.com/golobby/orm"
 	"strings"
 )
 
 type M = map[string]interface{}
 
-type updateStmt struct {
+type Update struct {
 	table string
 	where string
-	set   []keyValue
+	set   []orm.keyValue
 	args  []interface{}
 }
 
-func (q *updateStmt) WithArgs(args ...interface{}) *updateStmt {
+func (q *Update) WithArgs(args ...interface{}) *Update {
 	q.args = append(q.args, args...)
 	return q
 }
-func (q *updateStmt) Where(parts ...string) *updateStmt {
+func (q *Update) Where(parts ...string) *Update {
 	if q.where == "" {
 		q.where = fmt.Sprintf("%s", strings.Join(parts, " "))
 		return q
@@ -27,24 +28,24 @@ func (q *updateStmt) Where(parts ...string) *updateStmt {
 	return q
 }
 
-func (q *updateStmt) OrWhere(parts ...string) *updateStmt {
+func (q *Update) OrWhere(parts ...string) *Update {
 	q.where = fmt.Sprintf("%s OR %s", q.where, strings.Join(parts, " "))
 	return q
 }
 
-func (q *updateStmt) AndWhere(parts ...string) *updateStmt {
+func (q *Update) AndWhere(parts ...string) *Update {
 	return q.Where(parts...)
 }
 
-func (u *updateStmt) Set(key string, value interface{}) *updateStmt {
-	u.set = append(u.set, keyValue{
+func (u *Update) Set(key string, value interface{}) *Update {
+	u.set = append(u.set, orm.keyValue{
 		Key:   key,
 		Value: value,
 	})
 	return u
 }
 
-func (u *updateStmt) Build() (string, []interface{}) {
+func (u *Update) Build() (string, []interface{}) {
 	var pairs []string
 	for _, kv := range u.set {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", kv.Key, fmt.Sprint(kv.Value)))
@@ -52,10 +53,10 @@ func (u *updateStmt) Build() (string, []interface{}) {
 	return fmt.Sprintf("UPDATE %s SET %s WHERE %s", u.table, strings.Join(pairs, ","), u.where), u.args
 }
 
-func (u *updateStmt) Table(table string) *updateStmt {
+func (u *Update) Table(table string) *Update {
 	u.table = table
 	return u
 }
-func UpdateStmt() *updateStmt {
-	return &updateStmt{}
+func UpdateStmt() *Update {
+	return &Update{}
 }

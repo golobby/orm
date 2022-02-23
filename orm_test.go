@@ -62,7 +62,7 @@ func TestFind(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	setup(t)
-	err := orm.Save(&Post{})
+	err := orm.Insert(&Post{})
 	var p Post
 
 	cs, err := p.Comments()

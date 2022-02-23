@@ -1,7 +1,8 @@
-package orm
+package querybuilder
 
 import (
 	"fmt"
+	"github.com/golobby/orm"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ type whereHelpers struct {
 	And     func(conds ...string) string
 	Or      func(conds ...string) string
 	Not     func(cond ...string) string
-	ForKV   func(kvs ...[]keyValue) string
+	ForKV   func(kvs ...[]orm.keyValue) string
 }
 
 var WhereHelpers = &whereHelpers{

@@ -3,6 +3,7 @@ package orm
 import (
 	"database/sql"
 	"fmt"
+	"github.com/golobby/orm/querybuilder"
 	"github.com/iancoleman/strcase"
 	"reflect"
 	"strings"
@@ -12,7 +13,7 @@ import (
 type Schema struct {
 	Connection string
 	Table      string
-	Dialect    *Dialect
+	Dialect    *querybuilder.Dialect
 	Fields     []*Field
 	GetPK      func(obj Entity) interface{}
 	SetPK      func(obj Entity, value interface{})
@@ -254,7 +255,7 @@ func (e *Schema) getConnection() *sql.DB {
 	return e.getDB().conn
 }
 
-func (e *Schema) getDialect() *Dialect {
+func (e *Schema) getDialect() *querybuilder.Dialect {
 	return e.Dialect
 }
 

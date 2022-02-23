@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/golobby/orm/querybuilder"
+
 	"github.com/gertd/go-pluralize"
 )
 
 type DB struct {
 	name    string
-	dialect *Dialect
+	dialect *querybuilder.Dialect
 	conn    *sql.DB
 	schemas map[string]*Schema
 }
@@ -25,7 +27,7 @@ type ConnectionConfig struct {
 	Driver           string
 	ConnectionString string
 	DB               *sql.DB
-	Dialect          *Dialect
+	Dialect          *querybuilder.Dialect
 	Entities         []Entity
 }
 
@@ -38,7 +40,7 @@ func initTableName(e Entity) string {
 
 func Initialize(confs ...ConnectionConfig) error {
 	for _, conf := range confs {
-		var dialect *Dialect
+		var dialect *querybuilder.Dialect
 		var db *sql.DB
 		var err error
 		if conf.DB != nil && conf.Dialect != nil {
@@ -59,7 +61,7 @@ func Initialize(confs ...ConnectionConfig) error {
 	return nil
 }
 
-func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *DB {
+func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities []Entity) *DB {
 	metadatas := map[string]*Schema{}
 	for _, entity := range entities {
 		md := schemaOf(entity)
@@ -83,21 +85,21 @@ func getDB(driver string, connectionString string) (*sql.DB, error) {
 	return sql.Open(driver, connectionString)
 }
 
-func getDialect(driver string) (*Dialect, error) {
+func getDialect(driver string) (*querybuilder.Dialect, error) {
 	switch driver {
 	case "mysql":
-		return Dialects.MySQL, nil
+		return querybuilder.Dialects.MySQL, nil
 	case "sqlite":
-		return Dialects.SQLite3, nil
+		return querybuilder.Dialects.SQLite3, nil
 	case "postgres":
-		return Dialects.PostgreSQL, nil
+		return querybuilder.Dialects.PostgreSQL, nil
 	default:
 		return nil, fmt.Errorf("err no Dialect matched with driver")
 	}
 }
 
-// Save given Entity
-func Save(obj Entity) error {
+// Insert given Entity
+func Insert(obj Entity) error {
 	cols := obj.Schema().Get().Columns(false)
 	values := genericGetPkValue(obj, false)
 	var phs []string
@@ -106,7 +108,8 @@ func Save(obj Entity) error {
 	} else {
 		phs = PlaceHolderGenerators.MySQL(len(cols))
 	}
-	q, args := Insert().
+	qb := &querybuilder.Insert{}
+	q, args := qb.
 		Table(obj.Schema().Get().getTable()).
 		Into(cols...).
 		Values(phs...).
@@ -124,6 +127,18 @@ func Save(obj Entity) error {
 	return nil
 }
 
+// Save upserts given entity.
+func Save(obj Entity) error {
+	//TODO
+	return nil
+}
+
+// SaveAll saves all given entities in one query, they all should be same type of entity ( same table ).
+func SaveAll(objs ...Entity) error {
+	// TODO
+	return nil
+}
+
 func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
@@ -133,43 +148,23 @@ func Find[T Entity](id interface{}) (T, error) {
 	if md.Dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	builder := Select().
+	qb := &querybuilder.Select{}
+	builder := qb.
 		Select(md.Columns(true)...).
 		From(md.Table).
-		Where(WhereHelpers.Equal(md.pkName(), ph)).
+		Where(querybuilder.WhereHelpers.Equal(md.pkName(), ph)).
 		WithArgs(id)
 
 	q, args = builder.
 		Build()
 
-	err := BindContext[T](context.Background(), out, q, args)
+	err := bindContext[T](context.Background(), out, q, args)
 
 	if err != nil {
 		return *out, err
 	}
 
 	return *out, nil
-}
-
-// Fill given Entity
-func Fill(obj Entity) error {
-	var q string
-	var args []interface{}
-	pkValue := getPkValue(obj)
-	ph := obj.Schema().getDialect().PlaceholderChar
-	if obj.Schema().getDialect().IncludeIndexInPlaceholder {
-		ph = ph + "1"
-	}
-	builder := Select().
-		Select(obj.Schema().Columns(true)...).
-		From(obj.Schema().Table).
-		Where(WhereHelpers.Equal(obj.Schema().pkName(), ph)).
-		WithArgs(pkValue)
-
-	q, args = builder.
-		Build()
-
-	return BindContext(context.Background(), obj, q, args)
 }
 
 func toMap(obj Entity) []keyValue {
@@ -195,8 +190,8 @@ func Update(obj Entity) error {
 	kvs := toMap(obj)
 	var kvsWithPh []keyValue
 	var args []interface{}
-	whereClause := WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
-	query := UpdateStmt().
+	whereClause := querybuilder.WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
+	query := querybuilder.UpdateStmt().
 		Table(obj.Schema().getTable()).
 		Where(whereClause).WithArgs(getPkValue(obj))
 	for _, kv := range kvs {
@@ -220,8 +215,9 @@ func Delete(obj Entity) error {
 	if obj.Schema().getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	query := WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
-	q, args := DeleteStmt().
+	query := querybuilder.WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
+	qb := &querybuilder.Delete{}
+	q, args := qb.
 		Table(obj.Schema().getTable()).
 		Where(query).
 		WithArgs(getPkValue(obj)).
@@ -230,7 +226,7 @@ func Delete(obj Entity) error {
 	return err
 }
 
-func BindContext[T Entity](ctx context.Context, output interface{}, q string, args []interface{}) error {
+func bindContext[T Entity](ctx context.Context, output interface{}, q string, args []interface{}) error {
 	outputMD := GetSchema[T]()
 	rows, err := outputMD.getDB().conn.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -261,10 +257,10 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 	}
 	var q string
 	var args []interface{}
-
-	q, args = Select().
+	qb := &querybuilder.Select{}
+	q, args = qb.
 		From(c.PropertyTable).
-		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(getPkValue(owner)).
 		Build()
 
@@ -272,7 +268,7 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 		return nil, fmt.Errorf("cannot build the query")
 	}
 
-	err := BindContext[OUT](context.Background(), out, q, args)
+	err := bindContext[OUT](context.Background(), out, q, args)
 
 	if err != nil {
 		return nil, err
@@ -303,10 +299,10 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 	}
 	var q string
 	var args []interface{}
-
-	q, args = Select().
+	qb := &querybuilder.Select{}
+	q, args = qb.
 		From(c.PropertyTable).
-		Where(WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(getPkValue(owner)).
 		Build()
 
@@ -314,7 +310,7 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 		return *out, fmt.Errorf("cannot build the query")
 	}
 
-	err := BindContext[PROPERTY](context.Background(), out, q, args)
+	err := bindContext[PROPERTY](context.Background(), out, q, args)
 
 	return *out, err
 }
@@ -350,13 +346,13 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 	}
 
 	ownerID := genericGetPkValue(property, true)[ownerIDidx]
-
-	q, args := Select().
+	qb := &querybuilder.Select{}
+	q, args := qb.
 		From(c.OwnerTable).
-		Where(WhereHelpers.Equal(c.ForeignColumnName, ph)).
+		Where(querybuilder.WhereHelpers.Equal(c.ForeignColumnName, ph)).
 		WithArgs(ownerID).Build()
 
-	err := BindContext[OWNER](context.Background(), out, q, args)
+	err := bindContext[OWNER](context.Background(), out, q, args)
 	return *out, err
 }
 
@@ -373,10 +369,36 @@ func ManyToMany[TARGET any](obj Entity, c ManyToManyConfig) ([]TARGET, error) {
 	return nil, nil
 }
 
-func Query[OUTPUT Entity](stmt *SelectStmt) ([]OUTPUT, error) {
+type RelationType int
+
+const (
+	RelationType_HasMany RelationType = iota + 1
+	RelationType_HasOne
+	RelationType_ManyToMany
+	RelationType_BelongsTo
+)
+
+func Add[T Entity](to Entity, relationType RelationType, items ...Entity) error {
+	//TODO
+	return nil
+}
+
+func Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error) {
+	//TODO
 	return nil, nil
 }
 
+func Exec(stmt querybuilder.SQL) (int, int, error) {
+	//TODO
+	return 0, 0, nil
+}
+
+func ExecRaw(q string, args ...interface{}) (int, int, error) {
+	//TODO
+	return 0, 0, nil
+}
+
 func RawQuery[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
+	//TODO
 	return nil, nil
 }
