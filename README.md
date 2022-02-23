@@ -40,6 +40,17 @@ To install this package run the following command in the root of your project.
 go install github.com/golobby/orm
 ```
 
+### Features
+- No reflection (we use reflection one time in initializing)
+- No code generation
+- Query builder
+- Binding query results to entities
+- Supports relationship types
+  - HasMany
+  - HasOne
+  - BelongsTo
+  - ManyToMany
+
 ### Getting Started
 
 Let's imagine we are going to build a simple blogging application that has 3 entities, `Comment`, `Post`, `Category`. To
@@ -52,10 +63,10 @@ start using ORM you need to call **Initialize** method. It gets array of of **Co
 
 ```go
 orm.Initialize(orm.ConnectionConfig{
-Name:             "sqlite3", // Any name
-Driver:           "sqlite3", // can be "postgres" "mysql", or any normal sql driver name
-ConnectionString: ":memory:", // Any connection string that is valid for your driver.
-Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}}, // List of entities you want to use.
+    Name:             "sqlite3", // Any name
+    Driver:           "sqlite3", // can be "postgres" "mysql", or any normal sql driver name
+    ConnectionString: ":memory:", // Any connection string that is valid for your driver.
+    Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}}, // List of entities you want to use.
 })
 ```
 
