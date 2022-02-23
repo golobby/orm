@@ -372,3 +372,11 @@ func ManyToMany[TARGET any](obj Entity, c ManyToManyConfig) ([]TARGET, error) {
 	// TODO: Impl me
 	return nil, nil
 }
+
+func Query[OUTPUT Entity](stmt *SelectStmt) ([]OUTPUT, error) {
+	return nil, nil
+}
+
+func RawQuery[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
+	return nil, nil
+}

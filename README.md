@@ -105,6 +105,7 @@ orm, `Schema` struct contains all information that `ORM` needs to work with a da
 In `Schema` struct all fields are optional and can be infered except `Table` field which is mandatory and defines table
 name of the given struct.
 
+
 Now let's write simple `CRUD` logic for posts.
 
 ```go
@@ -146,7 +147,47 @@ func addComments(comments []Comment) error {
 // you can also create, update, delete, find comments like you saw with posts.
 ```
 
-finally now we have both our posts and comments in db, let's add some categories.
+finally, now we have both our posts and comments in db, let's add some categories.
+
+```go
+package main
+
+func addCategoryToPost(post *Post, category *Category) error {
+	return orm.Add[Category](post, orm.ManyToManyRelation, category)
+}
+
+
+```
+
+Now what if you want to do some complex query for example to get some posts that were created today ?
+
+```go
+package main
+
+import "github.com/golobby/orm"
+
+func getTodayPosts() ([]Post, error) {
+	posts, err := orm.Query[Post](
+		orm.
+			Select().
+			Where("created_at", "<", "NOW()").
+			Where("created_at", ">", "TODAY()").
+			OrderBy("id", "desc"))
+    return posts, err
+}
+```
+basically you can use all orm power to run any custom query, you can build any custom query using orm query builder but you can even run raw queries and use orm power to bind them to your entities.
+
+```go
+package main
+
+import "github.com/golobby/orm"
+
+func getTodayPosts() ([]Post, error) {
+	return orm.RawQuery[Post]("SELECT * FROM posts WHERE created_at < NOW() and created_at > TODAY()")
+}
+```
+
 
 ## License
 
