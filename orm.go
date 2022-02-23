@@ -377,8 +377,8 @@ const (
 	RelationType_ManyToMany
 	RelationType_BelongsTo
 )
-
-func Add[T Entity](to Entity, relationType RelationType, items ...Entity) error {
+// Add is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
+func Add[T Entity](to Entity, relationType RelationType, items ...T) error {
 	//TODO
 	return nil
 }
