@@ -136,6 +136,35 @@ func Insert(obj Entity) error {
 	obj.Schema().Get().SetPK(obj, id)
 	return nil
 }
+func InsertAll(objs ...Entity) error {
+	obj := objs[0]
+	cols := objs[0].Schema().Get().Columns(false)
+	qb := &querybuilder.Insert{}
+	qb = qb.
+		Table(obj.Schema().Get().getTable()).
+		Into(cols...)
+	for _, obj := range objs {
+		var ph []string
+		if obj.Schema().Get().getDialect().PlaceholderChar == "$" {
+			ph = PlaceHolderGenerators.Postgres(len(cols))
+		} else {
+			ph = PlaceHolderGenerators.MySQL(len(cols))
+		}
+		qb.Values(ph...)
+		qb.WithArgs(obj.Schema().Get().Values(obj, false))
+	}
+
+	res, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	obj.Schema().Get().SetPK(obj, id)
+	return nil
+}
 
 // Save upserts given entity.
 func Save(obj Entity) error {
@@ -144,7 +173,6 @@ func Save(obj Entity) error {
 	} else {
 		return Update(obj)
 	}
-
 }
 
 // SaveAll saves all given entities in one query, they all should be same type of entity ( same table ).
