@@ -3,7 +3,6 @@ package orm_test
 import (
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
-
 	"testing"
 )
 
@@ -133,4 +132,44 @@ func TestDelete(t *testing.T) {
 		orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts where id = ?`, post.ID).Scan(&count))
 
 	assert.Equal(t, 0, count)
+}
+func TestAdd(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "my body for insert",
+	}
+	err := orm.Insert(post)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), post.ID)
+
+	orm.Add[Comment](post, orm.RelationType_HasMany, []Comment{}...)
+}
+
+func TestSave(t *testing.T) {
+	t.Run("save should insert", func(t *testing.T) {
+		setup(t)
+		post := &Post{
+			Body: "1",
+		}
+		assert.NoError(t, orm.Save(post))
+		assert.Equal(t, int64(1), post.ID)
+	})
+
+	t.Run("save should update", func(t *testing.T) {
+		setup(t)
+		post := &Post{
+			Body: "1",
+		}
+		assert.NoError(t, orm.Save(post))
+		assert.Equal(t, int64(1), post.ID)
+
+		post.Body += "2"
+		assert.NoError(t, orm.Save(post))
+
+		myPost, err := orm.Find[Post](1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, post, &myPost)
+	})
+
 }

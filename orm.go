@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
+	"reflect"
 
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
@@ -68,18 +69,18 @@ func Initialize(confs ...ConnectionConfig) error {
 }
 
 func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities []Entity) *Connection {
-	metadatas := map[string]*Schema{}
+	schemas := map[string]*Schema{}
 	for _, entity := range entities {
 		md := schemaOf(entity)
 		if md.Dialect == nil {
 			md.Dialect = dialect
 		}
-		metadatas[fmt.Sprintf("%s", initTableName(entity))] = md
+		schemas[fmt.Sprintf("%s", initTableName(entity))] = md
 	}
 	s := &Connection{
 		Name:       name,
 		Connection: db,
-		Schemas:    metadatas,
+		Schemas:    schemas,
 		Dialect:    dialect,
 	}
 	globalORM[fmt.Sprintf("%s", name)] = s
@@ -138,8 +139,12 @@ func Insert(obj Entity) error {
 
 // Save upserts given entity.
 func Save(obj Entity) error {
-	//TODO
-	return nil
+	if reflect.ValueOf(obj.Schema().Get().GetPK(obj)).IsZero() {
+		return Insert(obj)
+	} else {
+		return Update(obj)
+	}
+
 }
 
 // SaveAll saves all given entities in one query, they all should be same type of entity ( same table ).
@@ -390,6 +395,7 @@ const (
 )
 
 // Add is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
+// RelationType is from perspective of `to`, so for post and comment example if you want to add comment to a post relationtype is hasMany.
 func Add[T Entity](to Entity, relationType RelationType, items ...T) error {
 	//TODO
 	return nil
