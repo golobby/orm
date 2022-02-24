@@ -184,7 +184,7 @@ func genericGetPKValue(obj Entity) interface{} {
 		val = val.Elem()
 	}
 
-	fields := obj.Schema().Fields
+	fields := obj.Schema().Get().Fields
 	for i, field := range fields {
 		if field.IsPK {
 			return val.Field(i).Interface()

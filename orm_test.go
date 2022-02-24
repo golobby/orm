@@ -97,3 +97,22 @@ func TestInsert(t *testing.T) {
 
 	assert.Equal(t, "my body for insert", p.Body)
 }
+
+func TestUpdate(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "my body for insert",
+	}
+	err := orm.Insert(post)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), post.ID)
+
+	post.Body += " update text"
+	assert.NoError(t, orm.Update(post))
+
+	var body string
+	assert.NoError(t,
+		orm.GetConnection("default").Connection.QueryRow(`SELECT body FROM posts where id = ?`, post.ID).Scan(&body))
+
+	assert.Equal(t, "my body for insert update text", body)
+}

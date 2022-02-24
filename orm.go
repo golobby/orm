@@ -176,10 +176,10 @@ func Find[T Entity](id interface{}) (T, error) {
 	return *out, nil
 }
 
-func toMap(obj Entity) []keyValue {
+func toMap(obj Entity, withPK bool) []keyValue {
 	var kvs []keyValue
-	vs := obj.Schema().Get().Values(obj, true)
-	cols := obj.Schema().Get().Columns(true)
+	vs := obj.Schema().Get().Values(obj, withPK)
+	cols := obj.Schema().Get().Columns(withPK)
 	for i, col := range cols {
 		kvs = append(kvs, keyValue{
 			Key:   col,
@@ -191,21 +191,21 @@ func toMap(obj Entity) []keyValue {
 
 // Update Entity in database
 func Update(obj Entity) error {
-	ph := obj.Schema().getDialect().PlaceholderChar
-	if obj.Schema().getDialect().IncludeIndexInPlaceholder {
+	ph := obj.Schema().Get().getDialect().PlaceholderChar
+	if obj.Schema().Get().getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	counter := 2
-	kvs := toMap(obj)
+	kvs := toMap(obj, false)
 	var kvsWithPh []keyValue
 	var args []interface{}
 	whereClause := querybuilder.WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
 	query := querybuilder.UpdateStmt().
-		Table(obj.Schema().getTable()).
-		Where(whereClause).WithArgs(obj.Schema().Get().GetPK(obj))
+		Table(obj.Schema().Get().getTable()).
+		Where(whereClause)
 	for _, kv := range kvs {
-		thisPh := obj.Schema().getDialect().PlaceholderChar
-		if obj.Schema().getDialect().IncludeIndexInPlaceholder {
+		thisPh := obj.Schema().Get().getDialect().PlaceholderChar
+		if obj.Schema().Get().getDialect().IncludeIndexInPlaceholder {
 			thisPh += fmt.Sprint(counter)
 		}
 		kvsWithPh = append(kvsWithPh, keyValue{Key: kv.Key, Value: thisPh})
@@ -213,8 +213,9 @@ func Update(obj Entity) error {
 		query.WithArgs(kv.Value)
 		counter++
 	}
+	query.WithArgs(obj.Schema().Get().GetPK(obj))
 	q, args := query.Build()
-	_, err := schemaOf(obj).getSQLDB().Exec(q, args...)
+	_, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
 	return err
 }
 
