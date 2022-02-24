@@ -6,269 +6,220 @@
 
 # golobby/orm
 
-GoLobby is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
-
-## Why another ORM ?
-I started this project as an ORM, but soon after playing with relations for days, I understand that there are two ways,
-one is like GORM, magical struct tag stuff + opinionated naming conventions and loading, or way of sqlboiler and generating everything in a
-database-first approach.
-
-### Why not GORM ?
-- GORM is so magical with it's usage of struct tags and sometimes you are basically writing code inside the struct tag.
-- GORM uses lots and lots of reflection which makes it slow compare to `database/sql`.
-- GORM does not follow go's idiomatic way of error handling.
-
-### Why not SQLBoiler ?
-I love sqlboiler, it's safe and generated code is really clean but it has flaws also. 
-- sqlboiler uses reflection as well, less than GORM but still in hot-paths there are reflections happening.
-- sqlboiler is not comfortable for starting a project from scratch with all the wiring it needs, and also complexity of having a compelete replica of production database in your local env.
+GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
 ## Documentation
 
 ### Required Go Version
 
-It requires Go `v1.11` or newer versions.
+It requires Go `v1.18` or newer versions.
 
 ### Installation
 
 To install this package run the following command in the root of your project.
 
 ```bash
-go get github.com/golobby/orm
+go install github.com/golobby/orm
 ```
 
-### Quick Start
-ORM uses concept of data mappers or repository for modeling the database, each table is represented with a repository.
-Repositories are created from an struct which has the same schema as the table.
+### Features
+- No reflection (we use reflection one time in initializing)
+- No code generation
+- Query builder
+- Binding query results to entities
+- Supports relationship types
+  - HasMany
+  - HasOne
+  - BelongsTo
+  - ManyToMany
+
+### Getting Started
+#### Blog Example
+Let's imagine we are going to build a simple blogging application that has 3 entities, `Comment`, `Post`, `Category`. To
+start using ORM you need to call **Initialize** method. It gets array of of **ConnectionConfig** objects which has:
+
+- `Name`: Name of the connection, it can be anything you want.
+- `Driver`: Name of the driver to be used when opening connection to your database.
+- `ConnectionString`: connection string to connect to your db.
+- `Entities`: List of entities you want to use for that connection (later we discuss more about entities.)
+
 ```go
-package main
-type User struct {
-	Id   int64
-	Name string
-	Age  int
-}
-userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{}) // creating a repository for user.
-```
-when you have the repository you can start messing around.
-#### Fetching Data
-You can query data with repository object either through filling the object or raw query and binding it to an object.
-
-```go
-package main
-
-import (
-	"context"
-	"github.com/golobby/orm"
-	"database/sql"
-)
-
-type User struct {
-	Id   int64
-	Name string
-	Age  int
-}
-
-func main() {
-	userRepository := orm.NewRepository(&sql.DB{}, orm.Dialects.PostgreSQL, &User{}) // creating a repository for user.
-	// Filling an object
-	user1 := &User{Id: 1}
-	err := userRepository.Fill(user1)
-
-	// binding result of query to object
-	q, err := userRepository.
-		SelectBuilder().
-		Where(orm.WhereHelpers.In("parent_id", "1", "2")).
-		Build()
-	var parents []*User
-	userRepository.BindContext(context.Background(), &parents, q)
-}
-```
-You can build any complex queries using orm query builder and then bind the result using the repository object.
-
-#### Saving
-You can save using `.Save` method on repository.
-```go
-package main
-
-import (
-	"context"
-	"github.com/golobby/orm"
-	"database/sql"
-)
-
-type User struct {
-	Id   int64
-	Name string
-	Age  int
-}
-
-func main() {
-	userRepository := orm.NewRepository(&sql.DB{}, orm.Dialects.PostgreSQL, &User{}) // creating a repository for user.
-	// Filling an object
-	user1 := &User{Id: 1}
-	err := userRepository.Save(user1)
-}
+orm.Initialize(orm.ConnectionConfig{
+    Name:             "sqlite3", // Any name
+    Driver:           "sqlite3", // can be "postgres" "mysql", or any normal sql driver name
+    ConnectionString: ":memory:", // Any connection string that is valid for your driver.
+    Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}}, // List of entities you want to use.
+})
 ```
 
-#### Updating
-```go
-package main
+Before we go further we need to talk about **Entities**, `Entity` is an interface that you ***need*** to implement for
+your models/entities to let ORM work with them. So let's define our entities.
 
-import (
-	"context"
-	"github.com/golobby/orm"
-	"database/sql"
-)
-
-type User struct {
-	Id   int64
-	Name string
-	Age  int
-}
-
-func main() {
-	userRepository := orm.NewRepository(&sql.DB{}, orm.Dialects.PostgreSQL, &User{}) // creating a repository for user.
-	// Filling an object
-	user1 := &User{Id: 1, Age: 12}
-	err := userRepository.Update(user1)
-}
-```
-
-#### Deleting
-```go
-package main
-
-import (
-	"context"
-	"github.com/golobby/orm"
-	"database/sql"
-)
-
-type User struct {
-	Id   int64
-	Name string
-	Age  int
-}
-
-func main() {
-	userRepository := orm.NewRepository(&sql.DB{}, orm.Dialects.PostgreSQL, &User{}) // creating a repository for user.
-	// Filling an object
-	user1 := &User{Id: 1}
-	err := userRepository.Delete(user1)
-}
-```
-
-### Relations
-ORM support for relations is still in alpha and API might change, but basically this is how relations can be used in orm.
-#### HasMany
 ```go
 package main
 
 import "github.com/golobby/orm"
 
-type Address struct {
-	ID      int64
-	Content string
-}
-type User struct {
-	ID      int64
-	Name    string
-	Age     int
-	Address Address
+type Post struct {
+	ID   int
+	Text string
 }
 
-func main() {
-	userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
-	firstUser := &User{
-		ID: 1,
+func (p Post) Schema() *orm.Schema {
+	return &orm.Schema{
+		Table: "posts",
 	}
-	var addresses []*Address
+}
 
-	err = userRepository.
-		Entity(firstUser).
-		HasMany(&addresses)
+type Comment struct {
+	ID     int
+	PostID int
+	Body   string
+}
 
+func (c Comment) Schema() *orm.Schema {
+	return &orm.Schema{
+		Table: "comments",
+	}
+}
+
+type Category struct {
+	ID    int
+	Title string
+}
+
+func (c Category) Schema() *orm.Schema {
+	return &orm.Schema{Table: "categories"}
 }
 ```
-#### HasOne
+
+As you see for all of our entities we define a `Schema` method that returns an instance of `Schema` struct defined in
+orm, `Schema` struct contains all information that `ORM` needs to work with a database entity modeled in Go structs.
+In `Schema` struct all fields are optional and can be infered except `Table` field which is mandatory and defines table
+name of the given struct.
+
+
+Now let's write simple `CRUD` logic for posts.
+
 ```go
 package main
 
 import "github.com/golobby/orm"
 
-type Address struct {
-	ID      int64
-	Content string
+func createPost(p *Post) error {
+	err := orm.Save(p)
+	return err
 }
-type User struct {
-	ID      int64
-	Name    string
-	Age     int
-	Address Address
+func findPost(id int) (*Post, error) {
+	return orm.Find[Post](id)
 }
 
-func main() {
-	userRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &User{})
-	firstUser := &User{
-		ID: 1,
-	}
-	var address *Address
-
-	err = userRepository.
-		Entity(firstUser).
-		HasOne(address)
-
+func updatePost(p *Post) error {
+	return orm.Update(p)
 }
+
+func deletePost(p *Post) error {
+	return orm.Delete(p)
+}
+
 ```
-#### BelongsTo
+
+now that we have our post in database, let's add some comments to it. notice that comments are in relation with posts and the relation from posts view is a hasMany relationship and from comments is a belongsTo relationship.
+
+```go
+package main
+
+func addCommentsToPost(post *Post, comments []Comment) error {
+	return orm.Add[Comment](post, orm.BelongsToRelation, comments)
+}
+
+func addComments(comments []Comment) error {
+	return orm.SaveAll(comments)
+}
+
+// you can also create, update, delete, find comments like you saw with posts.
+```
+
+finally, now we have both our posts and comments in db, let's add some categories.
+
+```go
+package main
+
+func addCategoryToPost(post *Post, category *Category) error {
+	return orm.Add[Category](post, orm.ManyToManyRelation, category)
+}
+
+
+```
+
+Now what if you want to do some complex query for example to get some posts that were created today ?
+
 ```go
 package main
 
 import "github.com/golobby/orm"
 
-type Address struct {
-	ID      int64
-	Content string
-}
-type User struct {
-	ID      int64
-	Name    string
-	Age     int
-	Address Address
-}
-
-func main() {
-	addressRepository := orm.NewRepository(db, orm.Dialects.PostgreSQL, &Address{})
-	firstAddress := &Address{
-		ID: 1,
-	}
-	var user *User
-
-	err = addressRepository.
-		Entity(firstAddress).
-		BelongsTo(user)
-
+func getTodayPosts() ([]Post, error) {
+	posts, err := orm.Query[Post](
+		orm.
+			Select().
+			Where("created_at", "<", "NOW()").
+			Where("created_at", ">", "TODAY()").
+			OrderBy("id", "desc"))
+    return posts, err
 }
 ```
-#### ManyToMany
-COMING SOON :)
-# Benchmarks
-for CRUD operations on 10000 records
-- Create
-- Read
-- Update
-- Delete
-<br>
-(on Asus ROG G512 with 32 GB of Ram, Core I7 10750)<br>
+basically you can use all orm power to run any custom query, you can build any custom query using orm query builder but you can even run raw queries and use orm power to bind them to your entities.
+You can see querybuilder docs in [query builder package](https://github.com/golobby/orm/tree/master/querybuilder)
+```go
+package main
 
-| ORM                                                    | Miliseconds |
-|--------------------------------------------------------|-------------|
-| Golobby                                                | 54862       |
-| [GORM](https://gorm.io/)                               | 82606       |
-| [SQLBoiler](https://github.com/volatiletech/sqlboiler) | 80189       |
+import "github.com/golobby/orm"
 
-[benchmark code](https://github.com/golobby/orm/blob/master/examples/benchmarks/main.go)
+func getTodayPosts() ([]Post, error) {
+	return orm.RawQuery[Post]("SELECT * FROM posts WHERE created_at < NOW() and created_at > TODAY()")
+}
+```
+
+
+#### API Documentation
+If you prefer (like myself) a more api oriented document this part is for you. Almost all functionalities of ORM is exposed thorough
+simple functions of ORM, there are 2 or 3 types you need to know about:
+- `Schema`: All data that ORM needs for working with a struct as database model, all of it's fields can be infered at startup except `Table` which is mandatory. Ofcourse you can fill any field you want and instead of ORM default that one would be used through your application.
+
+- `Entity`: Interface which all structs that are database entities should implement, it has only one method and that just returns the `Schema` that we talk about in `Schema` section above.
+
+Now let's talk about ORM functions. also please note that since Go1.18 is on the horizon we are using generic feature extensively to give
+a really nice type-safe api.
+
+
+- Basic CRUD APIs
+	- `Insert`
+	- `Find`
+	- `Save`
+	- `SaveAll`
+	- `Update`
+	- `Delete`
+
+- Relationships
+	- `Add`: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
+	- `BelongsTo`
+	- `BelongsToMany`
+	- `HasMany`
+	- `HasOne`
+	- `BelongsToConfig`: struct for configuring relationship
+	- `BelongsToManyConfig`: struct for configuring relationship
+	- `HasManyConfig`: struct for configuring relationship
+	- `HasOneConfig`: struct for configuring relationship
+
+
+- Custom and Raw queries
+	- `Exec`
+	- `ExecRaw`
+	- `Query`
+	- `RawQuery`
+
 
 ## License
 
-GoLobby Sql is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
+GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).

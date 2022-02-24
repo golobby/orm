@@ -1,4 +1,4 @@
-package orm
+package querybuilder
 
 import (
 	"testing"
@@ -9,13 +9,10 @@ import (
 func TestUpdate(t *testing.T) {
 
 	t.Run("simple update", func(t *testing.T) {
-		s, args := newUpdate().
+		s, args := UpdateStmt().
 			Table("users").
 			Where(WhereHelpers.Equal("id", "$1")).
-			Set(keyValue{
-				Key:   "name",
-				Value: "$2",
-			}).
+			Set("name", "$2").
 			WithArgs(2).
 			Build()
 

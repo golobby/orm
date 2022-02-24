@@ -3,30 +3,59 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/golobby/orm"
 	_ "github.com/mattn/go-sqlite3"
-	"os"
 )
 
 type Post struct {
 	ID         int64
-	Comments   []*Comment
+	comments   []*Comment
 	Content    string
-	Categories []*Category
+	categories []*Category
+}
+
+func (p *Post) MD() *orm.MetaData {
+	return &orm.MetaData{}
+}
+
+func (p *Post) Comments(e *orm.Entity) orm.Relation {
+	return e.HasMany(p.comments, orm.HasManyConfig{})
+}
+
+func (p *Post) Categories(e *orm.Entity) orm.Relation {
+	return e.ManyToMany(p.categories, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 type Comment struct {
 	ID      int64
 	PostID  int64
-	Post    Post
+	post    *Post
 	Content string
+}
+
+func (c *Comment) Post(e *orm.Entity) orm.Relation {
+	return e.BelongsTo(c.post, orm.BelongsToConfig{})
+}
+
+func (c *Comment) MD() *orm.MetaData {
+	return &orm.MetaData{}
 }
 
 type Category struct {
 	ID    int64
 	Title string
+	posts []*Post
 }
 
+func (c *Category) Posts(e *orm.Entity) orm.Relation {
+	return e.ManyToMany(c.posts, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
+func (c *Category) MD() *orm.MetaData {
+	return &orm.MetaData{}
+}
 func main() {
 	_ = os.Remove("blog.db")
 	dbGolobby, err := sql.Open("sqlite3", "blog.db")
@@ -56,41 +85,49 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	postRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Post{})
-	commentRepository := orm.NewRepository(dbGolobby, orm.Dialects.SQLite3, &Comment{})
+
+	// Initializing ORM
+	orm.Initialize(orm.ConnectionConfig{DB: dbGolobby, Name: "test", Entities: []orm.Entity{&Post{}, &Comment{}}})
+
+	// Saving first Post
 	firstPost := &Post{
 		Content: "salam donya",
 	}
-	err = postRepository.Entity(firstPost).Save()
+	err = orm.AsEntity(firstPost).Fill()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Post primary key is ", firstPost.ID)
+
+	// Saving a comment
 	firstComment := &Comment{
 		PostID:  firstPost.ID,
 		Content: "comment aval",
 	}
-	err = commentRepository.Entity(firstComment).Save()
-	if err != nil {
-		panic(err)
-	}
-	err = postRepository.Entity(firstPost).HasMany(&firstPost.Comments)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Loaded post %d comment -> %+v\n", firstPost.ID, firstPost.Comments[0])
-	var newPost Post
-	err = commentRepository.Entity(firstComment).BelongsTo(&newPost)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstPost)
 
-	err = postRepository.
-		Entity(firstPost).
-		ManyToMany(&firstPost.Categories, orm.ManyToManyConfigurators.IntermediateTable("post_categories"))
+	err = orm.AsEntity(firstComment).Save()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.Categories)
+
+	err = orm.AsEntity(firstPost).Load(firstPost.Comments)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Loaded post %d comment -> %+v\n", firstPost.ID, firstPost.comments[0])
+
+	err = orm.AsEntity(firstComment).Load(firstComment.Post)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("loaded comment %d post %+v", firstComment.PostID, firstComment.post)
+
+	err = orm.
+		AsEntity(firstPost).
+		Load(firstPost.Categories)
+
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("loaded post %d categories %+v", firstPost.ID, firstPost.categories)
 }

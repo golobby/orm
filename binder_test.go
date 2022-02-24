@@ -14,6 +14,10 @@ type User struct {
 	Name string
 }
 
+func (u *User) Schema() *Schema {
+	return &Schema{Table: "users"}
+}
+
 type Address struct {
 	ID   int
 	Path string
@@ -30,8 +34,8 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 
 		u := &User{}
-		md := objectMetadataFrom(u, Dialects.SQLite3)
-		err = md.Bind(rows, u)
+		md := schemaOf(u)
+		err = md.bind(rows, u)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", u.Name)
@@ -47,9 +51,9 @@ func TestBind(t *testing.T) {
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
-		md := objectMetadataFrom(&User{}, Dialects.SQLite3)
+		md := schemaOf(&User{})
 		var users []*User
-		err = md.Bind(rows, &users)
+		err = md.bind(rows, &users)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", users[0].Name)

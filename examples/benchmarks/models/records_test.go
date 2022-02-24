@@ -568,7 +568,7 @@ func testRecordsSelect(t *testing.T) {
 }
 
 var (
-	recordDBTypes = map[string]string{`ID`: `INTEGER`, `Name`: `TEXT`}
+	recordDBTypes = map[string]string{`ID`: `INTEGER`, `DriverName`: `TEXT`}
 	_             = bytes.MinRead
 )
 
