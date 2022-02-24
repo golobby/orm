@@ -148,6 +148,7 @@ func SaveAll(objs ...Entity) error {
 	return nil
 }
 
+// Find finds the Entity you want based on Entity generic type and primary key you passed.
 func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
@@ -189,7 +190,7 @@ func toMap(obj Entity, withPK bool) []keyValue {
 	return kvs
 }
 
-// Update Entity in database
+// Update given Entity in database
 func Update(obj Entity) error {
 	ph := obj.Schema().Get().getDialect().PlaceholderChar
 	if obj.Schema().Get().getDialect().IncludeIndexInPlaceholder {
@@ -219,20 +220,20 @@ func Update(obj Entity) error {
 	return err
 }
 
-// Delete the object from database
+// Delete given Entity from database
 func Delete(obj Entity) error {
-	ph := obj.Schema().getDialect().PlaceholderChar
-	if obj.Schema().getDialect().IncludeIndexInPlaceholder {
+	ph := obj.Schema().Get().getDialect().PlaceholderChar
+	if obj.Schema().Get().getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	query := querybuilder.WhereHelpers.Equal(obj.Schema().Get().pkName(), ph)
 	qb := &querybuilder.Delete{}
 	q, args := qb.
-		Table(obj.Schema().getTable()).
+		Table(obj.Schema().Get().getTable()).
 		Where(query).
 		WithArgs(obj.Schema().Get().GetPK(obj)).
 		Build()
-	_, err := obj.Schema().getSQLDB().Exec(q, args...)
+	_, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
 	return err
 }
 

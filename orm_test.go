@@ -116,3 +116,21 @@ func TestUpdate(t *testing.T) {
 
 	assert.Equal(t, "my body for insert update text", body)
 }
+
+func TestDelete(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "my body for insert",
+	}
+	err := orm.Insert(post)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), post.ID)
+
+	assert.NoError(t, orm.Delete(post))
+
+	var count int
+	assert.NoError(t,
+		orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts where id = ?`, post.ID).Scan(&count))
+
+	assert.Equal(t, 0, count)
+}
