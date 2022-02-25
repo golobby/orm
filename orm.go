@@ -408,7 +408,7 @@ type BelongsToManyConfig struct {
 	ForeignLookupColumn       string
 }
 
-func BelongsToMany[TARGET any](obj Entity, c BelongsToManyConfig) ([]TARGET, error) {
+func BelongsToMany[OWNER Entity](property Entity, c BelongsToManyConfig) ([]OWNER, error) {
 	// TODO: Impl me
 	return nil, nil
 }

@@ -251,3 +251,25 @@ func TestHasOne(t *testing.T) {
 
 	assert.Equal(t, comment.PostID, c1.PostID)
 }
+
+func TestBelongsToMany(t *testing.T) {
+	setup(t)
+
+	post := &Post{
+		Body: "first Post",
+	}
+
+	assert.NoError(t, orm.Save(post))
+	assert.Equal(t, int64(1), post.ID)
+
+	category := &Category{
+		Title: "first category",
+	}
+	assert.NoError(t, orm.Save(category))
+	assert.Equal(t, int64(1), category.ID)
+
+	_, _, err := orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
+	assert.NoError(t, err)
+
+	orm.BelongsToMany()
+}

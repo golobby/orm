@@ -204,16 +204,14 @@ a really nice type-safe api.
 	- `Update`
 	- `Delete`
 
+*Note*: for relationship we try to explain them using post/comment/category sample.
+
 - Relationships
 	- `Add`: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
-	- `BelongsTo`
-	- `BelongsToMany`
-	- `HasMany`
-	- `HasOne`
-	- `BelongsToConfig`: struct for configuring relationship
-	- `BelongsToManyConfig`: struct for configuring relationship
-	- `HasManyConfig`: struct for configuring relationship
-	- `HasOneConfig`: struct for configuring relationship
+	- `BelongsTo`: This defines a hasMany inversed relationship, relationship of a `Comment -> Post`, each comment belongs to a post.
+	- `BelongsToMany`: Relationship of `Post <-> Category`, each `Post` has categories and each `Category` has posts.
+	- `HasMany`: Relationship of `Post -> Comment`, each post has many comments.
+	- `HasOne`: 
 
 
 - Custom and Raw queries
