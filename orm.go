@@ -425,26 +425,76 @@ const (
 // Add is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
 // RelationType is from perspective of `to`, so for post and comment example if you want to add comment to a post relationtype is hasMany.
 func Add[T Entity](to Entity, relationType RelationType, items ...T) error {
-	//TODO
+	// TODO: impl me
 	return nil
 }
 
 func Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error) {
-	//TODO
-	return nil, nil
+	o := new(OUTPUT)
+	rows, err := (*o).Schema().Get().getSQLDB().Query(stmt.Build())
+	if err != nil {
+		return nil, err
+	}
+	var output []OUTPUT
+	err = (*o).Schema().Get().bind(rows, output)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
 }
 
-func Exec(stmt querybuilder.SQL) (int, int, error) {
-	//TODO
-	return 0, 0, nil
+func Exec[E Entity](stmt querybuilder.SQL) (int64, int64, error) {
+	e := new(E)
+
+	res, err := (*e).Schema().Get().getSQLDB().Exec(stmt.Build())
+	if err != nil {
+		return 0, 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return id, affected, nil
 }
 
-func ExecRaw(q string, args ...interface{}) (int, int, error) {
-	//TODO
-	return 0, 0, nil
+func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
+	e := new(E)
+
+	res, err := (*e).Schema().Get().getSQLDB().Exec(q, args...)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return id, affected, nil
 }
 
 func RawQuery[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
-	//TODO
-	return nil, nil
+	o := new(OUTPUT)
+	rows, err := (*o).Schema().Get().getSQLDB().Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	var output []OUTPUT
+	err = (*o).Schema().Get().bind(rows, output)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
 }
