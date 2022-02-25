@@ -8,8 +8,22 @@
 
 GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
+## Features
+- Simple, type safe, elegant API with help of `Generics`
+- Minimum reflection usage, mostly at startup of application
+- No code generation
+- Query builder for various query types
+- Binding query results to entities
+- Supports relationship/Association types
+    - HasMany
+    - HasOne
+    - BelongsTo
+    - BelongsToMany/ManyToMany
+
 ## Documentation
 
+### Examples
+- [Blog Example](https://github.com/golobby/orm#blog-example)
 ### Required Go Version
 
 It requires Go `v1.18` or newer versions.
@@ -21,17 +35,6 @@ To install this package run the following command in the root of your project.
 ```bash
 go install github.com/golobby/orm
 ```
-
-### Features
-- No reflection (we use reflection one time in initializing)
-- No code generation
-- Query builder
-- Binding query results to entities
-- Supports relationship types
-  - HasMany
-  - HasOne
-  - BelongsTo
-  - ManyToMany
 
 ### Getting Started
 #### Blog Example
