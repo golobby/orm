@@ -295,8 +295,8 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 		c.PropertyForeignKey = pluralize.NewClient().Singular(owner.Schema().getTable()) + "_id"
 	}
 
-	ph := owner.Schema().getDialect().PlaceholderChar
-	if owner.Schema().getDialect().IncludeIndexInPlaceholder {
+	ph := owner.Schema().Get().getDialect().PlaceholderChar
+	if owner.Schema().Get().getDialect().IncludeIndexInPlaceholder {
 		ph = ph + fmt.Sprint(1)
 	}
 	var q string
@@ -312,7 +312,7 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 		return nil, fmt.Errorf("cannot build the query")
 	}
 
-	err := bindContext[OUT](context.Background(), out, q, args)
+	err := bindContext[OUT](context.Background(), &out, q, args)
 
 	if err != nil {
 		return nil, err
@@ -334,7 +334,7 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 		c.PropertyTable = property.Table
 	}
 	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(property.Table) + "_id"
+		c.PropertyForeignKey = pluralize.NewClient().Singular(owner.Schema().Get().Table) + "_id"
 	}
 
 	ph := property.dialect.PlaceholderChar
@@ -378,9 +378,9 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 		c.ForeignColumnName = "id"
 	}
 
-	ph := owner.dialect.PlaceholderChar
-	if owner.dialect.IncludeIndexInPlaceholder {
-		ph = ph + "1"
+	ph := owner.getDialect().PlaceholderChar
+	if owner.getDialect().IncludeIndexInPlaceholder {
+		ph = ph + fmt.Sprint(1)
 	}
 	ownerIDidx := 0
 	for idx, field := range owner.fields {

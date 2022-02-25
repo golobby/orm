@@ -26,8 +26,9 @@ func (p *Post) Comments() ([]Comment, error) {
 }
 
 type Comment struct {
-	ID   int
-	Body string
+	ID     int64
+	PostID int64
+	Body   string
 }
 
 func (c Comment) Schema() *orm.Schema {
@@ -62,7 +63,7 @@ func setup(t *testing.T) {
 	})
 
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 	assert.NoError(t, err)
@@ -142,7 +143,18 @@ func TestAdd(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
-	orm.Add[Comment](post, orm.RelationType_HasMany, []Comment{}...)
+	err = orm.Add[Comment](post, orm.RelationType_HasMany, []Comment{
+		{
+			PostID: post.ID,
+			Body:   "comment 1",
+		},
+		{
+			PostID: post.ID,
+			Body:   "comment 2",
+		},
+	}...)
+	assert.NoError(t, err)
+
 }
 
 func TestSave(t *testing.T) {
@@ -172,4 +184,70 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, post, &myPost)
 	})
 
+}
+
+func TestHasMany(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "first post",
+	}
+	assert.NoError(t, orm.Save(post))
+	assert.Equal(t, int64(1), post.ID)
+
+	assert.NoError(t, orm.Save(&Comment{
+		PostID: post.ID,
+		Body:   "comment 1",
+	}))
+	assert.NoError(t, orm.Save(&Comment{
+		PostID: post.ID,
+		Body:   "comment 2",
+	}))
+
+	comments, err := orm.HasMany[Comment](post, orm.HasManyConfig{})
+	assert.NoError(t, err)
+
+	assert.Len(t, comments, 2)
+
+	assert.Equal(t, post.ID, comments[0].PostID)
+	assert.Equal(t, post.ID, comments[1].PostID)
+}
+
+func TestBelongsTo(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "first post",
+	}
+	assert.NoError(t, orm.Save(post))
+	assert.Equal(t, int64(1), post.ID)
+
+	comment := &Comment{
+		PostID: post.ID,
+		Body:   "comment 1",
+	}
+	assert.NoError(t, orm.Save(comment))
+
+	post2, err := orm.BelongsTo[Post](comment, orm.BelongsToConfig{})
+	assert.NoError(t, err)
+
+	assert.Equal(t, *post, post2)
+}
+
+func TestHasOne(t *testing.T) {
+	setup(t)
+	post := &Post{
+		Body: "first post",
+	}
+	assert.NoError(t, orm.Save(post))
+	assert.Equal(t, int64(1), post.ID)
+
+	comment := &Comment{
+		PostID: post.ID,
+		Body:   "comment 1",
+	}
+	assert.NoError(t, orm.Save(comment))
+
+	c1, err := orm.HasOne[Comment](post, orm.HasOneConfig{})
+	assert.NoError(t, err)
+
+	assert.Equal(t, comment.PostID, c1.PostID)
 }

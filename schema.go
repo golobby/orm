@@ -21,7 +21,7 @@ type Schema struct {
 
 func GetSchema[T Entity]() *Schema {
 	v := new(T)
-	return schemaOf(*v)
+	return (*v).Schema().Get()
 }
 func (o *Schema) Columns(withPK bool) []string {
 	var cols []string
