@@ -7,7 +7,6 @@ import (
 	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
 	"reflect"
-
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -72,8 +71,8 @@ func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities
 	schemas := map[string]*Schema{}
 	for _, entity := range entities {
 		md := schemaOf(entity)
-		if md.Dialect == nil {
-			md.Dialect = dialect
+		if md.dialect == nil {
+			md.dialect = dialect
 		}
 		schemas[fmt.Sprintf("%s", initTableName(entity))] = md
 	}
@@ -104,14 +103,14 @@ func getDialect(driver string) (*querybuilder.Dialect, error) {
 	case "postgres":
 		return querybuilder.Dialects.PostgreSQL, nil
 	default:
-		return nil, fmt.Errorf("err no Dialect matched with driver")
+		return nil, fmt.Errorf("err no dialect matched with driver")
 	}
 }
 
 // Insert given Entity
 func Insert(obj Entity) error {
 	cols := obj.Schema().Get().Columns(false)
-	values := obj.Schema().Get().Values(obj, false)
+	values := genericValuesOf(obj, false)
 	var phs []string
 	if obj.Schema().Get().getDialect().PlaceholderChar == "$" {
 		phs = PlaceHolderGenerators.Postgres(len(cols))
@@ -133,42 +132,43 @@ func Insert(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	obj.Schema().Get().SetPK(obj, id)
+	genericSetPkValue(obj, id)
 	return nil
 }
-func InsertAll(objs ...Entity) error {
-	obj := objs[0]
-	cols := objs[0].Schema().Get().Columns(false)
-	qb := &querybuilder.Insert{}
-	qb = qb.
-		Table(obj.Schema().Get().getTable()).
-		Into(cols...)
-	for _, obj := range objs {
-		var ph []string
-		if obj.Schema().Get().getDialect().PlaceholderChar == "$" {
-			ph = PlaceHolderGenerators.Postgres(len(cols))
-		} else {
-			ph = PlaceHolderGenerators.MySQL(len(cols))
-		}
-		qb.Values(ph...)
-		qb.WithArgs(obj.Schema().Get().Values(obj, false))
-	}
 
-	res, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
-	if err != nil {
-		return err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	obj.Schema().Get().SetPK(obj, id)
-	return nil
-}
+//func InsertAll(objs ...Entity) error {
+//	obj := objs[0]
+//	cols := objs[0].Schema().Get().Columns(false)
+//	qb := &querybuilder.Insert{}
+//	qb = qb.
+//		Table(obj.Schema().Get().getTable()).
+//		Into(cols...)
+//	for _, obj := range objs {
+//		var ph []string
+//		if obj.Schema().Get().getDialect().PlaceholderChar == "$" {
+//			ph = PlaceHolderGenerators.Postgres(len(cols))
+//		} else {
+//			ph = PlaceHolderGenerators.MySQL(len(cols))
+//		}
+//		qb.Values(ph...)
+//		qb.WithArgs(obj.Schema().Get().Values(obj, false))
+//	}
+//
+//	res, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
+//	if err != nil {
+//		return err
+//	}
+//	id, err := res.LastInsertId()
+//	if err != nil {
+//		return err
+//	}
+//	obj.Schema().Get().SetPK(obj, id)
+//	return nil
+//}
 
 // Save upserts given entity.
 func Save(obj Entity) error {
-	if reflect.ValueOf(obj.Schema().Get().GetPK(obj)).IsZero() {
+	if reflect.ValueOf(genericGetPKValue(obj)).IsZero() {
 		return Insert(obj)
 	} else {
 		return Update(obj)
@@ -187,8 +187,8 @@ func Find[T Entity](id interface{}) (T, error) {
 	out := new(T)
 	md := (*out).Schema().Get()
 	var args []interface{}
-	ph := md.Dialect.PlaceholderChar
-	if md.Dialect.IncludeIndexInPlaceholder {
+	ph := md.dialect.PlaceholderChar
+	if md.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	qb := &querybuilder.Select{}
@@ -212,7 +212,7 @@ func Find[T Entity](id interface{}) (T, error) {
 
 func toMap(obj Entity, withPK bool) []keyValue {
 	var kvs []keyValue
-	vs := obj.Schema().Get().Values(obj, withPK)
+	vs := genericValuesOf(obj, withPK)
 	cols := obj.Schema().Get().Columns(withPK)
 	for i, col := range cols {
 		kvs = append(kvs, keyValue{
@@ -247,7 +247,7 @@ func Update(obj Entity) error {
 		query.WithArgs(kv.Value)
 		counter++
 	}
-	query.WithArgs(obj.Schema().Get().GetPK(obj))
+	query.WithArgs(genericGetPKValue(obj))
 	q, args := query.Build()
 	_, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
 	return err
@@ -264,7 +264,7 @@ func Delete(obj Entity) error {
 	q, args := qb.
 		Table(obj.Schema().Get().getTable()).
 		Where(query).
-		WithArgs(obj.Schema().Get().GetPK(obj)).
+		WithArgs(genericGetPKValue(obj)).
 		Build()
 	_, err := obj.Schema().Get().getSQLDB().Exec(q, args...)
 	return err
@@ -305,7 +305,7 @@ func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
 	q, args = qb.
 		From(c.PropertyTable).
 		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(owner.Schema().Get().GetPK(owner)).
+		WithArgs(genericGetPKValue(owner)).
 		Build()
 
 	if q == "" {
@@ -337,8 +337,8 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 		c.PropertyForeignKey = pluralize.NewClient().Singular(property.Table) + "_id"
 	}
 
-	ph := property.Dialect.PlaceholderChar
-	if property.Dialect.IncludeIndexInPlaceholder {
+	ph := property.dialect.PlaceholderChar
+	if property.dialect.IncludeIndexInPlaceholder {
 		ph = ph + fmt.Sprint(1)
 	}
 	var q string
@@ -347,7 +347,7 @@ func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
 	q, args = qb.
 		From(c.PropertyTable).
 		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(owner.Schema().Get().GetPK(owner)).
+		WithArgs(genericGetPKValue(owner)).
 		Build()
 
 	if q == "" {
@@ -378,12 +378,12 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 		c.ForeignColumnName = "id"
 	}
 
-	ph := owner.Dialect.PlaceholderChar
-	if owner.Dialect.IncludeIndexInPlaceholder {
+	ph := owner.dialect.PlaceholderChar
+	if owner.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
 	ownerIDidx := 0
-	for idx, field := range owner.Fields {
+	for idx, field := range owner.fields {
 		if field.Name == c.LocalForeignKey {
 			ownerIDidx = idx
 		}

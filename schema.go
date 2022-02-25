@@ -13,11 +13,10 @@ import (
 type Schema struct {
 	Connection string
 	Table      string
-	Dialect    *querybuilder.Dialect
-	Fields     []*Field
-	GetPK      func(obj Entity) interface{}
-	SetPK      func(obj Entity, value interface{})
-	Values     func(obj Entity, withPK bool) []interface{}
+	dialect    *querybuilder.Dialect
+	fields     []*field
+	pkOffset   uintptr
+	pkType     string
 }
 
 func GetSchema[T Entity]() *Schema {
@@ -26,14 +25,14 @@ func GetSchema[T Entity]() *Schema {
 }
 func (o *Schema) Columns(withPK bool) []string {
 	var cols []string
-	for _, field := range o.Fields {
+	for _, field := range o.fields {
 		if field.Virtual {
 			continue
 		}
 		if !withPK && field.IsPK {
 			continue
 		}
-		if o.Dialect.AddTableNameInSelectColumns {
+		if o.dialect.AddTableNameInSelectColumns {
 			cols = append(cols, o.Table+"."+field.Name)
 		} else {
 			cols = append(cols, field.Name)
@@ -43,7 +42,7 @@ func (o *Schema) Columns(withPK bool) []string {
 }
 
 func (e *Schema) pkName() string {
-	for _, field := range e.Fields {
+	for _, field := range e.fields {
 		if field.IsPK {
 			return field.Name
 		}
@@ -51,7 +50,7 @@ func (e *Schema) pkName() string {
 	return ""
 }
 
-type Field struct {
+type field struct {
 	Name    string
 	IsPK    bool
 	Virtual bool
@@ -76,18 +75,19 @@ func fieldMetadataFromTag(t string) fieldTag {
 		key := parts[0]
 		value := parts[1]
 		kv[key] = value
-		if key == "name" {
+		if key == "dbCol" {
 			tag.Name = value
-		} else if key == "pk" {
+		} else if key == "dbPK" {
 			tag.PK = true
-		} else if key == "virtual" {
+		}
+		if tag.Name == "_" {
 			tag.Virtual = true
 		}
 	}
 	return tag
 }
 
-func genericFieldsOf(obj interface{}) []*Field {
+func genericFieldsOf(obj interface{}) []*field {
 	t := reflect.TypeOf(obj)
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -100,11 +100,11 @@ func genericFieldsOf(obj interface{}) []*Field {
 		}
 	}
 
-	var fms []*Field
+	var fms []*field
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
 		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
-		fm := &Field{}
+		fm := &field{}
 		fm.Type = ft.Type
 		if tagParsed.Name != "" {
 			fm.Name = tagParsed.Name
@@ -128,7 +128,7 @@ func genericValuesOf(o Entity, withPK bool) []interface{} {
 		t = t.Elem()
 		v = v.Elem()
 	}
-	fields := o.Schema().Get().Fields
+	fields := o.Schema().Get().fields
 	pkIdx := -1
 	for i, field := range fields {
 		if field.IsPK {
@@ -159,7 +159,7 @@ func genericSetPkValue(obj Entity, value interface{}) {
 		val = val.Elem()
 	}
 	pkIdx := -1
-	for i, field := range obj.Schema().Get().Fields {
+	for i, field := range obj.Schema().Get().fields {
 		if field.IsPK {
 			pkIdx = i
 		}
@@ -184,7 +184,7 @@ func genericGetPKValue(obj Entity) interface{} {
 		val = val.Elem()
 	}
 
-	fields := obj.Schema().Get().Fields
+	fields := obj.Schema().Get().fields
 	for i, field := range fields {
 		if field.IsPK {
 			return val.Field(i).Interface()
@@ -196,40 +196,19 @@ func genericGetPKValue(obj Entity) interface{} {
 func schemaOf(v Entity) *Schema {
 	userSchema := v.Schema()
 	schema := &Schema{}
-	// Fill user defined schemaOf members
-	if userSchema.GetPK != nil {
-		schema.GetPK = userSchema.GetPK
-	}
 	if userSchema.Connection != "" {
 		schema.Connection = userSchema.Connection
 	}
 	if userSchema.Table != "" {
 		schema.Table = userSchema.Table
 	}
-	if userSchema.SetPK != nil {
-		schema.SetPK = userSchema.SetPK
-	}
-	if userSchema.Fields != nil {
-		schema.Fields = userSchema.Fields
-	}
-	if userSchema.Values != nil {
-		schema.Values = userSchema.Values
-	}
-	if userSchema.Dialect != nil {
-		schema.Dialect = userSchema.Dialect
+
+	if userSchema.fields != nil {
+		schema.fields = userSchema.fields
 	}
 
-	// Fill in the blanks
-	if schema.GetPK == nil {
-		schema.GetPK = genericGetPKValue
-	}
-
-	if schema.SetPK == nil {
-		schema.SetPK = genericSetPkValue
-	}
-
-	if schema.Values == nil {
-		schema.Values = genericValuesOf
+	if userSchema.dialect != nil {
+		schema.dialect = userSchema.dialect
 	}
 
 	if schema.Table == "" {
@@ -239,10 +218,21 @@ func schemaOf(v Entity) *Schema {
 	if schema.Connection == "" {
 		schema.Connection = "default"
 	}
-	if schema.Fields == nil {
-		schema.Fields = genericFieldsOf(v)
+	if schema.fields == nil {
+		schema.fields = genericFieldsOf(v)
 	}
-
+	var pkIDX int
+	for idx, f := range schema.fields {
+		if f.IsPK {
+			pkIDX = idx
+		}
+	}
+	typ := reflect.TypeOf(v)
+	if typ.Kind() == reflect.Ptr || typ.Kind() == reflect.Interface {
+		typ = typ.Elem()
+	}
+	schema.pkOffset = typ.Field(pkIDX).Offset
+	schema.pkType = typ.Field(pkIDX).Type.String()
 	return schema
 }
 
@@ -255,7 +245,7 @@ func (e *Schema) getSQLDB() *sql.DB {
 }
 
 func (e *Schema) getDialect() *querybuilder.Dialect {
-	return e.Dialect
+	return e.dialect
 }
 
 func (e *Schema) getConnection() *Connection {

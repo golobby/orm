@@ -22,10 +22,10 @@ func (o *Schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	for index := 0; index < len(cts); index++ {
 		ct := cts[index]
 		for i := 0; i < t.NumField(); i++ {
-			if o.Fields[i].Virtual {
+			if o.fields[i].Virtual {
 				continue
 			}
-			fieldName := o.Fields[i].Name
+			fieldName := o.fields[i].Name
 			if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
 				ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
 				actualPtr := ptr.Elem().Addr().Interface()
