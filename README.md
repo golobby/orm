@@ -95,8 +95,8 @@ func (c Category) Schema() *orm.Schema {
 
 As you see for all of our entities we define a `Schema` method that returns an instance of `Schema` struct defined in
 orm, `Schema` struct contains all information that `ORM` needs to work with a database entity modeled in Go structs.
-In `Schema` struct all fields are optional and can be infered except `Table` field which is mandatory and defines table
-name of the given struct.
+`Schema` has two public fields, `Connection` and `Table`, `Table` is mandatory for all usecases and `Connection` is mandatory for 
+applications with more than 1 connection.
 
 
 Now let's write simple `CRUD` logic for posts.
