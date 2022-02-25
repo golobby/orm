@@ -54,7 +54,7 @@ orm.Initialize(orm.ConnectionConfig{
     Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}}, // List of entities you want to use.
 })
 ```
-
+##### Creating database entities 
 Before we go further we need to talk about **Entities**, `Entity` is an interface that you ***need*** to implement for
 your models/entities to let ORM work with them. So let's define our entities.
 
@@ -101,7 +101,7 @@ orm, `Schema` struct contains all information that `ORM` needs to work with a da
 `Schema` has two public fields, `Connection` and `Table`, `Table` is mandatory for all usecases and `Connection` is mandatory for 
 applications with more than 1 connection.
 
-
+##### Create, Find, Update, Delete
 Now let's write simple `CRUD` logic for posts.
 
 ```go
@@ -126,7 +126,7 @@ func deletePost(p *Post) error {
 }
 
 ```
-
+##### Insert with relation
 now that we have our post in database, let's add some comments to it. notice that comments are in relation with posts and the relation from posts view is a hasMany relationship and from comments is a belongsTo relationship.
 
 ```go
@@ -154,7 +154,7 @@ func addCategoryToPost(post *Post, category *Category) error {
 
 
 ```
-
+##### Custom query
 Now what if you want to do some complex query for example to get some posts that were created today ?
 
 ```go
