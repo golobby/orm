@@ -14,6 +14,8 @@ import (
 type EntityConfigurator struct {
 	connection string
 	table      string
+	setPK      func(o Entity, value interface{})
+	getPK      func(o Entity) interface{}
 }
 
 func newEntityConfigurator() *EntityConfigurator {
@@ -26,6 +28,15 @@ func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
 }
 func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
 	e.connection = name
+	return e
+}
+
+func (e *EntityConfigurator) PrimaryKeySetter(f func(o Entity, value interface{})) *EntityConfigurator {
+	e.setPK = f
+	return e
+}
+func (e *EntityConfigurator) PrimaryKeyGetter(f func(o Entity) interface{}) *EntityConfigurator {
+	e.getPK = f
 	return e
 }
 
@@ -95,6 +106,8 @@ type schema struct {
 	dialect    *querybuilder.Dialect
 	fields     []*field
 	relations  map[string]interface{}
+	setPK      func(o Entity, value interface{})
+	getPK      func(o Entity) interface{}
 }
 
 func (o *schema) Columns(withPK bool) []string {
@@ -280,6 +293,14 @@ func schemaOf(v Entity) *schema {
 		schema.Table = userSchema.table
 	}
 
+	if userSchema.setPK != nil {
+		schema.setPK = userSchema.setPK
+	}
+
+	if userSchema.getPK != nil {
+		schema.getPK = userSchema.getPK
+	}
+
 	if schema.Table == "" {
 		schema.Table = initTableName(v)
 	}
@@ -290,6 +311,14 @@ func schemaOf(v Entity) *schema {
 	if schema.fields == nil {
 		schema.fields = genericFieldsOf(v)
 	}
+	if schema.getPK == nil {
+		schema.getPK = genericGetPKValue
+	}
+
+	if schema.setPK == nil {
+		schema.setPK = genericSetPkValue
+	}
+
 	schema.relations = userRelations.relations
 
 	return schema

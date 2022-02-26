@@ -33,8 +33,7 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.
-		HasMany(Comment{}, orm.HasManyConfig{}).
+	r.HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
 		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }

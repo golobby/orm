@@ -177,7 +177,7 @@ func Insert(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	genericSetPkValue(obj, id)
+	getSchemaFor(obj).setPK(obj, id)
 	return nil
 }
 
@@ -229,9 +229,18 @@ func InsertAll(objs ...Entity) error {
 
 }
 
+func isZero(val interface{}) bool {
+	switch val.(type) {
+	case int64:
+		return val.(int64) == 0
+	default:
+		return reflect.ValueOf(val).Elem().IsZero()
+	}
+}
+
 // Save upserts given entity.
 func Save(obj Entity) error {
-	if reflect.ValueOf(genericGetPKValue(obj)).IsZero() {
+	if isZero(getSchemaFor(obj).getPK(obj)) {
 		return Insert(obj)
 	} else {
 		return Update(obj)
