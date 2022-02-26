@@ -66,34 +66,109 @@ package main
 
 import "github.com/golobby/orm"
 
+type HeaderPicture struct {
+	ID     int64
+	PostID int64
+	Link   string
+}
+
 type Post struct {
-	ID   int
-	Text string
+	ID   int64
+	Body string
+}
+
+type Comment struct {
+	ID     int64
+	PostID int64
+	Body   string
+}
+
+type Category struct {
+	ID    int64
+	Title string
+}
+
+```
+Now we need to implement `Entity` interface for each one of our database entities, so let's do it.
+````go
+
+type HeaderPicture struct {
+	ID     int64
+	PostID int64
+	Link   string
+}
+
+func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("header_pictures")
+}
+
+func (h HeaderPicture) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+}
+
+type Post struct {
+	ID   int64
+	Body string
 }
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("posts")
+	e.
+		Table("posts")
+
 }
+
+func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.
+		HasMany(Comment{}, orm.HasManyConfig{}).
+		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
+		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
+func (p *Post) Categories() ([]Category, error) {
+	return orm.BelongsToMany[Category](p)
+}
+
+func (p *Post) Comments() ([]Comment, error) {
+	return orm.HasMany[Comment](p)
+}
+
 type Comment struct {
-	ID     int
-	PostID int
+	ID     int64
+	PostID int64
 	Body   string
 }
 
 func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
 	e.Table("comments")
 }
+
+func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+}
+
+func (c *Comment) Post() (Post, error) {
+	return orm.BelongsTo[Post](c)
+}
+
 type Category struct {
-	ID    int
+	ID    int64
 	Title string
 }
 
 func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
 	e.Table("categories")
 }
-```
-As you see for all our *entities*, we define `ConfigureEntity` method that gets `EntityConfigurator` that follows `builder` pattern and helps you
-config your entity so ORM can work with it, you can set `Table`, `Connection`.
+
+func (c Category) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsToMany(Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
+func (c Category) Posts() ([]Post, error) {
+	return orm.BelongsToMany[Post](c)
+}
+
+````
+As you can see each `Entity` should define 2 methods: `ConfigureEntity` which basically maps the struct to correct table and database connection and `ConfigureRelations` registers it's relations with other models.
 
 #### Create, Find, Update, Delete
 Now let's write simple `CRUD` logic for posts.

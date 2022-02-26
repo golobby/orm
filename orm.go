@@ -41,7 +41,7 @@ type ConnectionConfig struct {
 }
 
 func initTableName(e Entity) string {
-	configurator := &EntityConfigurator{}
+	configurator := newEntityConfigurator()
 	e.ConfigureEntity(configurator)
 
 	if configurator.table == "" {
@@ -94,6 +94,7 @@ func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities
 
 type Entity interface {
 	ConfigureEntity(e *EntityConfigurator)
+	ConfigureRelations(r *RelationConfigurator)
 }
 
 func getDB(driver string, connectionString string) (*sql.DB, error) {
@@ -290,9 +291,16 @@ type HasManyConfig struct {
 	PropertyForeignKey string
 }
 
-func HasMany[OUT Entity](owner Entity, c HasManyConfig) ([]OUT, error) {
+func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
+	outSchema := getSchemaFor(*new(OUT))
+	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
+	if !ok {
+		return nil, fmt.Errorf("wrong config passed for HasMany")
+	}
+
 	property := schemaOf(*(new(OUT)))
 	var out []OUT
+
 	//settings default config Values
 	if c.PropertyTable == "" {
 		c.PropertyTable = property.Table
@@ -332,9 +340,13 @@ type HasOneConfig struct {
 	PropertyForeignKey string
 }
 
-func HasOne[PROPERTY Entity](owner Entity, c HasOneConfig) (PROPERTY, error) {
+func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 	out := new(PROPERTY)
 	property := getSchemaFor(*new(PROPERTY))
+	c, ok := getSchemaFor(owner).relations[property.Table].(HasOneConfig)
+	if !ok {
+		return *new(PROPERTY), fmt.Errorf("wrong config passed for HasOne")
+	}
 	//settings default config Values
 	if c.PropertyTable == "" {
 		c.PropertyTable = property.Table
@@ -371,9 +383,13 @@ type BelongsToConfig struct {
 	ForeignColumnName string
 }
 
-func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) {
+func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 	out := new(OWNER)
 	owner := getSchemaFor(*new(OWNER))
+	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
+	if !ok {
+		return *new(OWNER), fmt.Errorf("wrong config passed for BelongsTo")
+	}
 	if c.OwnerTable == "" {
 		c.OwnerTable = owner.Table
 	}
@@ -415,9 +431,12 @@ type BelongsToManyConfig struct {
 }
 
 //BelongsToMany
-func BelongsToMany[OWNER Entity](property Entity, c BelongsToManyConfig) ([]OWNER, error) {
+func BelongsToMany[OWNER Entity](property Entity) ([]OWNER, error) {
 	out := new(OWNER)
-
+	c, ok := getSchemaFor(property).relations[getSchemaFor(*out).Table].(BelongsToManyConfig)
+	if !ok {
+		return nil, fmt.Errorf("wrong config passed for HasMany")
+	}
 	if c.ForeignLookupColumn == "" {
 		c.ForeignLookupColumn = getSchemaFor(*new(OWNER)).pkName()
 	}

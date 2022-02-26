@@ -3,16 +3,21 @@ package orm
 import (
 	"database/sql"
 	"fmt"
-	"github.com/golobby/orm/querybuilder"
-	"github.com/iancoleman/strcase"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"github.com/golobby/orm/querybuilder"
+	"github.com/iancoleman/strcase"
 )
 
 type EntityConfigurator struct {
 	connection string
 	table      string
+}
+
+func newEntityConfigurator() *EntityConfigurator {
+	return &EntityConfigurator{}
 }
 
 func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
@@ -24,9 +29,45 @@ func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
 	return e
 }
 
+type RelationConfigurator struct {
+	relations map[string]interface{}
+}
+
+func newRelationsConfigurator() *RelationConfigurator {
+	return &RelationConfigurator{relations: map[string]interface{}{}}
+}
+
+func (r *RelationConfigurator) HasMany(property Entity, config HasManyConfig) *RelationConfigurator {
+	configurator := newEntityConfigurator()
+	property.ConfigureEntity(configurator)
+	r.relations[configurator.table] = config
+	return r
+}
+
+func (r *RelationConfigurator) HasOne(property Entity, config HasOneConfig) *RelationConfigurator {
+	configurator := newEntityConfigurator()
+	property.ConfigureEntity(configurator)
+	r.relations[configurator.table] = config
+	return r
+}
+
+func (r *RelationConfigurator) BelongsTo(property Entity, config BelongsToConfig) *RelationConfigurator {
+	configurator := newEntityConfigurator()
+	property.ConfigureEntity(configurator)
+	r.relations[configurator.table] = config
+	return r
+}
+
+func (r *RelationConfigurator) BelongsToMany(property Entity, config BelongsToManyConfig) *RelationConfigurator {
+	configurator := newEntityConfigurator()
+	property.ConfigureEntity(configurator)
+	r.relations[configurator.table] = config
+	return r
+}
+
 func getConnectionFor(e Entity) *Connection {
-	var configurator EntityConfigurator
-	e.ConfigureEntity(&configurator)
+	configurator := newEntityConfigurator()
+	e.ConfigureEntity(configurator)
 	if len(globalORM) > 1 && (configurator.connection == "" || configurator.table == "") {
 		panic("need Table and Connection name when having more than 1 Connection registered")
 	}
@@ -42,9 +83,9 @@ func getConnectionFor(e Entity) *Connection {
 }
 
 func getSchemaFor(e Entity) *schema {
-	var configurator EntityConfigurator
+	configurator := newEntityConfigurator()
 	c := getConnectionFor(e)
-	e.ConfigureEntity(&configurator)
+	e.ConfigureEntity(configurator)
 	return c.getSchema(configurator.table)
 }
 
@@ -53,6 +94,7 @@ type schema struct {
 	Table      string
 	dialect    *querybuilder.Dialect
 	fields     []*field
+	relations  map[string]interface{}
 }
 
 func (o *schema) Columns(withPK bool) []string {
@@ -226,8 +268,10 @@ func genericGetPKValue(obj Entity) interface{} {
 }
 
 func schemaOf(v Entity) *schema {
-	var userSchema EntityConfigurator
-	v.ConfigureEntity(&userSchema)
+	userSchema := newEntityConfigurator()
+	userRelations := newRelationsConfigurator()
+	v.ConfigureEntity(userSchema)
+	v.ConfigureRelations(userRelations)
 	schema := &schema{}
 	if userSchema.connection != "" {
 		schema.Connection = userSchema.connection
@@ -246,6 +290,7 @@ func schemaOf(v Entity) *schema {
 	if schema.fields == nil {
 		schema.fields = genericFieldsOf(v)
 	}
+	schema.relations = userRelations.relations
 
 	return schema
 }
@@ -275,8 +320,4 @@ func (e *schema) getConnection() *Connection {
 		return db
 	}
 	panic("no db found")
-}
-
-func (s *schema) Get() *schema {
-	return s.getConnection().getSchema(s.Table)
 }

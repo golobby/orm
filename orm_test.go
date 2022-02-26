@@ -7,21 +7,44 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type HeaderPicture struct {
+	ID     int64
+	PostID int64
+	Link   string
+}
+
+func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("header_pictures")
+}
+
+func (h HeaderPicture) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+}
+
 type Post struct {
 	ID   int64
 	Body string
 }
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("posts")
+	e.
+		Table("posts")
+
+}
+
+func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.
+		HasMany(Comment{}, orm.HasManyConfig{}).
+		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
+		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 func (p *Post) Categories() ([]Category, error) {
-	return orm.BelongsToMany[Category](p, orm.BelongsToManyConfig{})
+	return orm.BelongsToMany[Category](p)
 }
 
 func (p *Post) Comments() ([]Comment, error) {
-	return orm.HasMany[Comment](p, orm.HasManyConfig{})
+	return orm.HasMany[Comment](p)
 }
 
 type Comment struct {
@@ -34,8 +57,12 @@ func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
 	e.Table("comments")
 }
 
+func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+}
+
 func (c *Comment) Post() (Post, error) {
-	return orm.BelongsTo[Post](c, orm.BelongsToConfig{})
+	return orm.BelongsTo[Post](c)
 }
 
 type Category struct {
@@ -47,8 +74,12 @@ func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
 	e.Table("categories")
 }
 
+func (c Category) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsToMany(Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
 func (c Category) Posts() ([]Post, error) {
-	return orm.BelongsToMany[Post](c, orm.BelongsToManyConfig{})
+	return orm.BelongsToMany[Post](c)
 }
 
 // enough models let's test
@@ -58,10 +89,11 @@ func setup(t *testing.T) {
 		Name:             "default",
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
-		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}},
+		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}},
 	})
 
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
@@ -201,7 +233,7 @@ func TestHasMany(t *testing.T) {
 		Body:   "comment 2",
 	}))
 
-	comments, err := orm.HasMany[Comment](post, orm.HasManyConfig{})
+	comments, err := orm.HasMany[Comment](post)
 	assert.NoError(t, err)
 
 	assert.Len(t, comments, 2)
@@ -224,7 +256,7 @@ func TestBelongsTo(t *testing.T) {
 	}
 	assert.NoError(t, orm.Save(comment))
 
-	post2, err := orm.BelongsTo[Post](comment, orm.BelongsToConfig{})
+	post2, err := orm.BelongsTo[Post](comment)
 	assert.NoError(t, err)
 
 	assert.Equal(t, *post, post2)
@@ -238,16 +270,16 @@ func TestHasOne(t *testing.T) {
 	assert.NoError(t, orm.Save(post))
 	assert.Equal(t, int64(1), post.ID)
 
-	comment := &Comment{
+	headerPicture := &HeaderPicture{
 		PostID: post.ID,
-		Body:   "comment 1",
+		Link:   "google",
 	}
-	assert.NoError(t, orm.Save(comment))
+	assert.NoError(t, orm.Save(headerPicture))
 
-	c1, err := orm.HasOne[Comment](post, orm.HasOneConfig{})
+	c1, err := orm.HasOne[HeaderPicture](post)
 	assert.NoError(t, err)
 
-	assert.Equal(t, comment.PostID, c1.PostID)
+	assert.Equal(t, headerPicture.PostID, c1.PostID)
 }
 
 func TestBelongsToMany(t *testing.T) {
@@ -269,7 +301,7 @@ func TestBelongsToMany(t *testing.T) {
 	_, _, err := orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
 	assert.NoError(t, err)
 
-	categories, err := orm.BelongsToMany[Category](post, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+	categories, err := orm.BelongsToMany[Category](post)
 	assert.NoError(t, err)
 
 	assert.Len(t, categories, 1)
