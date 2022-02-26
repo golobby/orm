@@ -312,9 +312,9 @@ a really nice type-safe api.
 
 - Basic CRUD APIs
 	- `Insert`
+    - `InsertAll` => batch insert on a table
 	- `Find`
 	- `Save`
-	- `SaveAll`
 	- `Update`
 	- `Delete`
 
