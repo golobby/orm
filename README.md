@@ -202,7 +202,7 @@ now that we have our post in database, let's add some comments to it. notice tha
 package main
 
 func addCommentsToPost(post *Post, comments []Comment) error {
-	return orm.Add[Comment](post, orm.BelongsToRelation, comments)
+	return orm.Add(post, comments)
 }
 
 func addComments(comments []Comment) error {
@@ -218,7 +218,7 @@ finally, now we have both our posts and comments in db, let's add some categorie
 package main
 
 func addCategoryToPost(post *Post, category *Category) error {
-	return orm.Add[Category](post, orm.ManyToManyRelation, category)
+	return orm.Add(post, category)
 }
 
 
