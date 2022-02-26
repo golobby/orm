@@ -41,7 +41,7 @@ go install github.com/golobby/orm
 ```
 
 ### Getting Started
-Let's imagine we are going to build a simple blogging application that has 3 entities, `Comment`, `Post`, `Category`. To
+Let's imagine we are going to build a simple blogging application that has 3 entities, `Comment`, `Post`, `Category`, `HeaderPicture`. To
 start using ORM you need to call **Initialize** method. It gets array of of **ConnectionConfig** objects which has:
 
 - `Name`: Name of the connection, it can be anything you want.
@@ -54,9 +54,56 @@ orm.Initialize(orm.ConnectionConfig{
     Name:             "sqlite3", // Any name
     Driver:           "sqlite3", // can be "postgres" "mysql", or any normal sql driver name
     ConnectionString: ":memory:", // Any connection string that is valid for your driver.
-    Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}}, // List of entities you want to use.
+    Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, &HeaderPicture{}}, // List of entities you want to use.
 })
 ```
+after initializing you can use `orm.Schematic()` that will print current schematic of all your connections and helps you with finding if you missed something.
+```text
+----------------default---------------
+SQL Dialect: *querybuilder.Dialect
+Table: comments
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| post_id  | int64  | false          | false      |
+| body     | string | false          | false      |
++----------+--------+----------------+------------+
+comments N-1 posts
+
+Table: posts
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| body     | string | false          | false      |
++----------+--------+----------------+------------+
+posts 1-N comments
+posts 1-1 header_pictures
+posts N-N categories
+
+Table: categories
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| title    | string | false          | false      |
++----------+--------+----------------+------------+
+categories N-N posts
+
+Table: header_pictures
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| post_id  | int64  | false          | false      |
+| link     | string | false          | false      |
++----------+--------+----------------+------------+
+header_pictures N-1 posts
+
+-----------------------------------
+```
+You should see something like above text that will show all your database connections, their tables and theirs fields and also all relations for each table.
 #### Creating database entities 
 Before we go further we need to talk about **Entities**, `Entity` is an interface that you ***need*** to implement for
 your models/entities to let ORM work with them. So let's define our entities.

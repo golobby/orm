@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jedib0t/go-pretty/table"
 	"reflect"
 	"strings"
 
@@ -14,11 +15,47 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func Schematic() {
+	for conn, connObj := range globalORM {
+		fmt.Printf("----------------%s---------------\n", conn)
+		connObj.Schematic()
+		fmt.Println("-----------------------------------")
+	}
+}
+
 type Connection struct {
 	Name       string
 	Dialect    *querybuilder.Dialect
 	Connection *sql.DB
 	Schemas    map[string]*schema
+}
+
+func (c *Connection) Schematic() {
+	fmt.Printf("SQL Dialect: %T\n", c.Dialect)
+	for t, schema := range c.Schemas {
+		fmt.Printf("Table: %s\n", t)
+		w := table.NewWriter()
+		w.AppendHeader(table.Row{"SQL Name", "Type", "Is Primary Key", "Is Virtual"})
+		for _, field := range schema.fields {
+			w.AppendRow(table.Row{field.Name, field.Type, field.IsPK, field.Virtual})
+		}
+		fmt.Println(w.Render())
+		for table, rel := range schema.relations {
+			switch rel.(type) {
+			case HasOneConfig:
+				fmt.Printf("%s 1-1 %s\n", t, table)
+			case HasManyConfig:
+				fmt.Printf("%s 1-N %s\n", t, table)
+
+			case BelongsToConfig:
+				fmt.Printf("%s N-1 %s\n", t, table)
+
+			case BelongsToManyConfig:
+				fmt.Printf("%s N-N %s\n", t, table)
+			}
+		}
+		fmt.Println("")
+	}
 }
 
 func (d *Connection) getSchema(t string) *schema {
