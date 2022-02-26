@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/jedib0t/go-pretty/table"
 	"reflect"
 	"strings"
+
+	"github.com/jedib0t/go-pretty/table"
 
 	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
@@ -180,35 +181,53 @@ func Insert(obj Entity) error {
 	return nil
 }
 
-//func InsertAll(objs ...Entity) error {
-//	obj := objs[0]
-//	cols := objs[0].schema().Get().Columns(false)
-//	qb := &querybuilder.Insert{}
-//	qb = qb.
-//		Table(obj.schema().Get().getTable()).
-//		Into(cols...)
-//	for _, obj := range objs {
-//		var ph []string
-//		if obj.schema().Get().getDialect().PlaceholderChar == "$" {
-//			ph = PlaceHolderGenerators.Postgres(len(cols))
-//		} else {
-//			ph = PlaceHolderGenerators.MySQL(len(cols))
-//		}
-//		qb.Values(ph...)
-//		qb.WithArgs(obj.schema().Get().Values(obj, false))
-//	}
-//
-//	res, err := obj.schema().Get().getSQLDB().Exec(q, args...)
-//	if err != nil {
-//		return err
-//	}
-//	id, err := res.LastInsertId()
-//	if err != nil {
-//		return err
-//	}
-//	obj.schema().Get().SetPK(obj, id)
-//	return nil
-//}
+func InsertAll(objs ...Entity) error {
+	if len(objs) == 1 {
+		return Insert(objs[0])
+	} else if len(objs) == 0 {
+		return nil
+	}
+	var lastTable string
+	for _, obj := range objs {
+		s := getSchemaFor(obj)
+		if lastTable == "" {
+			lastTable = s.Table
+		} else {
+			if lastTable != s.Table {
+				return fmt.Errorf("cannot batch insert for two different tables: %s and %s", s.Table, lastTable)
+			}
+		}
+	}
+
+	cols := getSchemaFor(objs[0]).Columns(false)
+	var phs [][]string
+	for _, obj := range objs {
+		if getSchemaFor(obj).getDialect().PlaceholderChar == "$" {
+			phs = append(phs, PlaceHolderGenerators.Postgres(len(cols)))
+		} else {
+			phs = append(phs, PlaceHolderGenerators.MySQL(len(cols)))
+		}
+	}
+
+	qb := &querybuilder.Insert{}
+	qb.
+		Table(getSchemaFor(objs[0]).getTable()).
+		Into(cols...)
+	for idx, obj := range objs {
+		qb.Values(phs[idx]...)
+		qb.WithArgs(genericValuesOf(obj, false))
+	}
+
+	q, args := qb.Build()
+
+	_, err := getConnectionFor(objs[0]).Connection.Exec(q, args)
+	if err != nil {
+		return err
+	}
+
+	return err
+
+}
 
 // Save upserts given entity.
 func Save(obj Entity) error {
