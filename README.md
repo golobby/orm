@@ -60,7 +60,7 @@ orm.Initialize(orm.ConnectionConfig{
 after initializing you can use `orm.Schematic()` that will print current schematic of all your connections and helps you with finding if you missed something.
 ```text
 ----------------default---------------
-SQL Dialect: *querybuilder.Dialect
+SQL Dialect: sqlite3
 Table: comments
 +----------+--------+----------------+------------+
 | SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |

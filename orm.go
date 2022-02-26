@@ -31,7 +31,7 @@ type Connection struct {
 }
 
 func (c *Connection) Schematic() {
-	fmt.Printf("SQL Dialect: %T\n", c.Dialect)
+	fmt.Printf("SQL Dialect: %s\n", c.Dialect.DriverName)
 	for t, schema := range c.Schemas {
 		fmt.Printf("Table: %s\n", t)
 		w := table.NewWriter()
