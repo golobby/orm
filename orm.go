@@ -238,12 +238,6 @@ func Save(obj Entity) error {
 	}
 }
 
-// SaveAll saves all given entities in one query, they all should be same type of entity ( same table ).
-func SaveAll(objs ...Entity) error {
-	// TODO
-	return nil
-}
-
 // Find finds the Entity you want based on Entity generic type and primary key you passed.
 func Find[T Entity](id interface{}) (T, error) {
 	var q string
@@ -543,12 +537,8 @@ const (
 	RelationType_BelongsTo
 )
 
-// Add is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
-// RelationType is from perspective of `to`, so for post and comment example if you want to add comment to a post relationtype is hasMany.
-func Add[T Entity](to Entity, relationType RelationType, items ...T) error {
-	switch relationType {
-	}
-	// TODO: impl me
+//Add adds `items` to `to` using relations defined between items and to in ConfigureRelations method of `to`.
+func Add(to Entity, items ...Entity) error {
 	return nil
 }
 
