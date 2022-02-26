@@ -40,7 +40,7 @@ func (c *Comment) Post() (Post, error) {
 }
 
 type Category struct {
-	ID    int
+	ID    int64
 	Title string
 }
 
@@ -271,5 +271,8 @@ func TestBelongsToMany(t *testing.T) {
 	_, _, err := orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
 	assert.NoError(t, err)
 
-	orm.BelongsToMany()
+	categories, err := orm.BelongsToMany[Category](post, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+	assert.NoError(t, err)
+
+	assert.Len(t, categories, 1)
 }

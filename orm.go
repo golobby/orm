@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
-	"reflect"
+
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -401,16 +404,56 @@ func BelongsTo[OWNER Entity](property Entity, c BelongsToConfig) (OWNER, error) 
 }
 
 type BelongsToManyConfig struct {
-	IntermediateTable         string
-	IntermediateLocalColumn   string
-	IntermediateForeignColumn string
-	ForeignTable              string
-	ForeignLookupColumn       string
+	IntermediateTable      string
+	IntermediatePropertyID string
+	IntermediateOwnerID    string
+	ForeignTable           string
+	ForeignLookupColumn    string
 }
 
+//BelongsToMany
 func BelongsToMany[OWNER Entity](property Entity, c BelongsToManyConfig) ([]OWNER, error) {
-	// TODO: Impl me
-	return nil, nil
+	out := new(OWNER)
+
+	if c.ForeignLookupColumn == "" {
+		c.ForeignLookupColumn = (*out).Schema().Get().pkName()
+	}
+	if c.ForeignTable == "" {
+		c.ForeignTable = (*out).Schema().Get().Table
+	}
+	if c.IntermediateTable == "" {
+		return nil, fmt.Errorf("cannot infer intermediate table yet.")
+	}
+	if c.IntermediatePropertyID == "" {
+		c.IntermediatePropertyID = pluralize.NewClient().Singular(property.Schema().Get().Table) + "_id"
+	}
+	if c.IntermediateOwnerID == "" {
+		c.IntermediateOwnerID = pluralize.NewClient().Singular((*out).Schema().Get().Table) + "_id"
+	}
+
+	q := fmt.Sprintf(`select %s from %s where %s IN (select %s from %s where %s = ?)`,
+		strings.Join((*out).Schema().Get().Columns(true), ","),
+		(*out).Schema().Get().Table,
+		c.ForeignLookupColumn,
+		c.IntermediateOwnerID,
+		c.IntermediateTable,
+		c.IntermediatePropertyID,
+	)
+
+	args := []interface{}{genericGetPKValue(property)}
+
+	rows, err := (*out).Schema().Get().getSQLDB().Query(q, args...)
+
+	if err != nil {
+		return nil, err
+	}
+	var output []OWNER
+	err = (*out).Schema().Get().bind(rows, &output)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
 
 type RelationType int
@@ -485,7 +528,7 @@ func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
 	return id, affected, nil
 }
 
-func RawQuery[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
+func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	rows, err := (*o).Schema().Get().getSQLDB().Query(q, args...)
 	if err != nil {
