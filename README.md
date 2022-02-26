@@ -1,7 +1,10 @@
 [![GoDoc](https://godoc.org/github.com/golobby/orm?status.svg)](https://godoc.org/github.com/golobby/orm)
-[![CI](https://github.com/golobby/orm/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/orm/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/golobby/orm/workflows/CodeQL/badge.svg)](https://github.com/golobby/orm/actions?query=workflow%3ACodeQL)
-[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
+
+[//]: # ([![CI]&#40;https://github.com/golobby/orm/actions/workflows/ci.yml/badge.svg&#41;]&#40;https://github.com/golobby/orm/actions/workflows/ci.yml&#41;)
+
+[//]: # ([![CodeQL]&#40;https://github.com/golobby/orm/workflows/CodeQL/badge.svg&#41;]&#40;https://github.com/golobby/orm/actions?query=workflow%3ACodeQL&#41;)
+
+[//]: # ([![Go Report Card]&#40;https://goreportcard.com/badge/github.com/golobby/orm&#41;]&#40;https://goreportcard.com/report/github.com/golobby/orm&#41;)
 [![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
 
 # golobby/orm
@@ -18,12 +21,13 @@ GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe datab
     - HasMany
     - HasOne
     - BelongsTo
-    - BelongsToMany/ManyToMany
+    - BelongsToMany (ManyToMany)
 
 ## Documentation
 
 ### Examples
 - [Blog Example](https://github.com/golobby/orm#blog-example)
+
 ### Required Go Version
 
 It requires Go `v1.18` or newer versions.
@@ -208,7 +212,7 @@ a really nice type-safe api.
 
 - Relationships
 	- `Add`: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
-	- `BelongsTo`: This defines a hasMany inversed relationship, relationship of a `Comment -> Post`, each comment belongs to a post.
+	- `BelongsTo`: This defines a hasMany inverse relationship, relationship of a `Comment -> Post`, each comment belongs to a post.
 	- `BelongsToMany`: Relationship of `Post <-> Category`, each `Post` has categories and each `Category` has posts.
 	- `HasMany`: Relationship of `Post -> Comment`, each post has many comments.
 	- `HasOne`: 
