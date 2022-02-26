@@ -1,9 +1,10 @@
 package orm_test
 
 import (
+	"testing"
+
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 type Post struct {
@@ -11,10 +12,8 @@ type Post struct {
 	Body string
 }
 
-func (p Post) Schema() *orm.Schema {
-	return &orm.Schema{
-		Table: "posts",
-	}
+func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("posts")
 }
 
 func (p *Post) Categories() ([]Category, error) {
@@ -31,8 +30,8 @@ type Comment struct {
 	Body   string
 }
 
-func (c Comment) Schema() *orm.Schema {
-	return &orm.Schema{Table: "comments"}
+func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("comments")
 }
 
 func (c *Comment) Post() (Post, error) {
@@ -44,8 +43,8 @@ type Category struct {
 	Title string
 }
 
-func (c Category) Schema() *orm.Schema {
-	return &orm.Schema{Table: "categories"}
+func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("categories")
 }
 
 func (c Category) Posts() ([]Post, error) {
@@ -67,7 +66,6 @@ func setup(t *testing.T) {
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 	assert.NoError(t, err)
-
 }
 
 func TestFind(t *testing.T) {
@@ -143,7 +141,7 @@ func TestAdd(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
-	err = orm.Add[Comment](post, orm.RelationType_HasMany, []Comment{
+	err = orm.Add(post, orm.RelationType_HasMany, []Comment{
 		{
 			PostID: post.ID,
 			Body:   "comment 1",

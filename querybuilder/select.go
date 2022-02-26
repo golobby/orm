@@ -271,3 +271,5 @@ func (q *Select) Build() (string, []interface{}) {
 type SQL interface {
 	Build() (string, []interface{})
 }
+
+type QueryModifier func(s *Select)

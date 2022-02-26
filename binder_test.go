@@ -14,8 +14,8 @@ type User struct {
 	Name string
 }
 
-func (u *User) Schema() *Schema {
-	return &Schema{Table: "users"}
+func (u User) ConfigureEntity(e *EntityConfigurator) {
+	e.Table("users")
 }
 
 type Address struct {

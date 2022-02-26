@@ -10,20 +10,52 @@ import (
 	"unsafe"
 )
 
-type Schema struct {
+type EntityConfigurator struct {
+	connection string
+	table      string
+}
+
+func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
+	e.table = name
+	return e
+}
+func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
+	e.connection = name
+	return e
+}
+
+func getConnectionFor(e Entity) *Connection {
+	var configurator EntityConfigurator
+	e.ConfigureEntity(&configurator)
+	if len(globalORM) > 1 && (configurator.connection == "" || configurator.table == "") {
+		panic("need Table and Connection name when having more than 1 Connection registered")
+	}
+	if len(globalORM) == 1 {
+		for _, db := range globalORM {
+			return db
+		}
+	}
+	if db, exists := globalORM[fmt.Sprintf("%s", configurator.connection)]; exists {
+		return db
+	}
+	panic("no db found")
+}
+
+func getSchemaFor(e Entity) *schema {
+	var configurator EntityConfigurator
+	c := getConnectionFor(e)
+	e.ConfigureEntity(&configurator)
+	return c.getSchema(configurator.table)
+}
+
+type schema struct {
 	Connection string
 	Table      string
 	dialect    *querybuilder.Dialect
 	fields     []*field
-	pkOffset   uintptr
-	pkType     string
 }
 
-func GetSchema[T Entity]() *Schema {
-	v := new(T)
-	return (*v).Schema().Get()
-}
-func (o *Schema) Columns(withPK bool) []string {
+func (o *schema) Columns(withPK bool) []string {
 	var cols []string
 	for _, field := range o.fields {
 		if field.Virtual {
@@ -41,7 +73,7 @@ func (o *Schema) Columns(withPK bool) []string {
 	return cols
 }
 
-func (e *Schema) pkName() string {
+func (e *schema) pkName() string {
 	for _, field := range e.fields {
 		if field.IsPK {
 			return field.Name
@@ -128,7 +160,7 @@ func genericValuesOf(o Entity, withPK bool) []interface{} {
 		t = t.Elem()
 		v = v.Elem()
 	}
-	fields := o.Schema().Get().fields
+	fields := getSchemaFor(o).fields
 	pkIdx := -1
 	for i, field := range fields {
 		if field.IsPK {
@@ -159,7 +191,7 @@ func genericSetPkValue(obj Entity, value interface{}) {
 		val = val.Elem()
 	}
 	pkIdx := -1
-	for i, field := range obj.Schema().Get().fields {
+	for i, field := range getSchemaFor(obj).fields {
 		if field.IsPK {
 			pkIdx = i
 		}
@@ -184,7 +216,7 @@ func genericGetPKValue(obj Entity) interface{} {
 		val = val.Elem()
 	}
 
-	fields := obj.Schema().Get().fields
+	fields := getSchemaFor(obj).fields
 	for i, field := range fields {
 		if field.IsPK {
 			return val.Field(i).Interface()
@@ -193,22 +225,15 @@ func genericGetPKValue(obj Entity) interface{} {
 	return ""
 }
 
-func schemaOf(v Entity) *Schema {
-	userSchema := v.Schema()
-	schema := &Schema{}
-	if userSchema.Connection != "" {
-		schema.Connection = userSchema.Connection
+func schemaOf(v Entity) *schema {
+	var userSchema EntityConfigurator
+	v.ConfigureEntity(&userSchema)
+	schema := &schema{}
+	if userSchema.connection != "" {
+		schema.Connection = userSchema.connection
 	}
-	if userSchema.Table != "" {
-		schema.Table = userSchema.Table
-	}
-
-	if userSchema.fields != nil {
-		schema.fields = userSchema.fields
-	}
-
-	if userSchema.dialect != nil {
-		schema.dialect = userSchema.dialect
+	if userSchema.table != "" {
+		schema.Table = userSchema.table
 	}
 
 	if schema.Table == "" {
@@ -221,35 +246,24 @@ func schemaOf(v Entity) *Schema {
 	if schema.fields == nil {
 		schema.fields = genericFieldsOf(v)
 	}
-	var pkIDX int
-	for idx, f := range schema.fields {
-		if f.IsPK {
-			pkIDX = idx
-		}
-	}
-	typ := reflect.TypeOf(v)
-	if typ.Kind() == reflect.Ptr || typ.Kind() == reflect.Interface {
-		typ = typ.Elem()
-	}
-	schema.pkOffset = typ.Field(pkIDX).Offset
-	schema.pkType = typ.Field(pkIDX).Type.String()
+
 	return schema
 }
 
-func (e *Schema) getTable() string {
+func (e *schema) getTable() string {
 	return e.Table
 }
 
-func (e *Schema) getSQLDB() *sql.DB {
+func (e *schema) getSQLDB() *sql.DB {
 	return e.getConnection().Connection
 }
 
-func (e *Schema) getDialect() *querybuilder.Dialect {
+func (e *schema) getDialect() *querybuilder.Dialect {
 	return e.dialect
 }
 
-func (e *Schema) getConnection() *Connection {
-	if len(globalORM) > 1 && (e.Connection == "" || e.getTable() == "") {
+func (e *schema) getConnection() *Connection {
+	if len(globalORM) > 1 && (e.Connection == "" || e.Table == "") {
 		panic("need Table and Connection name when having more than 1 Connection registered")
 	}
 	if len(globalORM) == 1 {
@@ -261,9 +275,8 @@ func (e *Schema) getConnection() *Connection {
 		return db
 	}
 	panic("no db found")
-
 }
 
-func (s *Schema) Get() *Schema {
+func (s *schema) Get() *schema {
 	return s.getConnection().getSchema(s.Table)
 }

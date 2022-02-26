@@ -71,38 +71,29 @@ type Post struct {
 	Text string
 }
 
-func (p Post) Schema() *orm.Schema {
-	return &orm.Schema{
-		Table: "posts",
-	}
+func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("posts")
 }
-
 type Comment struct {
 	ID     int
 	PostID int
 	Body   string
 }
 
-func (c Comment) Schema() *orm.Schema {
-	return &orm.Schema{
-		Table: "comments",
-	}
+func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("comments")
 }
-
 type Category struct {
 	ID    int
 	Title string
 }
 
-func (c Category) Schema() *orm.Schema {
-	return &orm.Schema{Table: "categories"}
+func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("categories")
 }
 ```
-
-As you see for all of our entities we define a `Schema` method that returns an instance of `Schema` struct defined in
-orm, `Schema` struct contains all information that `ORM` needs to work with a database entity modeled in Go structs.
-`Schema` has two public fields, `Connection` and `Table`, `Table` is mandatory for all usecases and `Connection` is mandatory for 
-applications with more than 1 connection.
+As you see for all our *entities*, we define `ConfigureEntity` method that gets `EntityConfigurator` that follows `builder` pattern and helps you
+config your entity so ORM can work with it, you can set `Table`, `Connection`.
 
 #### Create, Find, Update, Delete
 Now let's write simple `CRUD` logic for posts.
@@ -191,11 +182,9 @@ func getTodayPosts() ([]Post, error) {
 ### API Documentation
 If you prefer (like myself) a more api oriented document this part is for you. Almost all functionalities of ORM is exposed thorough
 simple functions of ORM, there are 2 or 3 types you need to know about:
-- `Schema`: All data that ORM needs for working with a struct as database model, all of it's fields can be infered at startup except `Table` which is mandatory. Ofcourse you can fill any field you want and instead of ORM default that one would be used through your application.
+- `Entity`: Interface which all structs that are database entities should implement, it only has one method that configures entity for the ORM.
 
-- `Entity`: Interface which all structs that are database entities should implement, it has only one method and that just returns the `Schema` that we talk about in `Schema` section above.
-
-Now let's talk about ORM functions. also please note that since Go1.18 is on the horizon we are using generic feature extensively to give
+Now let's talk about ORM functions. also, please note that since Go1.18 is on the horizon we are using generic feature extensively to give
 a really nice type-safe api.
 
 
