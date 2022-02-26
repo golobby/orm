@@ -173,12 +173,12 @@ func TestAdd(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
-	err = orm.Add(post, orm.RelationType_HasMany, []Comment{
-		{
+	err = orm.Add(post, []orm.Entity{
+		Comment{
 			PostID: post.ID,
 			Body:   "comment 1",
 		},
-		{
+		Comment{
 			PostID: post.ID,
 			Body:   "comment 2",
 		},

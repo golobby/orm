@@ -528,17 +528,33 @@ func BelongsToMany[OWNER Entity](property Entity) ([]OWNER, error) {
 	return output, nil
 }
 
-type RelationType int
-
-const (
-	RelationType_HasMany RelationType = iota + 1
-	RelationType_HasOne
-	RelationType_ManyToMany
-	RelationType_BelongsTo
-)
-
 //Add adds `items` to `to` using relations defined between items and to in ConfigureRelations method of `to`.
 func Add(to Entity, items ...Entity) error {
+	rels := getSchemaFor(to).relations
+	switch rels[getSchemaFor(items[0]).Table].(type) {
+	case HasManyConfig:
+		return addHasMany(to, items...)
+	case HasOneConfig:
+		return addHasOne(to, items[0])
+	case BelongsToManyConfig:
+		return addBelongsToMany(to, items...)
+	default:
+		return fmt.Errorf("cannot add for relation: %T", rels[getSchemaFor(items[0]).Table])
+	}
+}
+
+// addHasMany(Post, comments)
+func addHasMany(to Entity, items ...Entity) error {
+	return nil
+}
+
+// addHasOne(Post, HeaderPicture)
+func addHasOne(to Entity, item Entity) error {
+	return nil
+}
+
+// addBelongsToMany(Post, Category)
+func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
 
