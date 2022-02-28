@@ -5,6 +5,7 @@ type Dialect struct {
 	PlaceholderChar             string
 	IncludeIndexInPlaceholder   bool
 	AddTableNameInSelectColumns bool
+	PlaceHolderGenerator        func(n int) []string
 }
 
 const (
@@ -23,17 +24,20 @@ var Dialects = &struct {
 		PlaceholderChar:             "?",
 		IncludeIndexInPlaceholder:   false,
 		AddTableNameInSelectColumns: true,
+		PlaceHolderGenerator:        mySQLPlaceHolder,
 	},
 	PostgreSQL: &Dialect{
 		DriverName:                  "postgres",
 		PlaceholderChar:             "$",
 		IncludeIndexInPlaceholder:   true,
 		AddTableNameInSelectColumns: true,
+		PlaceHolderGenerator:        postgresPlaceholder,
 	},
 	SQLite3: &Dialect{
 		DriverName:                  "sqlite3",
 		PlaceholderChar:             "?",
 		IncludeIndexInPlaceholder:   false,
 		AddTableNameInSelectColumns: false,
+		PlaceHolderGenerator:        mySQLPlaceHolder,
 	},
 }

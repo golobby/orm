@@ -198,29 +198,19 @@ func InsertAll(objs ...Entity) error {
 			}
 		}
 	}
-
-	cols := getSchemaFor(objs[0]).Columns(false)
-	var phs [][]string
-	for _, obj := range objs {
-		if getSchemaFor(obj).getDialect().PlaceholderChar == "$" {
-			phs = append(phs, PlaceHolderGenerators.Postgres(len(cols)))
-		} else {
-			phs = append(phs, PlaceHolderGenerators.MySQL(len(cols)))
-		}
-	}
-
 	qb := &querybuilder.Insert{}
 	qb.
-		Table(getSchemaFor(objs[0]).getTable()).
-		Into(cols...)
-	for idx, obj := range objs {
-		qb.Values(phs[idx]...)
-		qb.WithArgs(genericValuesOf(obj, false))
+		Table(getSchemaFor(objs[0]).getTable()).Into(getSchemaFor(objs[0]).Columns(false)...)
+
+	for _, obj := range objs {
+		cols := len(getSchemaFor(obj).Columns(false))
+		qb.WithArgs(genericValuesOf(obj, false)...)
+		qb.Values(getSchemaFor(obj).dialect.PlaceHolderGenerator(cols)...)
 	}
 
 	q, args := qb.Build()
 
-	_, err := getConnectionFor(objs[0]).Connection.Exec(q, args)
+	_, err := getConnectionFor(objs[0]).Connection.Exec(q, args...)
 	if err != nil {
 		return err
 	}
@@ -233,6 +223,8 @@ func isZero(val interface{}) bool {
 	switch val.(type) {
 	case int64:
 		return val.(int64) == 0
+	case int:
+		return val.(int) == 0
 	default:
 		return reflect.ValueOf(val).Elem().IsZero()
 	}
@@ -559,12 +551,12 @@ func addHasMany(to Entity, items ...Entity) error {
 
 // addHasOne(Post, HeaderPicture)
 func addHasOne(to Entity, item Entity) error {
-	return nil
+	panic("implement me")
 }
 
 // addBelongsToMany(Post, Category)
 func addBelongsToMany(to Entity, items ...Entity) error {
-	return nil
+	panic("implement me")
 }
 
 func Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error) {

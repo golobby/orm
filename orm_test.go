@@ -90,7 +90,6 @@ func setup(t *testing.T) {
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}},
 	})
-	orm.Schematic()
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
@@ -126,7 +125,27 @@ func TestInsert(t *testing.T) {
 
 	assert.Equal(t, "my body for insert", p.Body)
 }
+func TestInsertAll(t *testing.T) {
+	setup(t)
 
+	post1 := &Post{
+		Body: "Body1",
+	}
+	post2 := &Post{
+		Body: "Body2",
+	}
+
+	post3 := &Post{
+		Body: "Body3",
+	}
+
+	err := orm.InsertAll(post1, post2, post3)
+	assert.NoError(t, err)
+	var counter int
+	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))
+	assert.Equal(t, 3, counter)
+
+}
 func TestUpdate(t *testing.T) {
 	setup(t)
 	post := &Post{
