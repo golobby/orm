@@ -9,7 +9,6 @@ import (
 
 	"github.com/jedib0t/go-pretty/table"
 
-	"github.com/gertd/go-pluralize"
 	"github.com/golobby/orm/querybuilder"
 
 	//Drivers
@@ -344,21 +343,13 @@ type HasManyConfig struct {
 
 func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	outSchema := getSchemaFor(*new(OUT))
+	// getting config from our cache
 	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
 	if !ok {
 		return nil, fmt.Errorf("wrong config passed for HasMany")
 	}
 
-	property := schemaOf(*(new(OUT)))
 	var out []OUT
-
-	//settings default config Values
-	if c.PropertyTable == "" {
-		c.PropertyTable = property.Table
-	}
-	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(getSchemaFor(owner).getTable()) + "_id"
-	}
 
 	ph := getSchemaFor(owner).getDialect().PlaceholderChar
 	if getSchemaFor(owner).getDialect().IncludeIndexInPlaceholder {
@@ -399,13 +390,6 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 		return *new(PROPERTY), fmt.Errorf("wrong config passed for HasOne")
 	}
 	//settings default config Values
-	if c.PropertyTable == "" {
-		c.PropertyTable = property.Table
-	}
-	if c.PropertyForeignKey == "" {
-		c.PropertyForeignKey = pluralize.NewClient().Singular(getSchemaFor(owner).Table) + "_id"
-	}
-
 	ph := property.dialect.PlaceholderChar
 	if property.dialect.IncludeIndexInPlaceholder {
 		ph = ph + fmt.Sprint(1)
@@ -440,15 +424,6 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
 	if !ok {
 		return *new(OWNER), fmt.Errorf("wrong config passed for BelongsTo")
-	}
-	if c.OwnerTable == "" {
-		c.OwnerTable = owner.Table
-	}
-	if c.LocalForeignKey == "" {
-		c.LocalForeignKey = pluralize.NewClient().Singular(owner.Table) + "_id"
-	}
-	if c.ForeignColumnName == "" {
-		c.ForeignColumnName = "id"
 	}
 
 	ph := owner.getDialect().PlaceholderChar
@@ -488,22 +463,6 @@ func BelongsToMany[OWNER Entity](property Entity) ([]OWNER, error) {
 	if !ok {
 		return nil, fmt.Errorf("wrong config passed for HasMany")
 	}
-	if c.ForeignLookupColumn == "" {
-		c.ForeignLookupColumn = getSchemaFor(*new(OWNER)).pkName()
-	}
-	if c.ForeignTable == "" {
-		c.ForeignTable = getSchemaFor(*new(OWNER)).Table
-	}
-	if c.IntermediateTable == "" {
-		return nil, fmt.Errorf("cannot infer intermediate table yet")
-	}
-	if c.IntermediatePropertyID == "" {
-		c.IntermediatePropertyID = pluralize.NewClient().Singular(getSchemaFor(property).Table) + "_id"
-	}
-	if c.IntermediateOwnerID == "" {
-		c.IntermediateOwnerID = pluralize.NewClient().Singular(getSchemaFor(*out).Table) + "_id"
-	}
-
 	q := fmt.Sprintf(`select %s from %s where %s IN (select %s from %s where %s = ?)`,
 		strings.Join(getSchemaFor(*out).Columns(true), ","),
 		getSchemaFor(*out).Table,
@@ -546,6 +505,24 @@ func Add(to Entity, items ...Entity) error {
 
 // addHasMany(Post, comments)
 func addHasMany(to Entity, items ...Entity) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	firstItem := items[0]
+	sFirstItem := getSchemaFor(firstItem).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey
+	columns := getSchemaFor(firstItem).Columns(false)
+	var found bool
+	for _, col := range columns {
+		if col == sFirstItem {
+			found = true
+		}
+	}
+	if !found {
+
+	} else {
+
+	}
 	return nil
 }
 
