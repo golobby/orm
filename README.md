@@ -311,17 +311,17 @@ a really nice type-safe api.
 
 
 - Basic CRUD APIs
-	- `Insert`
+	- `Insert` => Inserts given `Entity`.
     - `InsertAll` => batch insert on a table
-	- `Find`
-	- `Save`
-	- `Update`
-	- `Delete`
+	- `Find` => Finds record based on given PK and Type parameter.
+	- `Save` => Upserts given entity.
+	- `Update` => Updates given entity.
+	- `Delete` => Deletes given entity from database.
 
 *Note*: for relationship we try to explain them using post/comment/category sample.
 
 - Relationships
-	- `Add`: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
+	- `Add` [TODO]: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
 	- `BelongsTo`: This defines a hasMany inverse relationship, relationship of a `Comment -> Post`, each comment belongs to a post.
 	- `BelongsToMany`: Relationship of `Post <-> Category`, each `Post` has categories and each `Category` has posts.
 	- `HasMany`: Relationship of `Post -> Comment`, each post has many comments.

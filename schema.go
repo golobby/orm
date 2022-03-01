@@ -157,7 +157,6 @@ func getConnectionFor(e Entity) *Connection {
 	configurator := newEntityConfigurator()
 	e.ConfigureEntity(configurator)
 
-	fmt.Printf("%+v", globalORM)
 	if len(globalORM) > 1 && (configurator.connection == "" || configurator.table == "") {
 		panic("need Table and Connection name when having more than 1 Connection registered")
 	}

@@ -490,12 +490,15 @@ func BelongsToMany[OWNER Entity](property Entity) ([]OWNER, error) {
 
 //Add adds `items` to `to` using relations defined between items and to in ConfigureRelations method of `to`.
 func Add(to Entity, items ...Entity) error {
+	if len(items) == 0 {
+		return nil
+	}
 	rels := getSchemaFor(to).relations
 	switch rels[getSchemaFor(items[0]).Table].(type) {
 	case HasManyConfig:
-		return addHasMany(to, items...)
+		return addProperty(to, items...)
 	case HasOneConfig:
-		return addHasOne(to, items[0])
+		return addProperty(to, items[0])
 	case BelongsToManyConfig:
 		return addBelongsToMany(to, items...)
 	default:
@@ -504,31 +507,77 @@ func Add(to Entity, items ...Entity) error {
 }
 
 // addHasMany(Post, comments)
-func addHasMany(to Entity, items ...Entity) error {
-	if len(items) == 0 {
-		return nil
-	}
-
-	firstItem := items[0]
-	sFirstItem := getSchemaFor(firstItem).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey
-	columns := getSchemaFor(firstItem).Columns(false)
-	var found bool
-	for _, col := range columns {
-		if col == sFirstItem {
-			found = true
+func addProperty(to Entity, items ...Entity) error {
+	var lastTable string
+	for _, obj := range items {
+		s := getSchemaFor(obj)
+		if lastTable == "" {
+			lastTable = s.Table
+		} else {
+			if lastTable != s.Table {
+				return fmt.Errorf("cannot batch insert for two different tables: %s and %s", s.Table, lastTable)
+			}
 		}
 	}
-	if !found {
+	qb := &querybuilder.Insert{}
+	qb.
+		Table(getSchemaFor(items[0]).getTable())
 
-	} else {
+	var ownerPKIdx int
 
+	for idx, col := range getSchemaFor(items[0]).Columns(false) {
+		if col == getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
+			ownerPKIdx = idx
+		}
 	}
-	return nil
-}
 
-// addHasOne(Post, HeaderPicture)
-func addHasOne(to Entity, item Entity) error {
-	panic("implement me")
+	ownerPK := genericGetPKValue(to)
+	if ownerPKIdx != 0 {
+		phs := getSchemaFor(items[0]).dialect.PlaceHolderGenerator(len(getSchemaFor(items[0]).Columns(false)) * len(items))
+		cols := getSchemaFor(items[0]).Columns(false)
+		qb.Into(cols...)
+		// Owner PK is present in the items struct
+		for _, item := range items {
+			vals := genericValuesOf(item, false)
+			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
+				panic("owner pk idx is not correct")
+			}
+
+			qb.Values(phs[:len(cols)]...)
+			phs = phs[len(cols):]
+			vals[ownerPKIdx] = ownerPK
+			qb.WithArgs(vals...)
+		}
+	} else {
+		phs := getSchemaFor(items[0]).dialect.PlaceHolderGenerator((len(getSchemaFor(items[0]).Columns(false)) + 1) * len(items))
+		cols := getSchemaFor(items[0]).Columns(false)
+		cols2 := append(cols[:ownerPKIdx], getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey)
+		cols2 = append(cols2, cols[ownerPKIdx+1:]...)
+		cols = cols2
+		qb.Into(cols...)
+		for _, item := range items {
+			vals := genericValuesOf(item, false)
+			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
+				panic("owner pk idx is not correct")
+			}
+			vals2 := append(vals[:ownerPKIdx], ownerPK)
+			vals2 = append(vals2, vals[ownerPKIdx+1:]...)
+			vals = vals2
+			qb.WithArgs(vals...)
+			qb.Values(phs[:len(cols)]...)
+			phs = phs[len(cols):]
+		}
+	}
+
+	q, args := qb.Build()
+
+	_, err := getConnectionFor(items[0]).Connection.Exec(q, args...)
+	if err != nil {
+		return err
+	}
+
+	return err
+
 }
 
 // addBelongsToMany(Post, Category)

@@ -33,7 +33,8 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.HasMany(Comment{}, orm.HasManyConfig{}).
+	r.
+		HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
 		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
@@ -90,7 +91,7 @@ func setup(t *testing.T) {
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}},
 	})
-	orm.Schematic()
+	//orm.Schematic()
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
@@ -194,12 +195,10 @@ func TestAdd(t *testing.T) {
 
 	err = orm.Add(post, []orm.Entity{
 		Comment{
-			PostID: post.ID,
-			Body:   "comment 1",
+			Body: "comment 1",
 		},
 		Comment{
-			PostID: post.ID,
-			Body:   "comment 2",
+			Body: "comment 2",
 		},
 	}...)
 	assert.NoError(t, err)
@@ -233,6 +232,13 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, post, &myPost)
 	})
 
+	var count int
+	assert.Equal(t, 2, orm.GetConnection("default").Connection.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))
+
+	comment, err := orm.Find[Comment](1)
+	assert.NoError(t, err)
+
+	assert.Equal(t, int64(1), comment.PostID)
 }
 
 func TestHasMany(t *testing.T) {
