@@ -202,6 +202,14 @@ func TestAdd(t *testing.T) {
 		},
 	}...)
 	assert.NoError(t, err)
+	var count int
+	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))
+	assert.Equal(t, 2, count)
+
+	comment, err := orm.Find[Comment](1)
+	assert.NoError(t, err)
+
+	assert.Equal(t, int64(1), comment.PostID)
 
 }
 
@@ -232,13 +240,6 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, post, &myPost)
 	})
 
-	var count int
-	assert.Equal(t, 2, orm.GetConnection("default").Connection.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))
-
-	comment, err := orm.Find[Comment](1)
-	assert.NoError(t, err)
-
-	assert.Equal(t, int64(1), comment.PostID)
 }
 
 func TestHasMany(t *testing.T) {
