@@ -57,53 +57,6 @@ orm.Initialize(orm.ConnectionConfig{
     Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, &HeaderPicture{}}, // List of entities you want to use.
 })
 ```
-after initializing you can use `orm.Schematic()` that will print current schematic of all your connections and helps you with finding if you missed something.
-```text
-----------------default---------------
-SQL Dialect: sqlite3
-Table: comments
-+----------+--------+----------------+------------+
-| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
-+----------+--------+----------------+------------+
-| id       | int64  | true           | false      |
-| post_id  | int64  | false          | false      |
-| body     | string | false          | false      |
-+----------+--------+----------------+------------+
-comments N-1 posts
-
-Table: posts
-+----------+--------+----------------+------------+
-| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
-+----------+--------+----------------+------------+
-| id       | int64  | true           | false      |
-| body     | string | false          | false      |
-+----------+--------+----------------+------------+
-posts 1-N comments
-posts 1-1 header_pictures
-posts N-N categories
-
-Table: categories
-+----------+--------+----------------+------------+
-| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
-+----------+--------+----------------+------------+
-| id       | int64  | true           | false      |
-| title    | string | false          | false      |
-+----------+--------+----------------+------------+
-categories N-N posts
-
-Table: header_pictures
-+----------+--------+----------------+------------+
-| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
-+----------+--------+----------------+------------+
-| id       | int64  | true           | false      |
-| post_id  | int64  | false          | false      |
-| link     | string | false          | false      |
-+----------+--------+----------------+------------+
-header_pictures N-1 posts
-
------------------------------------
-```
-You should see something like above text that will show all your database connections, their tables and theirs fields and also all relations for each table.
 #### Creating database entities 
 Before we go further we need to talk about **Entities**, `Entity` is an interface that you ***need*** to implement for
 your models/entities to let ORM work with them. So let's define our entities.
@@ -216,6 +169,51 @@ func (c Category) Posts() ([]Post, error) {
 
 ````
 As you can see each `Entity` should define 2 methods: `ConfigureEntity` which basically maps the struct to correct table and database connection and `ConfigureRelations` registers it's relations with other models.
+
+after creating all entities you can validate your entities using `orm.Schematic()` method to see all information that ORM extracted and constructed from your code.
+```text
+----------------default---------------
+SQL Dialect: sqlite3
+Table: categories
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| title    | string | false          | false      |
++----------+--------+----------------+------------+
+categories N-N posts => {IntermediateTable:post_categories IntermediatePropertyID:post_id IntermediateOwnerID:category_id ForeignTable:posts ForeignLookupColumn:id}
+
+Table: header_pictures
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| post_id  | int64  | false          | false      |
+| link     | string | false          | false      |
++----------+--------+----------------+------------+
+header_pictures N-1 posts => {OwnerTable:posts LocalForeignKey:post_id ForeignColumnName:id}
+
+Table: comments
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| post_id  | int64  | false          | false      |
+| body     | string | false          | false      |
++----------+--------+----------------+------------+
+comments N-1 posts => {OwnerTable:posts LocalForeignKey:post_id ForeignColumnName:id}
+
+Table: posts
++----------+--------+----------------+------------+
+| SQL NAME | TYPE   | IS PRIMARY KEY | IS VIRTUAL |
++----------+--------+----------------+------------+
+| id       | int64  | true           | false      |
+| body     | string | false          | false      |
++----------+--------+----------------+------------+
+posts 1-N comments => {PropertyTable:comments PropertyForeignKey:post_id}
+posts 1-1 header_pictures => {PropertyTable:header_pictures PropertyForeignKey:post_id}
+posts N-N categories => {IntermediateTable:post_categories IntermediatePropertyID:category_id IntermediateOwnerID:post_id ForeignTable:categories ForeignLookupColumn:id}
+```
 
 #### Create, Find, Update, Delete
 Now let's write simple `CRUD` logic for posts.

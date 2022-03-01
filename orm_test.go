@@ -91,7 +91,6 @@ func setup(t *testing.T) {
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}},
 	})
-	//orm.Schematic()
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
