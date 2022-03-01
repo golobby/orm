@@ -43,15 +43,15 @@ func (c *Connection) Schematic() {
 		for table, rel := range schema.relations {
 			switch rel.(type) {
 			case HasOneConfig:
-				fmt.Printf("%s 1-1 %s\n", t, table)
+				fmt.Printf("%s 1-1 %s => %+v\n", t, table, rel)
 			case HasManyConfig:
-				fmt.Printf("%s 1-N %s\n", t, table)
+				fmt.Printf("%s 1-N %s => %+v\n", t, table, rel)
 
 			case BelongsToConfig:
-				fmt.Printf("%s N-1 %s\n", t, table)
+				fmt.Printf("%s N-1 %s => %+v\n", t, table, rel)
 
 			case BelongsToManyConfig:
-				fmt.Printf("%s N-N %s\n", t, table)
+				fmt.Printf("%s N-N %s => %+v\n", t, table, rel)
 			}
 		}
 		fmt.Println("")
