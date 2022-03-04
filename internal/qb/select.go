@@ -1,4 +1,4 @@
-package querybuilder
+package qb
 
 import (
 	"fmt"
@@ -58,6 +58,11 @@ type Select struct {
 	offset   *clause
 	having   *clause
 	args     []interface{}
+}
+
+func (s *Select) Table(table string) *Select {
+	s.table = table
+	return s
 }
 
 func (s *Select) WithArgs(args ...interface{}) *Select {
@@ -273,3 +278,5 @@ type SQL interface {
 }
 
 type QueryModifier func(s *Select)
+
+func NewSelect() *Select { return &Select{} }

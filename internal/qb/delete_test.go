@@ -1,6 +1,7 @@
-package querybuilder
+package qb
 
 import (
+	"github.com/golobby/orm"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,7 @@ import (
 func TestDelete(t *testing.T) {
 
 	t.Run("simple delete equality of id", func(t *testing.T) {
-		s, args := (&Delete{}).
+		s, args := (&orm.Delete{}).
 			Table("users").
 			Where("id", "=", "$1").WithArgs(1).
 			Build()

@@ -319,7 +319,7 @@ a really nice type-safe api.
 *Note*: for relationship we try to explain them using post/comment/category sample.
 
 - Relationships
-	- `Add` [TODO]: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
+	- `Add` [TBA]: This is a relation function, inserts `items` into database and also creates necessary wiring of relationships based on `relationType`.
 	- `BelongsTo`: This defines a hasMany inverse relationship, relationship of a `Comment -> Post`, each comment belongs to a post.
 	- `BelongsToMany`: Relationship of `Post <-> Category`, each `Post` has categories and each `Category` has posts.
 	- `HasMany`: Relationship of `Post -> Comment`, each post has many comments.

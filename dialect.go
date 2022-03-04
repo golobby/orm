@@ -1,4 +1,4 @@
-package querybuilder
+package orm
 
 type Dialect struct {
 	DriverName                  string

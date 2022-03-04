@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	qb2 "github.com/golobby/orm/internal/qb"
+	"github.com/golobby/orm/qm"
 	"reflect"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/table"
-
-	"github.com/golobby/orm/querybuilder"
 
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
@@ -25,7 +25,7 @@ func Schematic() {
 
 type Connection struct {
 	Name       string
-	Dialect    *querybuilder.Dialect
+	Dialect    *Dialect
 	Connection *sql.DB
 	Schemas    map[string]*schema
 }
@@ -73,7 +73,7 @@ type ConnectionConfig struct {
 	Driver           string
 	ConnectionString string
 	DB               *sql.DB
-	Dialect          *querybuilder.Dialect
+	Dialect          *Dialect
 	Entities         []Entity
 }
 
@@ -89,7 +89,7 @@ func initTableName(e Entity) string {
 
 func Initialize(confs ...ConnectionConfig) error {
 	for _, conf := range confs {
-		var dialect *querybuilder.Dialect
+		var dialect *Dialect
 		var db *sql.DB
 		var err error
 		if conf.DB != nil && conf.Dialect != nil {
@@ -110,7 +110,7 @@ func Initialize(confs ...ConnectionConfig) error {
 	return nil
 }
 
-func initialize(name string, dialect *querybuilder.Dialect, db *sql.DB, entities []Entity) *Connection {
+func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *Connection {
 	schemas := map[string]*schema{}
 	for _, entity := range entities {
 		md := schemaOf(entity)
@@ -138,14 +138,14 @@ func getDB(driver string, connectionString string) (*sql.DB, error) {
 	return sql.Open(driver, connectionString)
 }
 
-func getDialect(driver string) (*querybuilder.Dialect, error) {
+func getDialect(driver string) (*Dialect, error) {
 	switch driver {
 	case "mysql":
-		return querybuilder.Dialects.MySQL, nil
+		return Dialects.MySQL, nil
 	case "sqlite", "sqlite3":
-		return querybuilder.Dialects.SQLite3, nil
+		return Dialects.SQLite3, nil
 	case "postgres":
-		return querybuilder.Dialects.PostgreSQL, nil
+		return Dialects.PostgreSQL, nil
 	default:
 		return nil, fmt.Errorf("err no dialect matched with driver")
 	}
@@ -161,7 +161,7 @@ func Insert(obj Entity) error {
 	} else {
 		phs = PlaceHolderGenerators.MySQL(len(cols))
 	}
-	qb := &querybuilder.Insert{}
+	qb := &qb2.Insert{}
 	q, args := qb.
 		Table(getSchemaFor(obj).getTable()).
 		Into(cols...).
@@ -197,7 +197,7 @@ func InsertAll(objs ...Entity) error {
 			}
 		}
 	}
-	qb := &querybuilder.Insert{}
+	qb := &qb2.Insert{}
 	qb.
 		Table(getSchemaFor(objs[0]).getTable()).Into(getSchemaFor(objs[0]).Columns(false)...)
 
@@ -248,11 +248,11 @@ func Find[T Entity](id interface{}) (T, error) {
 	if md.dialect.IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	qb := &querybuilder.Select{}
+	qb := &qb2.Select{}
 	builder := qb.
 		Select(md.Columns(true)...).
 		From(md.Table).
-		Where(querybuilder.WhereHelpers.Equal(md.pkName(), ph)).
+		Where(qb2.WhereHelpers.Equal(md.pkName(), ph)).
 		WithArgs(id)
 
 	q, args = builder.
@@ -290,8 +290,8 @@ func Update(obj Entity) error {
 	kvs := toMap(obj, false)
 	var kvsWithPh []keyValue
 	var args []interface{}
-	whereClause := querybuilder.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
-	query := querybuilder.UpdateStmt().
+	whereClause := qb2.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
+	query := qb2.UpdateStmt().
 		Table(getSchemaFor(obj).getTable()).
 		Where(whereClause)
 	for _, kv := range kvs {
@@ -316,8 +316,8 @@ func Delete(obj Entity) error {
 	if getSchemaFor(obj).getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	query := querybuilder.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
-	qb := &querybuilder.Delete{}
+	query := qb2.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
+	qb := &qb2.Delete{}
 	q, args := qb.
 		Table(getSchemaFor(obj).getTable()).
 		Where(query).
@@ -357,10 +357,10 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	}
 	var q string
 	var args []interface{}
-	qb := &querybuilder.Select{}
+	qb := &qb2.Select{}
 	q, args = qb.
 		From(c.PropertyTable).
-		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		Where(qb2.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(genericGetPKValue(owner)).
 		Build()
 
@@ -396,10 +396,10 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 	}
 	var q string
 	var args []interface{}
-	qb := &querybuilder.Select{}
+	qb := &qb2.Select{}
 	q, args = qb.
 		From(c.PropertyTable).
-		Where(querybuilder.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
+		Where(qb2.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
 		WithArgs(genericGetPKValue(owner)).
 		Build()
 
@@ -438,10 +438,10 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 	}
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
-	qb := &querybuilder.Select{}
+	qb := &qb2.Select{}
 	q, args := qb.
 		From(c.OwnerTable).
-		Where(querybuilder.WhereHelpers.Equal(c.ForeignColumnName, ph)).
+		Where(qb2.WhereHelpers.Equal(c.ForeignColumnName, ph)).
 		WithArgs(ownerID).Build()
 
 	err := bindContext[OWNER](context.Background(), out, q, args)
@@ -494,13 +494,18 @@ func Add(to Entity, items ...Entity) error {
 		return nil
 	}
 	rels := getSchemaFor(to).relations
-	switch rels[getSchemaFor(items[0]).Table].(type) {
+	tname := getSchemaFor(items[0]).Table
+	c, ok := rels[tname]
+	if !ok {
+		return fmt.Errorf("no config found for given to and item...")
+	}
+	switch c.(type) {
 	case HasManyConfig:
 		return addProperty(to, items...)
 	case HasOneConfig:
 		return addProperty(to, items[0])
 	case BelongsToManyConfig:
-		return addBelongsToMany(to, items...)
+		panic("not implemented yet")
 	default:
 		return fmt.Errorf("cannot add for relation: %T", rels[getSchemaFor(items[0]).Table])
 	}
@@ -519,7 +524,7 @@ func addProperty(to Entity, items ...Entity) error {
 			}
 		}
 	}
-	qb := &querybuilder.Insert{}
+	qb := &qb2.Insert{}
 	qb.
 		Table(getSchemaFor(items[0]).getTable())
 
@@ -582,10 +587,17 @@ func addProperty(to Entity, items ...Entity) error {
 
 // addBelongsToMany(Post, Category)
 func addBelongsToMany(to Entity, items ...Entity) error {
-	panic("implement me")
+	return nil
 }
 
-func Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error) {
+func Query2[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
+	s := qb2.NewSelect()
+	for _, mod := range mods {
+		mod.Modify(s)
+	}
+}
+
+func Query[OUTPUT Entity](stmt *qb2.Select) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	rows, err := getSchemaFor(*o).getSQLDB().Query(stmt.Build())
 	if err != nil {
@@ -599,7 +611,7 @@ func Query[OUTPUT Entity](stmt *querybuilder.Select) ([]OUTPUT, error) {
 	return output, nil
 }
 
-func Exec[E Entity](stmt querybuilder.SQL) (int64, int64, error) {
+func Exec[E Entity](stmt qb2.SQL) (int64, int64, error) {
 	e := new(E)
 
 	res, err := getSchemaFor(*e).getSQLDB().Exec(stmt.Build())

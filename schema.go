@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	"github.com/gertd/go-pluralize"
-	"github.com/golobby/orm/querybuilder"
 	"github.com/iancoleman/strcase"
 )
 
@@ -32,14 +31,14 @@ func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
 	return e
 }
 
-func (e *EntityConfigurator) PrimaryKeySetter(f func(o Entity, value interface{})) *EntityConfigurator {
-	e.setPK = f
-	return e
-}
-func (e *EntityConfigurator) PrimaryKeyGetter(f func(o Entity) interface{}) *EntityConfigurator {
-	e.getPK = f
-	return e
-}
+//func (e *EntityConfigurator) PrimaryKeySetter(f func(o Entity, value interface{})) *EntityConfigurator {
+//	e.setPK = f
+//	return e
+//}
+//func (e *EntityConfigurator) PrimaryKeyGetter(f func(o Entity) interface{}) *EntityConfigurator {
+//	e.getPK = f
+//	return e
+//}
 
 type RelationConfigurator struct {
 	this      Entity
@@ -181,7 +180,7 @@ func getSchemaFor(e Entity) *schema {
 type schema struct {
 	Connection string
 	Table      string
-	dialect    *querybuilder.Dialect
+	dialect    *Dialect
 	fields     []*field
 	relations  map[string]interface{}
 	setPK      func(o Entity, value interface{})
@@ -410,7 +409,7 @@ func (e *schema) getSQLDB() *sql.DB {
 	return e.getConnection().Connection
 }
 
-func (e *schema) getDialect() *querybuilder.Dialect {
+func (e *schema) getDialect() *Dialect {
 	return e.dialect
 }
 

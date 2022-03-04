@@ -1,11 +1,25 @@
 package orm_test
 
 import (
+	"github.com/golobby/orm/qm"
 	"testing"
 
 	"github.com/golobby/orm"
 	"github.com/stretchr/testify/assert"
 )
+
+type AuthorEmail struct {
+	ID    int64
+	Email string
+}
+
+func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Table("emails")
+}
+
+func (a AuthorEmail) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+}
 
 type HeaderPicture struct {
 	ID     int64
@@ -36,6 +50,7 @@ func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
 	r.
 		HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
+		HasOne(AuthorEmail{}, orm.HasOneConfig{}).
 		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
@@ -86,12 +101,14 @@ func (c Category) Posts() ([]Post, error) {
 
 func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
-		Name:             "default",
-		Driver:           "sqlite3",
+		Name:   "default",
+		Driver: "sqlite3",
+		//ConnectionString: "orm.db",
 		ConnectionString: ":memory:",
-		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}},
+		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}, AuthorEmail{}},
 	})
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
@@ -104,6 +121,7 @@ func TestFind(t *testing.T) {
 	err := orm.Insert(&Post{
 		Body: "my body for insert",
 	})
+
 	assert.NoError(t, err)
 
 	post, err := orm.Find[Post](1)
@@ -121,6 +139,11 @@ func TestInsert(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 	var p Post
+	orm.Query2(
+		qm.Table("users"),
+		qm.Select("lala"),
+		qm.Order()
+		)
 	assert.NoError(t,
 		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.Body))
 
@@ -330,4 +353,47 @@ func TestBelongsToMany(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, categories, 1)
+}
+
+func TestAddProperty(t *testing.T) {
+	t.Run("having pk value", func(t *testing.T) {
+		setup(t)
+
+		post := &Post{
+			Body: "first post",
+		}
+
+		assert.NoError(t, orm.Save(post))
+		assert.EqualValues(t, 1, post.ID)
+
+		err := orm.Add(post, &Comment{PostID: post.ID, Body: "firstComment"})
+		assert.NoError(t, err)
+
+		var comment Comment
+		assert.NoError(t, orm.GetConnection("default").
+			Connection.
+			QueryRow(`SELECT id, post_id, body FROM comments WHERE post_id=?`, post.ID).
+			Scan(&comment.ID, &comment.PostID, &comment.Body))
+
+		assert.EqualValues(t, post.ID, comment.PostID)
+	})
+	t.Run("not having PK value", func(t *testing.T) {
+		setup(t)
+		post := &Post{
+			Body: "first post",
+		}
+		assert.NoError(t, orm.Save(post))
+		assert.EqualValues(t, 1, post.ID)
+
+		err := orm.Add(post, &AuthorEmail{Email: "myemail"})
+		assert.NoError(t, err)
+
+		var email AuthorEmail
+		assert.NoError(t, orm.GetConnection("default").
+			Connection.
+			QueryRow(`SELECT id, email FROM emails WHERE post_id=?`, post.ID).
+			Scan(&email.ID, &email.Email))
+
+		assert.EqualValues(t, "myemail", email.Email)
+	})
 }
