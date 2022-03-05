@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"github.com/golobby/orm/qm"
 	"testing"
 
 	"github.com/golobby/orm"
@@ -139,11 +138,6 @@ func TestInsert(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 	var p Post
-	orm.Query2(
-		qm.Table("users"),
-		qm.Select("lala"),
-		qm.Order()
-		)
 	assert.NoError(t,
 		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.Body))
 
@@ -223,6 +217,7 @@ func TestAdd(t *testing.T) {
 			Body: "comment 2",
 		},
 	}...)
+	// orm.Query(qm.WhereBetween())
 	assert.NoError(t, err)
 	var count int
 	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))

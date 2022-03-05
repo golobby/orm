@@ -25,7 +25,7 @@ func (i *Insert) WithArgs(args ...interface{}) *Insert {
 	return i
 }
 
-//SQL returns a query, and list of arguments to query executor
+// Build SQL returns a query, and list of arguments to query executor
 func (i *Insert) Build() (string, []interface{}) {
 	var valuesJoined []string
 	for _, v := range i.values {
