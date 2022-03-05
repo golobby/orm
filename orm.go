@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	qb2 "github.com/golobby/orm/internal/qb"
-	"github.com/golobby/orm/qm"
 	"reflect"
 	"strings"
+
+	qb2 "github.com/golobby/orm/internal/qb"
+	"github.com/golobby/orm/qm"
 
 	"github.com/jedib0t/go-pretty/table"
 
@@ -589,17 +590,23 @@ func addProperty(to Entity, items ...Entity) error {
 func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
-
-func Query2[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
+func makeEntity(obj Entity) *EntityConfigurator {
+	var configurator EntityConfigurator
+	obj.ConfigureEntity(&configurator)
+	return &configurator
+}
+func Query[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
+	o := new(OUTPUT)
 	s := qb2.NewSelect()
+
+	s.Table(makeEntity(*o).table)
+
 	for _, mod := range mods {
 		mod.Modify(s)
 	}
-}
-
-func Query[OUTPUT Entity](stmt *qb2.Select) ([]OUTPUT, error) {
-	o := new(OUTPUT)
-	rows, err := getSchemaFor(*o).getSQLDB().Query(stmt.Build())
+	
+	q, args := s.Build()
+	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -609,6 +616,7 @@ func Query[OUTPUT Entity](stmt *qb2.Select) ([]OUTPUT, error) {
 		return nil, err
 	}
 	return output, nil
+
 }
 
 func Exec[E Entity](stmt qb2.SQL) (int64, int64, error) {
