@@ -75,11 +75,14 @@ func (o Offset) String() string {
 }
 
 type Having struct {
-	Cond BinaryOp
+	Dialect *Dialect
+	Cond    BinaryOp
 }
 
-func (h Having) String() string {
-	return fmt.Sprintf("HAVING %s", h.Cond)
+func (h Having) ToSql() (string, []interface{}) {
+	h.Cond.Dialect = h.Dialect
+	cond, condArgs := h.Cond.ToSql()
+	return fmt.Sprintf("HAVING %s", cond), condArgs
 }
 
 type Selected struct {
@@ -91,8 +94,9 @@ func (s Selected) String() string {
 }
 
 type Select struct {
+	Dialect  *Dialect
 	Table    string
-	subQuery *Select
+	SubQuery *Select
 	Selected *Selected
 	Where    *Where
 	OrderBy  *OrderBy
@@ -103,8 +107,9 @@ type Select struct {
 	Having   *Having
 }
 
-func (s Select) String() (string, error) {
+func (s Select) ToSql() (string, []interface{}, error) {
 	base := "SELECT"
+	var args []interface{}
 	//select
 	if s.Selected == nil {
 		s.Selected = &Selected{
@@ -113,20 +118,21 @@ func (s Select) String() (string, error) {
 	}
 	base += " " + s.Selected.String()
 	// from
-	if s.Table == "" && s.subQuery == nil {
-		return "", fmt.Errorf("table name cannot be empty")
-	} else if s.Table != "" && s.subQuery != nil {
-		return "", fmt.Errorf("cannot have both table and subquery")
+	if s.Table == "" && s.SubQuery == nil {
+		return "", nil, fmt.Errorf("table name cannot be empty")
+	} else if s.Table != "" && s.SubQuery != nil {
+		return "", nil, fmt.Errorf("cannot have both table and subquery")
 	}
 	if s.Table != "" {
 		base += " " + "FROM " + s.Table
 	}
-	if s.subQuery != nil {
-		subQuery, err := s.subQuery.String()
+	if s.SubQuery != nil {
+		subQuery, subArgs, err := s.SubQuery.ToSql()
 		if err != nil {
-			return "", fmt.Errorf("subQuery: %w", err)
+			return "", nil, fmt.Errorf("SubQuery: %w", err)
 		}
 		base += " " + "FROM (" + subQuery + " )"
+		args = append(args, subArgs...)
 	}
 	// Joins
 	if s.Joins != nil {
@@ -136,7 +142,10 @@ func (s Select) String() (string, error) {
 	}
 	// Where
 	if s.Where != nil {
-		base += " WHERE " + s.Where.String()
+		s.Where.Dialect = s.Dialect
+		where, whereArgs := s.Where.ToSql()
+		base += " WHERE " + where
+		args = append(args, whereArgs...)
 	}
 
 	// OrderBy
@@ -161,8 +170,11 @@ func (s Select) String() (string, error) {
 
 	// Having
 	if s.Having != nil {
-		base += " " + s.Having.String()
+		s.Having.Dialect = s.Dialect
+		having, havingArgs := s.Having.ToSql()
+		base += " " + having
+		args = append(args, havingArgs...)
 	}
 
-	return base, nil
+	return base, args, nil
 }

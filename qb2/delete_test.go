@@ -10,11 +10,14 @@ func TestDelete(t *testing.T) {
 	t.Run("delete without where", func(t *testing.T) {
 		d := Delete{}
 		d.From = "users"
-		assert.Equal(t, `DELETE FROM users`, d.String())
+		sql, args := d.ToSql()
+		assert.Equal(t, `DELETE FROM users`, sql)
+		assert.Empty(t, args)
 	})
 	t.Run("delete with where", func(t *testing.T) {
 		d := Delete{}
 		d.From = "users"
+		d.Dialect = Dialects.MySQL
 		d.Where = &Where{
 			BinaryOp: BinaryOp{
 				Lhs: "created_at",
@@ -22,6 +25,8 @@ func TestDelete(t *testing.T) {
 				Rhs: "2012-01-10",
 			},
 		}
-		assert.Equal(t, `DELETE FROM users WHERE created_at > '2012-01-10'`, d.String())
+		sql, args := d.ToSql()
+		assert.Equal(t, `DELETE FROM users WHERE created_at > ?`, sql)
+		assert.EqualValues(t, []interface{}{"2012-01-10"}, args)
 	})
 }

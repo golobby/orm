@@ -11,29 +11,43 @@ type updateTuple struct {
 }
 
 type Update struct {
-	Table string
-	Set   []updateTuple
-	Where *Where
+	Dialect *Dialect
+	Table   string
+	Set     []updateTuple
+	Where   *Where
+}
+
+func pop(phs *[]string) string {
+	top := (*phs)[len(*phs)-1]
+	*phs = (*phs)[:len(*phs)-1]
+	return top
 }
 
 func (u Update) kvString() string {
+	phs := u.Dialect.PlaceHolderGenerator(len(u.Set))
 	var sets []string
 	for _, pair := range u.Set {
-		switch pair.Value.(type) {
-		case string:
-			sets = append(sets, fmt.Sprintf("%s='%s'", pair.Key, pair.Value))
-		default:
-			sets = append(sets, fmt.Sprintf("%s=%s", pair.Key, fmt.Sprint(pair.Value)))
-
-		}
+		sets = append(sets, fmt.Sprintf("%s=%s", pair.Key, pop(&phs)))
 	}
 	return strings.Join(sets, ",")
 }
 
-func (u Update) String() string {
-	base := fmt.Sprintf("UPDATE %s SET %s", u.Table, u.kvString())
-	if u.Where != nil {
-		base += " WHERE " + u.Where.String()
+func (u Update) args() []interface{} {
+	var values []interface{}
+	for _, pair := range u.Set {
+		values = append(values, pair.Value)
 	}
-	return base
+	return values
+}
+
+func (u Update) ToSql() (string, []interface{}) {
+	base := fmt.Sprintf("UPDATE %s SET %s", u.Table, u.kvString())
+	args := u.args()
+	if u.Where != nil {
+		u.Where.Dialect = u.Dialect
+		where, whereArgs := u.Where.ToSql()
+		args = append(args, whereArgs...)
+		base += " WHERE " + where
+	}
+	return base, args
 }

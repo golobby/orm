@@ -10,15 +10,20 @@ func TestUpdate(t *testing.T) {
 	t.Run("update no where", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
+		u.Dialect = Dialects.MySQL
 		u.Set = append(u.Set, updateTuple{
 			Key:   "name",
 			Value: "amirreza",
 		})
-		assert.Equal(t, `UPDATE users SET name='amirreza'`, u.String())
+		sql, args := u.ToSql()
+
+		assert.Equal(t, `UPDATE users SET name=?`, sql)
+		assert.Equal(t, []interface{}{"amirreza"}, args)
 	})
 	t.Run("update with where", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
+		u.Dialect = Dialects.MySQL
 		u.Set = append(u.Set, updateTuple{
 			Key:   "name",
 			Value: "amirreza",
@@ -30,7 +35,9 @@ func TestUpdate(t *testing.T) {
 				Rhs: 18,
 			},
 		}
-		assert.Equal(t, `UPDATE users SET name='amirreza' WHERE age < 18`, u.String())
+		sql, args := u.ToSql()
+		assert.Equal(t, `UPDATE users SET name=? WHERE age < ?`, sql)
+		assert.Equal(t, []interface{}{"amirreza", 18}, args)
 
 	})
 }

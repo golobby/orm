@@ -1,22 +1,23 @@
 package qb2
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestSelect(t *testing.T) {
 	t.Run("only select * from table", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users", str)
 	})
 	t.Run("select with where", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
+		s.Dialect = Dialects.MySQL
 		s.Where = &Where{
 			BinaryOp: BinaryOp{
 				Lhs: "age",
@@ -24,9 +25,10 @@ func TestSelect(t *testing.T) {
 				Rhs: 10,
 			},
 		}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
-		assert.Equal(t, "SELECT * FROM users WHERE age = 10", str)
+		assert.EqualValues(t, []interface{}{10}, args)
+		assert.Equal(t, "SELECT * FROM users WHERE age = ?", str)
 	})
 	t.Run("select with order by", func(t *testing.T) {
 		s := Select{}
@@ -35,8 +37,9 @@ func TestSelect(t *testing.T) {
 			Columns: []string{"created_at", "updated_at"},
 			Order:   OrderByASC,
 		}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users ORDER BY created_at,updated_at ASC", str)
 	})
 
@@ -46,8 +49,9 @@ func TestSelect(t *testing.T) {
 		s.GroupBy = &GroupBy{
 			Columns: []string{"created_at", "updated_at"},
 		}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users GROUP BY created_at,updated_at", str)
 	})
 
@@ -55,8 +59,9 @@ func TestSelect(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
 		s.Limit = &Limit{N: 10}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users LIMIT 10", str)
 	})
 
@@ -64,22 +69,25 @@ func TestSelect(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
 		s.Offset = &Offset{N: 10}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users OFFSET 10", str)
 	})
 
 	t.Run("Select with having", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
+		s.Dialect = Dialects.MySQL
 		s.Having = &Having{Cond: BinaryOp{
 			Lhs: "COUNT(id)",
 			Op:  LT,
 			Rhs: 5,
 		}}
-		str, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
-		assert.Equal(t, "SELECT * FROM users HAVING COUNT(id) < 5", str)
+		assert.Equal(t, []interface{}{5}, args)
+		assert.Equal(t, "SELECT * FROM users HAVING COUNT(id) < ?", str)
 	})
 
 	t.Run("select with join", func(t *testing.T) {
@@ -94,9 +102,10 @@ func TestSelect(t *testing.T) {
 				Rhs: "addresses.user_id",
 			},
 		})
-		sql, err := s.String()
+		str, args, err := s.ToSql()
 		assert.NoError(t, err)
-		assert.Equal(t, `SELECT id,name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id`, sql)
+		assert.Empty(t, args)
+		assert.Equal(t, `SELECT id,name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id`, str)
 	})
 
 	t.Run("select with multiple joins", func(t *testing.T) {
@@ -118,8 +127,9 @@ func TestSelect(t *testing.T) {
 				Rhs: "user_credits.user_id",
 			},
 		})
-		sql, err := s.String()
+		sql, args, err := s.ToSql()
 		assert.NoError(t, err)
+		assert.Empty(t, args)
 		assert.Equal(t, `SELECT id,name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id LEFT JOIN user_credits ON users.id = user_credits.user_id`, sql)
 	})
 }

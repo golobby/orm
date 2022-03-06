@@ -3,14 +3,19 @@ package qb2
 import "fmt"
 
 type Delete struct {
-	From  string
-	Where *Where
+	Dialect *Dialect
+	From    string
+	Where   *Where
 }
 
-func (d Delete) String() string {
+func (d Delete) ToSql() (string, []interface{}) {
 	base := fmt.Sprintf("DELETE FROM %s", d.From)
+	var args []interface{}
 	if d.Where != nil {
-		base += " WHERE " + d.Where.String()
+		d.Where.Dialect = d.Dialect
+		where, whereArgs := d.Where.ToSql()
+		base += " WHERE " + where
+		args = append(args, whereArgs...)
 	}
-	return base
+	return base, args
 }

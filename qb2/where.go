@@ -1,6 +1,9 @@
 package qb2
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type binaryOp string
 
@@ -17,37 +20,48 @@ const (
 )
 
 type BinaryOp struct {
-	Lhs string
-	Op  binaryOp
-	Rhs interface{}
+	Dialect *Dialect
+	Lhs     string
+	Op      binaryOp
+	Rhs     interface{}
 }
 
-func (b BinaryOp) String() string {
-	switch b.Rhs.(type) {
-	case string:
-		return fmt.Sprintf("%s %s '%s'", b.Lhs, b.Op, b.Rhs.(string))
-	default:
-		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, fmt.Sprint(b.Rhs))
+func (b BinaryOp) ToSql() (string, []interface{}) {
+	var phs []string
+	if b.Op == In {
+		phs = b.Dialect.PlaceHolderGenerator(len(b.Rhs.([]interface{})))
+		return fmt.Sprintf("%s IN (%s)", b.Lhs, strings.Join(phs, ",")), b.Rhs.([]interface{})
+	} else {
+		phs = b.Dialect.PlaceHolderGenerator(1)
+		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, pop(&phs)), []interface{}{b.Rhs}
 	}
 }
 
 type Where struct {
-	Or  *Where
-	And *Where
+	Dialect *Dialect
+	Or      *Where
+	And     *Where
 	BinaryOp
 }
 
-func (w Where) String() string {
-	base := w.BinaryOp.String()
+func (w Where) ToSql() (string, []interface{}) {
+	w.BinaryOp.Dialect = w.Dialect
+	base, args := w.BinaryOp.ToSql()
 	if w.And != nil && w.Or != nil {
-		return base
+		return base, args
 	}
 	if w.And != nil {
-		return fmt.Sprintf("%s AND %s", base, w.And.String())
+		and, andArgs := w.And.ToSql()
+		base += " AND " + and
+		args = append(args, andArgs)
+		return base, args
 	}
 
 	if w.Or != nil {
-		return fmt.Sprintf("%s OR %s", base, w.Or.String())
+		or, orArgs := w.And.ToSql()
+		base += " OR " + or
+		args = append(args, orArgs)
+		return base, args
 	}
-	return base
+	return base, args
 }
