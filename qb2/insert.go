@@ -8,13 +8,22 @@ import (
 type Insert struct {
 	Into    string
 	Columns []string
-	Values  [][]string
+	Values  [][]interface{}
 }
 
 func (i Insert) getValuesStr() string {
 	var output []string
 	for _, valueRow := range i.Values {
-		output = append(output, fmt.Sprintf("(%s)", strings.Join(valueRow, ",")))
+		var row []string
+		for _, v := range valueRow {
+			switch v.(type) {
+			case string:
+				row = append(row, fmt.Sprintf(`'%s'`, v.(string)))
+			default:
+				row = append(row, fmt.Sprint(v))
+			}
+		}
+		output = append(output, fmt.Sprintf("(%s)", strings.Join(row, ",")))
 	}
 	return strings.Join(output, ",")
 }

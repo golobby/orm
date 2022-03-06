@@ -1,8 +1,9 @@
 package qb2
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSelect(t *testing.T) {
@@ -20,7 +21,7 @@ func TestSelect(t *testing.T) {
 			BinaryOp: BinaryOp{
 				Lhs: "age",
 				Op:  Eq,
-				Rhs: "10",
+				Rhs: 10,
 			},
 		}
 		str, err := s.String()
@@ -74,7 +75,7 @@ func TestSelect(t *testing.T) {
 		s.Having = &Having{Cond: BinaryOp{
 			Lhs: "COUNT(id)",
 			Op:  LT,
-			Rhs: "5",
+			Rhs: 5,
 		}}
 		str, err := s.String()
 		assert.NoError(t, err)
