@@ -22,11 +22,16 @@ const (
 type BinaryOp struct {
 	Lhs string
 	Op  binaryOp
-	Rhs string
+	Rhs interface{}
 }
 
 func (b BinaryOp) String() string {
-	return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, b.Rhs)
+	switch b.Rhs.(type) {
+	case string:
+		return fmt.Sprintf("%s %s '%s'", b.Lhs, b.Op, b.Rhs.(string))
+	default:
+		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, fmt.Sprint(b.Rhs))
+	}
 }
 
 type Where struct {
