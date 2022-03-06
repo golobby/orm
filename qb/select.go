@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import (
 	"fmt"
@@ -75,12 +75,12 @@ func (o Offset) String() string {
 }
 
 type Having struct {
-	Dialect *Dialect
-	Cond    BinaryOp
+	PlaceHolderGenerator func(n int) []string
+	Cond                 BinaryOp
 }
 
 func (h Having) ToSql() (string, []interface{}) {
-	h.Cond.Dialect = h.Dialect
+	h.Cond.PlaceHolderGenerator = h.PlaceHolderGenerator
 	cond, condArgs := h.Cond.ToSql()
 	return fmt.Sprintf("HAVING %s", cond), condArgs
 }
@@ -94,17 +94,17 @@ func (s Selected) String() string {
 }
 
 type Select struct {
-	Dialect  *Dialect
-	Table    string
-	SubQuery *Select
-	Selected *Selected
-	Where    *Where
-	OrderBy  *OrderBy
-	GroupBy  *GroupBy
-	Joins    []*Join
-	Limit    *Limit
-	Offset   *Offset
-	Having   *Having
+	PlaceholderGenerator func(n int) []string
+	Table                string
+	SubQuery             *Select
+	Selected             *Selected
+	Where                *Where
+	OrderBy              *OrderBy
+	GroupBy              *GroupBy
+	Joins                []*Join
+	Limit                *Limit
+	Offset               *Offset
+	Having               *Having
 }
 
 func (s Select) ToSql() (string, []interface{}, error) {
@@ -142,7 +142,7 @@ func (s Select) ToSql() (string, []interface{}, error) {
 	}
 	// Where
 	if s.Where != nil {
-		s.Where.Dialect = s.Dialect
+		s.Where.PlaceHolderGenerator = s.PlaceholderGenerator
 		where, whereArgs := s.Where.ToSql()
 		base += " WHERE " + where
 		args = append(args, whereArgs...)
@@ -170,7 +170,7 @@ func (s Select) ToSql() (string, []interface{}, error) {
 
 	// Having
 	if s.Having != nil {
-		s.Having.Dialect = s.Dialect
+		s.Having.PlaceHolderGenerator = s.PlaceholderGenerator
 		having, havingArgs := s.Having.ToSql()
 		base += " " + having
 		args = append(args, havingArgs...)

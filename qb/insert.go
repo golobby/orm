@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import (
 	"fmt"
@@ -6,10 +6,10 @@ import (
 )
 
 type Insert struct {
-	dialect *Dialect
-	Into    string
-	Columns []string
-	Values  [][]interface{}
+	PlaceholderGenerator func(n int) []string
+	Into                 string
+	Columns              []string
+	Values               [][]interface{}
 }
 
 func (i Insert) flatValues() []interface{} {
@@ -21,7 +21,7 @@ func (i Insert) flatValues() []interface{} {
 }
 
 func (i Insert) getValuesStr() string {
-	phs := i.dialect.PlaceHolderGenerator(len(i.Values) * len(i.Values[0]))
+	phs := i.PlaceholderGenerator(len(i.Values) * len(i.Values[0]))
 
 	var output []string
 	for _, valueRow := range i.Values {

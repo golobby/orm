@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import (
 	"testing"
@@ -17,7 +17,7 @@ func TestDelete(t *testing.T) {
 	t.Run("delete with where", func(t *testing.T) {
 		d := Delete{}
 		d.From = "users"
-		d.Dialect = Dialects.MySQL
+		d.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		d.Where = &Where{
 			BinaryOp: BinaryOp{
 				Lhs: "created_at",
