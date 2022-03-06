@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	qb2 "github.com/golobby/orm/internal/qb"
+	"github.com/golobby/orm/qb2"
 	"github.com/golobby/orm/qm"
 
 	"github.com/jedib0t/go-pretty/table"
@@ -162,10 +162,14 @@ func Insert(obj Entity) error {
 	} else {
 		phs = PlaceHolderGenerators.MySQL(len(cols))
 	}
-	qb := &qb2.Insert{}
+	i := &qb2.Insert{
+		Into:    getSchemaFor(obj).getTable(),
+		Columns: cols,
+		Values:  nil,
+	}
 	q, args := qb.
-		Table(getSchemaFor(obj).getTable()).
-		Into(cols...).
+		Table().
+		Into().
 		Values(phs...).
 		WithArgs(values...).Build()
 
@@ -604,7 +608,7 @@ func Query[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
 	for _, mod := range mods {
 		mod.Modify(s)
 	}
-	
+
 	q, args := s.Build()
 	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
 	if err != nil {
