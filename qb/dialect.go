@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import "fmt"
 

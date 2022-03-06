@@ -7,9 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golobby/orm/qb2"
-	"github.com/golobby/orm/qm"
-
+	"github.com/golobby/orm/qb"
 	"github.com/jedib0t/go-pretty/table"
 
 	//Drivers
@@ -153,27 +151,25 @@ func getDialect(driver string) (*Dialect, error) {
 }
 
 // Insert given Entity
-func Insert(obj Entity) error {
-	cols := getSchemaFor(obj).Columns(false)
-	values := genericValuesOf(obj, false)
-	var phs []string
-	if getSchemaFor(obj).getDialect().PlaceholderChar == "$" {
-		phs = PlaceHolderGenerators.Postgres(len(cols))
-	} else {
-		phs = PlaceHolderGenerators.MySQL(len(cols))
+func Insert(objs ...Entity) error {
+	if len(objs) == 0 {
+		return nil
 	}
-	i := &qb2.Insert{
-		Into:    getSchemaFor(obj).getTable(),
-		Columns: cols,
-		Values:  nil,
+	s := getSchemaFor(objs[0])
+	cols := s.Columns(false)
+	var values [][]interface{}
+	for _, obj := range objs {
+		values = append(values, genericValuesOf(obj, false))
 	}
-	q, args := qb.
-		Table().
-		Into().
-		Values(phs...).
-		WithArgs(values...).Build()
 
-	res, err := getSchemaFor(obj).getSQLDB().Exec(q, args...)
+	q, args := qb.Insert{
+		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
+		Into:                 s.getTable(),
+		Columns:              cols,
+		Values:               values,
+	}.ToSql()
+
+	res, err := s.getSQLDB().Exec(q, args...)
 	if err != nil {
 		return err
 	}
@@ -181,46 +177,9 @@ func Insert(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	getSchemaFor(obj).setPK(obj, id)
+
+	getSchemaFor(objs[len(objs)-1]).setPK(objs[len(objs)-1], id)
 	return nil
-}
-
-func InsertAll(objs ...Entity) error {
-	if len(objs) == 1 {
-		return Insert(objs[0])
-	} else if len(objs) == 0 {
-		return nil
-	}
-	var lastTable string
-	for _, obj := range objs {
-		s := getSchemaFor(obj)
-		if lastTable == "" {
-			lastTable = s.Table
-		} else {
-			if lastTable != s.Table {
-				return fmt.Errorf("cannot batch insert for two different tables: %s and %s", s.Table, lastTable)
-			}
-		}
-	}
-	qb := &qb2.Insert{}
-	qb.
-		Table(getSchemaFor(objs[0]).getTable()).Into(getSchemaFor(objs[0]).Columns(false)...)
-
-	for _, obj := range objs {
-		cols := len(getSchemaFor(obj).Columns(false))
-		qb.WithArgs(genericValuesOf(obj, false)...)
-		qb.Values(getSchemaFor(obj).dialect.PlaceHolderGenerator(cols)...)
-	}
-
-	q, args := qb.Build()
-
-	_, err := getConnectionFor(objs[0]).Connection.Exec(q, args...)
-	if err != nil {
-		return err
-	}
-
-	return err
-
 }
 
 func isZero(val interface{}) bool {
@@ -248,22 +207,21 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-	var args []interface{}
-	ph := md.dialect.PlaceholderChar
-	if md.dialect.IncludeIndexInPlaceholder {
-		ph = ph + "1"
+
+	q, args, err := qb.Select{
+		PlaceholderGenerator: md.dialect.PlaceHolderGenerator,
+		Table:                md.Table,
+		Selected:             &qb.Selected{Columns: md.Columns(true)},
+		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+			Lhs: md.pkName(),
+			Op:  qb.Eq,
+			Rhs: id,
+		}},
+	}.ToSql()
+	if err != nil {
+		return *out, err
 	}
-	qb := &qb2.Select{}
-	builder := qb.
-		Select(md.Columns(true)...).
-		From(md.Table).
-		Where(qb2.WhereHelpers.Equal(md.pkName(), ph)).
-		WithArgs(id)
-
-	q, args = builder.
-		Build()
-
-	err := bindContext[T](context.Background(), out, q, args)
+	err = bindContext[T](context.Background(), out, q, args)
 
 	if err != nil {
 		return *out, err
@@ -272,62 +230,57 @@ func Find[T Entity](id interface{}) (T, error) {
 	return *out, nil
 }
 
-func toMap(obj Entity, withPK bool) []keyValue {
-	var kvs []keyValue
+func toTuples(obj Entity, withPK bool) [][2]interface{} {
+	var tuples [][2]interface{}
 	vs := genericValuesOf(obj, withPK)
 	cols := getSchemaFor(obj).Columns(withPK)
 	for i, col := range cols {
-		kvs = append(kvs, keyValue{
-			Key:   col,
-			Value: vs[i],
+		tuples = append(tuples, [2]interface{}{
+			col,
+			vs[i],
 		})
 	}
-	return kvs
+	return tuples
 }
 
 // Update given Entity in database
 func Update(obj Entity) error {
 	ph := getSchemaFor(obj).getDialect().PlaceholderChar
+	s := getSchemaFor(obj)
 	if getSchemaFor(obj).getDialect().IncludeIndexInPlaceholder {
 		ph = ph + "1"
 	}
-	counter := 2
-	kvs := toMap(obj, false)
-	var kvsWithPh []keyValue
-	var args []interface{}
-	whereClause := qb2.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
-	query := qb2.UpdateStmt().
-		Table(getSchemaFor(obj).getTable()).
-		Where(whereClause)
-	for _, kv := range kvs {
-		thisPh := getSchemaFor(obj).getDialect().PlaceholderChar
-		if getSchemaFor(obj).getDialect().IncludeIndexInPlaceholder {
-			thisPh += fmt.Sprint(counter)
-		}
-		kvsWithPh = append(kvsWithPh, keyValue{Key: kv.Key, Value: thisPh})
-		query.Set(kv.Key, thisPh)
-		query.WithArgs(kv.Value)
-		counter++
-	}
-	query.WithArgs(genericGetPKValue(obj))
-	q, args := query.Build()
+	q, args := qb.Update{
+		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
+		Table:                s.Table,
+		Set:                  toTuples(obj, false),
+		Where: &qb.Where{
+			BinaryOp: qb.BinaryOp{
+				Lhs: s.pkName(),
+				Op:  qb.Eq,
+				Rhs: genericGetPKValue(obj),
+			},
+		},
+	}.ToSql()
+
 	_, err := getSchemaFor(obj).getSQLDB().Exec(q, args...)
 	return err
 }
 
 // Delete given Entity from database
 func Delete(obj Entity) error {
-	ph := getSchemaFor(obj).getDialect().PlaceholderChar
-	if getSchemaFor(obj).getDialect().IncludeIndexInPlaceholder {
-		ph = ph + "1"
-	}
-	query := qb2.WhereHelpers.Equal(getSchemaFor(obj).pkName(), ph)
-	qb := &qb2.Delete{}
-	q, args := qb.
-		Table(getSchemaFor(obj).getTable()).
-		Where(query).
-		WithArgs(genericGetPKValue(obj)).
-		Build()
+	s := getSchemaFor(obj)
+
+	q, args := qb.Delete{
+		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
+		From:                 s.Table,
+		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+			Lhs: s.pkName(),
+			Op:  qb.Eq,
+			Rhs: genericGetPKValue(obj),
+		}},
+	}.ToSql()
+
 	_, err := getSchemaFor(obj).getSQLDB().Exec(q, args...)
 	return err
 }
@@ -355,25 +308,25 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	}
 
 	var out []OUT
-
-	ph := getSchemaFor(owner).getDialect().PlaceholderChar
-	if getSchemaFor(owner).getDialect().IncludeIndexInPlaceholder {
-		ph = ph + fmt.Sprint(1)
-	}
+	s := getSchemaFor(owner)
 	var q string
 	var args []interface{}
-	qb := &qb2.Select{}
-	q, args = qb.
-		From(c.PropertyTable).
-		Where(qb2.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(genericGetPKValue(owner)).
-		Build()
+	q, args, err := qb.Select{
+		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
+		Table:                c.PropertyTable,
+		Selected:             &qb.Selected{Columns: outSchema.Columns(true)},
+		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+			Lhs: c.PropertyForeignKey,
+			Op:  qb.Eq,
+			Rhs: genericGetPKValue(owner),
+		}},
+	}.ToSql()
 
-	if q == "" {
-		return nil, fmt.Errorf("cannot build the query")
+	if err != nil {
+		return nil, err
 	}
 
-	err := bindContext[OUT](context.Background(), &out, q, args)
+	err = bindContext[OUT](context.Background(), &out, q, args)
 
 	if err != nil {
 		return nil, err
@@ -395,25 +348,24 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 		return *new(PROPERTY), fmt.Errorf("wrong config passed for HasOne")
 	}
 	//settings default config Values
-	ph := property.dialect.PlaceholderChar
-	if property.dialect.IncludeIndexInPlaceholder {
-		ph = ph + fmt.Sprint(1)
-	}
+
 	var q string
 	var args []interface{}
-	qb := &qb2.Select{}
-	q, args = qb.
-		From(c.PropertyTable).
-		Where(qb2.WhereHelpers.Equal(c.PropertyForeignKey, ph)).
-		WithArgs(genericGetPKValue(owner)).
-		Build()
+	q, args, err := qb.Select{
+		PlaceholderGenerator: property.dialect.PlaceHolderGenerator,
+		Table:                c.PropertyTable,
+		Selected:             &qb.Selected{Columns: property.Columns(true)},
+		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+			Lhs: c.PropertyForeignKey,
+			Op:  qb.Eq,
+			Rhs: genericGetPKValue(owner),
+		}},
+	}.ToSql()
 
-	if q == "" {
-		return *out, fmt.Errorf("cannot build the query")
+	if err != nil {
+		return *out, err
 	}
-
-	err := bindContext[PROPERTY](context.Background(), out, q, args)
-
+	err = bindContext[PROPERTY](context.Background(), out, q, args)
 	return *out, err
 }
 
@@ -443,13 +395,21 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 	}
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
-	qb := &qb2.Select{}
-	q, args := qb.
-		From(c.OwnerTable).
-		Where(qb2.WhereHelpers.Equal(c.ForeignColumnName, ph)).
-		WithArgs(ownerID).Build()
+	q, args, err := qb.Select{
+		PlaceholderGenerator: owner.dialect.PlaceHolderGenerator,
+		Table:                c.OwnerTable,
+		Selected:             &qb.Selected{Columns: owner.Columns(true)},
+		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+			Lhs: c.ForeignColumnName,
+			Op:  qb.Eq,
+			Rhs: ownerID,
+		}},
+	}.ToSql()
 
-	err := bindContext[OWNER](context.Background(), out, q, args)
+	if err != nil {
+		return *out, err
+	}
+	err = bindContext[OWNER](context.Background(), out, q, args)
 	return *out, err
 }
 
@@ -529,10 +489,10 @@ func addProperty(to Entity, items ...Entity) error {
 			}
 		}
 	}
-	qb := &qb2.Insert{}
-	qb.
-		Table(getSchemaFor(items[0]).getTable())
-
+	i := qb.Insert{
+		PlaceholderGenerator: getSchemaFor(to).dialect.PlaceHolderGenerator,
+		Into:                 getSchemaFor(items[0]).getTable(),
+	}
 	var ownerPKIdx int
 
 	for idx, col := range getSchemaFor(items[0]).Columns(false) {
@@ -543,28 +503,23 @@ func addProperty(to Entity, items ...Entity) error {
 
 	ownerPK := genericGetPKValue(to)
 	if ownerPKIdx != 0 {
-		phs := getSchemaFor(items[0]).dialect.PlaceHolderGenerator(len(getSchemaFor(items[0]).Columns(false)) * len(items))
 		cols := getSchemaFor(items[0]).Columns(false)
-		qb.Into(cols...)
+		i.Columns = append(i.Columns, cols...)
 		// Owner PK is present in the items struct
 		for _, item := range items {
 			vals := genericValuesOf(item, false)
 			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
 				panic("owner pk idx is not correct")
 			}
-
-			qb.Values(phs[:len(cols)]...)
-			phs = phs[len(cols):]
 			vals[ownerPKIdx] = ownerPK
-			qb.WithArgs(vals...)
+			i.Values = append(i.Values, vals)
 		}
 	} else {
-		phs := getSchemaFor(items[0]).dialect.PlaceHolderGenerator((len(getSchemaFor(items[0]).Columns(false)) + 1) * len(items))
 		cols := getSchemaFor(items[0]).Columns(false)
 		cols2 := append(cols[:ownerPKIdx], getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey)
 		cols2 = append(cols2, cols[ownerPKIdx+1:]...)
 		cols = cols2
-		qb.Into(cols...)
+		i.Columns = append(i.Columns, cols...)
 		for _, item := range items {
 			vals := genericValuesOf(item, false)
 			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
@@ -573,13 +528,11 @@ func addProperty(to Entity, items ...Entity) error {
 			vals2 := append(vals[:ownerPKIdx], ownerPK)
 			vals2 = append(vals2, vals[ownerPKIdx+1:]...)
 			vals = vals2
-			qb.WithArgs(vals...)
-			qb.Values(phs[:len(cols)]...)
-			phs = phs[len(cols):]
+			i.Values = append(i.Values, vals)
 		}
 	}
 
-	q, args := qb.Build()
+	q, args := i.ToSql()
 
 	_, err := getConnectionFor(items[0]).Connection.Exec(q, args...)
 	if err != nil {
@@ -599,34 +552,35 @@ func makeEntity(obj Entity) *EntityConfigurator {
 	obj.ConfigureEntity(&configurator)
 	return &configurator
 }
-func Query[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
-	o := new(OUTPUT)
-	s := qb2.NewSelect()
 
-	s.Table(makeEntity(*o).table)
+//func Query[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
+//	o := new(OUTPUT)
+//	s := qb.()
+//
+//	s.Table(makeEntity(*o).table)
+//
+//	for _, mod := range mods {
+//		mod.Modify(s)
+//	}
+//
+//	q, args := s.Build()
+//	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
+//	if err != nil {
+//		return nil, err
+//	}
+//	var output []OUTPUT
+//	err = getSchemaFor(*o).bind(rows, output)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return output, nil
+//
+//}
 
-	for _, mod := range mods {
-		mod.Modify(s)
-	}
-
-	q, args := s.Build()
-	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
-	if err != nil {
-		return nil, err
-	}
-	var output []OUTPUT
-	err = getSchemaFor(*o).bind(rows, output)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-
-}
-
-func Exec[E Entity](stmt qb2.SQL) (int64, int64, error) {
+func Exec[E Entity](stmt qb.ToSql) (int64, int64, error) {
 	e := new(E)
 
-	res, err := getSchemaFor(*e).getSQLDB().Exec(stmt.Build())
+	res, err := getSchemaFor(*e).getSQLDB().Exec(stmt.ToSql())
 	if err != nil {
 		return 0, 0, err
 	}

@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestSelect(t *testing.T) {
 	t.Run("select with where", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
-		s.Dialect = Dialects.MySQL
+		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		s.Where = &Where{
 			BinaryOp: BinaryOp{
 				Lhs: "age",
@@ -78,7 +78,7 @@ func TestSelect(t *testing.T) {
 	t.Run("Select with having", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
-		s.Dialect = Dialects.MySQL
+		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		s.Having = &Having{Cond: BinaryOp{
 			Lhs: "COUNT(id)",
 			Op:  LT,

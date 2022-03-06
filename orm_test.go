@@ -157,7 +157,7 @@ func TestInsertAll(t *testing.T) {
 		Body: "Body3",
 	}
 
-	err := orm.InsertAll(post1, post2, post3)
+	err := orm.Insert(post1, post2, post3)
 	assert.NoError(t, err)
 	var counter int
 	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))

@@ -1,4 +1,4 @@
-package qb2
+package qb
 
 import (
 	"testing"
@@ -10,10 +10,10 @@ func TestUpdate(t *testing.T) {
 	t.Run("update no where", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
-		u.Dialect = Dialects.MySQL
-		u.Set = append(u.Set, updateTuple{
-			Key:   "name",
-			Value: "amirreza",
+		u.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
+		u.Set = append(u.Set, [2]interface{}{
+			"name",
+			"amirreza",
 		})
 		sql, args := u.ToSql()
 
@@ -23,10 +23,10 @@ func TestUpdate(t *testing.T) {
 	t.Run("update with where", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
-		u.Dialect = Dialects.MySQL
-		u.Set = append(u.Set, updateTuple{
-			Key:   "name",
-			Value: "amirreza",
+		u.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
+		u.Set = append(u.Set, [2]interface{}{
+			"name",
+			"amirreza",
 		})
 		u.Where = &Where{
 			BinaryOp: BinaryOp{
