@@ -76,7 +76,7 @@ func (o Offset) String() string {
 
 type Having struct {
 	PlaceHolderGenerator func(n int) []string
-	Cond                 BinaryOp
+	Cond                 Cond
 }
 
 func (h Having) ToSql() (string, []interface{}) {

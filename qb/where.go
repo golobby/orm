@@ -19,7 +19,7 @@ const (
 	In      = "IN"
 )
 
-type BinaryOp struct {
+type Cond struct {
 	PlaceHolderGenerator func(n int) []string
 
 	Lhs string
@@ -27,7 +27,7 @@ type BinaryOp struct {
 	Rhs interface{}
 }
 
-func (b BinaryOp) ToSql() (string, []interface{}) {
+func (b Cond) ToSql() (string, []interface{}) {
 	var phs []string
 	if b.Op == In {
 		phs = b.PlaceHolderGenerator(len(b.Rhs.([]interface{})))
@@ -42,12 +42,12 @@ type Where struct {
 	PlaceHolderGenerator func(n int) []string
 	Or                   *Where
 	And                  *Where
-	BinaryOp
+	Cond
 }
 
 func (w Where) ToSql() (string, []interface{}) {
-	w.BinaryOp.PlaceHolderGenerator = w.PlaceHolderGenerator
-	base, args := w.BinaryOp.ToSql()
+	w.Cond.PlaceHolderGenerator = w.PlaceHolderGenerator
+	base, args := w.Cond.ToSql()
 	if w.And != nil && w.Or != nil {
 		return base, args
 	}

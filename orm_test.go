@@ -1,6 +1,7 @@
 package orm_test
 
 import (
+	"github.com/golobby/orm/qb"
 	"testing"
 
 	"github.com/golobby/orm"
@@ -350,6 +351,41 @@ func TestBelongsToMany(t *testing.T) {
 	assert.Len(t, categories, 1)
 }
 
+func TestQuery(t *testing.T) {
+	t.Run(`test query using qb`, func(t *testing.T) {
+		setup(t)
+
+		post := &Post{
+			Body: "first Post",
+		}
+
+		assert.NoError(t, orm.Save(post))
+		assert.Equal(t, int64(1), post.ID)
+
+		posts, err := orm.Query[Post](qb.Select{Where: &qb.Where{Cond: qb.Cond{
+			Lhs: "id",
+			Op:  qb.Eq,
+			Rhs: 1,
+		}}})
+		assert.NoError(t, err)
+		assert.Equal(t, []Post{*post}, posts)
+	})
+	t.Run(`test query raw`, func(t *testing.T) {
+		setup(t)
+
+		post := &Post{
+			Body: "first Post",
+		}
+
+		assert.NoError(t, orm.Save(post))
+		assert.Equal(t, int64(1), post.ID)
+
+		posts, err := orm.QueryRaw[Post](`SELECT * FROM posts WHERE id = ?`, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, []Post{*post}, posts)
+	})
+}
+
 func TestAddProperty(t *testing.T) {
 	t.Run("having pk value", func(t *testing.T) {
 		setup(t)
@@ -383,12 +419,9 @@ func TestAddProperty(t *testing.T) {
 		err := orm.Add(post, &AuthorEmail{Email: "myemail"})
 		assert.NoError(t, err)
 
-		var email AuthorEmail
-		assert.NoError(t, orm.GetConnection("default").
-			Connection.
-			QueryRow(`SELECT id, email FROM emails WHERE post_id=?`, post.ID).
-			Scan(&email.ID, &email.Email))
+		emails, err := orm.QueryRaw[AuthorEmail](`SELECT id, email FROM emails WHERE post_id=?`, post.ID)
 
-		assert.EqualValues(t, "myemail", email.Email)
+		assert.NoError(t, err)
+		assert.Equal(t, []AuthorEmail{{ID: 1, Email: "myemail"}}, emails)
 	})
 }

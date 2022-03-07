@@ -19,7 +19,7 @@ func TestDelete(t *testing.T) {
 		d.From = "users"
 		d.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		d.Where = &Where{
-			BinaryOp: BinaryOp{
+			Cond: Cond{
 				Lhs: "created_at",
 				Op:  ">",
 				Rhs: "2012-01-10",

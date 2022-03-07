@@ -19,7 +19,7 @@ func TestSelect(t *testing.T) {
 		s.Table = "users"
 		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		s.Where = &Where{
-			BinaryOp: BinaryOp{
+			Cond: Cond{
 				Lhs: "age",
 				Op:  Eq,
 				Rhs: 10,
@@ -79,7 +79,7 @@ func TestSelect(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
 		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
-		s.Having = &Having{Cond: BinaryOp{
+		s.Having = &Having{Cond: Cond{
 			Lhs: "COUNT(id)",
 			Op:  LT,
 			Rhs: 5,

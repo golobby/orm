@@ -212,7 +212,7 @@ func Find[T Entity](id interface{}) (T, error) {
 		PlaceholderGenerator: md.dialect.PlaceHolderGenerator,
 		Table:                md.Table,
 		Selected:             &qb.Selected{Columns: md.Columns(true)},
-		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: md.pkName(),
 			Op:  qb.Eq,
 			Rhs: id,
@@ -255,7 +255,7 @@ func Update(obj Entity) error {
 		Table:                s.Table,
 		Set:                  toTuples(obj, false),
 		Where: &qb.Where{
-			BinaryOp: qb.BinaryOp{
+			Cond: qb.Cond{
 				Lhs: s.pkName(),
 				Op:  qb.Eq,
 				Rhs: genericGetPKValue(obj),
@@ -274,7 +274,7 @@ func Delete(obj Entity) error {
 	q, args := qb.Delete{
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
 		From:                 s.Table,
-		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: s.pkName(),
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(obj),
@@ -315,7 +315,7 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                c.PropertyTable,
 		Selected:             &qb.Selected{Columns: outSchema.Columns(true)},
-		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: c.PropertyForeignKey,
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(owner),
@@ -355,7 +355,7 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 		PlaceholderGenerator: property.dialect.PlaceHolderGenerator,
 		Table:                c.PropertyTable,
 		Selected:             &qb.Selected{Columns: property.Columns(true)},
-		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: c.PropertyForeignKey,
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(owner),
@@ -383,10 +383,6 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 		return *new(OWNER), fmt.Errorf("wrong config passed for BelongsTo")
 	}
 
-	ph := owner.getDialect().PlaceholderChar
-	if owner.getDialect().IncludeIndexInPlaceholder {
-		ph = ph + fmt.Sprint(1)
-	}
 	ownerIDidx := 0
 	for idx, field := range owner.fields {
 		if field.Name == c.LocalForeignKey {
@@ -399,7 +395,7 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 		PlaceholderGenerator: owner.dialect.PlaceHolderGenerator,
 		Table:                c.OwnerTable,
 		Selected:             &qb.Selected{Columns: owner.Columns(true)},
-		Where: &qb.Where{BinaryOp: qb.BinaryOp{
+		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: c.ForeignColumnName,
 			Op:  qb.Eq,
 			Rhs: ownerID,
@@ -516,18 +512,16 @@ func addProperty(to Entity, items ...Entity) error {
 		}
 	} else {
 		cols := getSchemaFor(items[0]).Columns(false)
-		cols2 := append(cols[:ownerPKIdx], getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey)
-		cols2 = append(cols2, cols[ownerPKIdx+1:]...)
-		cols = cols2
+		cols = append(cols[:ownerPKIdx+1], cols[ownerPKIdx:]...)
+		cols[ownerPKIdx] = getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey
 		i.Columns = append(i.Columns, cols...)
 		for _, item := range items {
 			vals := genericValuesOf(item, false)
 			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
 				panic("owner pk idx is not correct")
 			}
-			vals2 := append(vals[:ownerPKIdx], ownerPK)
-			vals2 = append(vals2, vals[ownerPKIdx+1:]...)
-			vals = vals2
+			vals = append(vals[:ownerPKIdx+1], vals[ownerPKIdx:]...)
+			vals[ownerPKIdx] = ownerPK
 			i.Values = append(i.Values, vals)
 		}
 	}
@@ -553,29 +547,27 @@ func makeEntity(obj Entity) *EntityConfigurator {
 	return &configurator
 }
 
-//func Query[OUTPUT Entity](mods ...qm.QM) ([]OUTPUT, error) {
-//	o := new(OUTPUT)
-//	s := qb.()
-//
-//	s.Table(makeEntity(*o).table)
-//
-//	for _, mod := range mods {
-//		mod.Modify(s)
-//	}
-//
-//	q, args := s.Build()
-//	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
-//	if err != nil {
-//		return nil, err
-//	}
-//	var output []OUTPUT
-//	err = getSchemaFor(*o).bind(rows, output)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return output, nil
-//
-//}
+func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
+	o := new(OUTPUT)
+	sch := getSchemaFor(*o)
+	s.PlaceholderGenerator = sch.dialect.PlaceHolderGenerator
+	s.Table = sch.Table
+	q, args, err := s.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	var output []OUTPUT
+	err = getSchemaFor(*o).bind(rows, &output)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+
+}
 
 func Exec[E Entity](stmt qb.ToSql) (int64, int64, error) {
 	e := new(E)
@@ -626,7 +618,7 @@ func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 		return nil, err
 	}
 	var output []OUTPUT
-	err = getSchemaFor(*o).bind(rows, output)
+	err = getSchemaFor(*o).bind(rows, &output)
 	if err != nil {
 		return nil, err
 	}

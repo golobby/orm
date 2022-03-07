@@ -29,7 +29,7 @@ func TestUpdate(t *testing.T) {
 			"amirreza",
 		})
 		u.Where = &Where{
-			BinaryOp: BinaryOp{
+			Cond: Cond{
 				Lhs: "age",
 				Op:  LT,
 				Rhs: 18,
