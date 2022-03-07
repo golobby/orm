@@ -52,7 +52,9 @@ func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
     e.Table("users")
 }
 
-func (u User) ConfigureRelations(r *orm.RelationConfigurator) {}
+func (u User) ConfigureRelations(r *orm.RelationConfigurator) {
+	r.HasMany()
+}
 ```
 as you see our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface which defines two methods:
@@ -78,7 +80,7 @@ type User struct {
 }
 ```
 
-#### Fetching an entity from database
+### Fetching an entity from database
 GolobbyORM makes it trivial to fetch entity from database using its primary key.
 ```go
 user, err := orm.Find[User](1)
@@ -126,6 +128,8 @@ _, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Where("id", 1).Delete()
 ```go
 _, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)
 ```
+### Relationships
+
 ## License
 
 GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
