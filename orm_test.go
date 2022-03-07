@@ -107,6 +107,7 @@ func setup(t *testing.T) {
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}, AuthorEmail{}},
 	})
+	orm.Schematic()
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
@@ -387,11 +388,59 @@ func TestQuery(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	t.Run("test exec", func(t *testing.T) {
+	t.Run("test exec Insert", func(t *testing.T) {
 		setup(t)
 		id, affected, err := orm.Exec[Post](qb.Insert{
 			Columns: []string{"id", "body"},
 			Values:  [][]interface{}{{1, "amirreza"}},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, id)
+		assert.EqualValues(t, 1, affected)
+	})
+	t.Run("test exec &Insert", func(t *testing.T) {
+		setup(t)
+		id, affected, err := orm.Exec[Post](&qb.Insert{
+			Columns: []string{"id", "body"},
+			Values:  [][]interface{}{{1, "amirreza"}},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, id)
+		assert.EqualValues(t, 1, affected)
+	})
+	t.Run("test exec Update", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{
+			Body: "first post",
+		}))
+		id, affected, err := orm.Exec[Post](qb.Update{
+			Set: [][2]interface{}{{"body", "first post updated"}},
+			Where: &qb.Where{
+				Cond: qb.Cond{
+					Lhs: "id",
+					Op:  qb.Eq,
+					Rhs: 1,
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, id)
+		assert.EqualValues(t, 1, affected)
+	})
+	t.Run("test exec &Update", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{
+			Body: "first post",
+		}))
+		id, affected, err := orm.Exec[Post](&qb.Update{
+			Set: [][2]interface{}{{"body", "first post updated"}},
+			Where: &qb.Where{
+				Cond: qb.Cond{
+					Lhs: "id",
+					Op:  qb.Eq,
+					Rhs: 1,
+				},
+			},
 		})
 		assert.NoError(t, err)
 		assert.EqualValues(t, 1, id)
