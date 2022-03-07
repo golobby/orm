@@ -127,6 +127,7 @@ func (s Select) ToSql() (string, []interface{}, error) {
 		base += " " + "FROM " + s.Table
 	}
 	if s.SubQuery != nil {
+		s.SubQuery.PlaceholderGenerator = s.PlaceholderGenerator
 		subQuery, subArgs, err := s.SubQuery.ToSql()
 		if err != nil {
 			return "", nil, fmt.Errorf("SubQuery: %w", err)

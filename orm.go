@@ -163,8 +163,8 @@ func Insert(objs ...Entity) error {
 	}
 
 	q, args := qb.Insert{
-		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
-		Into:                 s.getTable(),
+		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
+		Table:                s.getTable(),
 		Columns:              cols,
 		Values:               values,
 	}.ToSql()
@@ -245,11 +245,7 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 
 // Update given Entity in database
 func Update(obj Entity) error {
-	ph := getSchemaFor(obj).getDialect().PlaceholderChar
 	s := getSchemaFor(obj)
-	if getSchemaFor(obj).getDialect().IncludeIndexInPlaceholder {
-		ph = ph + "1"
-	}
 	q, args := qb.Update{
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                s.Table,
@@ -273,7 +269,7 @@ func Delete(obj Entity) error {
 
 	q, args := qb.Delete{
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
-		From:                 s.Table,
+		Table:                s.Table,
 		Where: &qb.Where{Cond: qb.Cond{
 			Lhs: s.pkName(),
 			Op:  qb.Eq,
@@ -486,19 +482,19 @@ func addProperty(to Entity, items ...Entity) error {
 		}
 	}
 	i := qb.Insert{
-		PlaceholderGenerator: getSchemaFor(to).dialect.PlaceHolderGenerator,
-		Into:                 getSchemaFor(items[0]).getTable(),
+		PlaceHolderGenerator: getSchemaFor(to).dialect.PlaceHolderGenerator,
+		Table:                getSchemaFor(items[0]).getTable(),
 	}
-	var ownerPKIdx int
-
+	ownerPKIdx := -1
+	ownerPKName := getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey
 	for idx, col := range getSchemaFor(items[0]).Columns(false) {
-		if col == getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
+		if col == ownerPKName {
 			ownerPKIdx = idx
 		}
 	}
 
 	ownerPK := genericGetPKValue(to)
-	if ownerPKIdx != 0 {
+	if ownerPKIdx != -1 {
 		cols := getSchemaFor(items[0]).Columns(false)
 		i.Columns = append(i.Columns, cols...)
 		// Owner PK is present in the items struct
@@ -511,6 +507,7 @@ func addProperty(to Entity, items ...Entity) error {
 			i.Values = append(i.Values, vals)
 		}
 	} else {
+		ownerPKIdx = 0
 		cols := getSchemaFor(items[0]).Columns(false)
 		cols = append(cols[:ownerPKIdx+1], cols[ownerPKIdx:]...)
 		cols[ownerPKIdx] = getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey
@@ -541,11 +538,6 @@ func addProperty(to Entity, items ...Entity) error {
 func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
-func makeEntity(obj Entity) *EntityConfigurator {
-	var configurator EntityConfigurator
-	obj.ConfigureEntity(&configurator)
-	return &configurator
-}
 
 func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
 	o := new(OUTPUT)
@@ -569,10 +561,43 @@ func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
 
 }
 
-func Exec[E Entity](stmt qb.ToSql) (int64, int64, error) {
+func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, err error) {
 	e := new(E)
-
-	res, err := getSchemaFor(*e).getSQLDB().Exec(stmt.ToSql())
+	s := getSchemaFor(*e)
+	switch stmt.(type) {
+	case qb.Insert:
+		myStmt := stmt.(qb.Insert)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	case qb.Update:
+		myStmt := stmt.(qb.Update)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	case qb.Delete:
+		myStmt := stmt.(qb.Delete)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	case *qb.Insert:
+		myStmt := stmt.(*qb.Insert)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	case *qb.Update:
+		myStmt := stmt.(*qb.Update)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	case *qb.Delete:
+		myStmt := stmt.(*qb.Delete)
+		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
+		myStmt.Table = s.Table
+		stmt = myStmt
+	}
+	q, args := stmt.ToSql()
+	res, err := s.getSQLDB().Exec(q, args...)
 	if err != nil {
 		return 0, 0, err
 	}

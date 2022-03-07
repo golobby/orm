@@ -4,21 +4,7 @@ import (
 	"fmt"
 )
 
-type keyValue struct {
-	Key   string
-	Value interface{}
-}
-
-type PlaceholderGenerator func(n int) []string
-type placeHolderGenerators struct {
-	Postgres PlaceholderGenerator
-	MySQL    PlaceholderGenerator
-}
-
-var PlaceHolderGenerators = &placeHolderGenerators{
-	Postgres: postgresPlaceholder,
-	MySQL:    mySQLPlaceHolder,
-}
+type phGenerator func(n int) []string
 
 func postgresPlaceholder(n int) []string {
 	output := []string{}

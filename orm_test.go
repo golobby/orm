@@ -386,6 +386,26 @@ func TestQuery(t *testing.T) {
 	})
 }
 
+func TestExec(t *testing.T) {
+	t.Run("test exec", func(t *testing.T) {
+		setup(t)
+		id, affected, err := orm.Exec[Post](qb.Insert{
+			Columns: []string{"id", "body"},
+			Values:  [][]interface{}{{1, "amirreza"}},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, id)
+		assert.EqualValues(t, 1, affected)
+	})
+	t.Run("test exec raw", func(t *testing.T) {
+		setup(t)
+		id, affected, err := orm.ExecRaw[Post](`INSERT INTO posts (id,body) VALUES (1, ?)`, "amirreza")
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, id)
+		assert.EqualValues(t, 1, affected)
+	})
+}
+
 func TestAddProperty(t *testing.T) {
 	t.Run("having pk value", func(t *testing.T) {
 		setup(t)

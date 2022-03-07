@@ -4,12 +4,12 @@ import "fmt"
 
 type Delete struct {
 	PlaceHolderGenerator func(n int) []string
-	From                 string
+	Table                string
 	Where                *Where
 }
 
 func (d Delete) ToSql() (string, []interface{}) {
-	base := fmt.Sprintf("DELETE FROM %s", d.From)
+	base := fmt.Sprintf("DELETE FROM %s", d.Table)
 	var args []interface{}
 	if d.Where != nil {
 		d.Where.PlaceHolderGenerator = d.PlaceHolderGenerator

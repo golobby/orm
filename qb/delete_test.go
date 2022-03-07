@@ -9,14 +9,14 @@ import (
 func TestDelete(t *testing.T) {
 	t.Run("delete without where", func(t *testing.T) {
 		d := Delete{}
-		d.From = "users"
+		d.Table = "users"
 		sql, args := d.ToSql()
 		assert.Equal(t, `DELETE FROM users`, sql)
 		assert.Empty(t, args)
 	})
 	t.Run("delete with where", func(t *testing.T) {
 		d := Delete{}
-		d.From = "users"
+		d.Table = "users"
 		d.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		d.Where = &Where{
 			Cond: Cond{

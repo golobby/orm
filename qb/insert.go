@@ -6,8 +6,8 @@ import (
 )
 
 type Insert struct {
-	PlaceholderGenerator func(n int) []string
-	Into                 string
+	PlaceHolderGenerator func(n int) []string
+	Table                string
 	Columns              []string
 	Values               [][]interface{}
 }
@@ -21,7 +21,7 @@ func (i Insert) flatValues() []interface{} {
 }
 
 func (i Insert) getValuesStr() string {
-	phs := i.PlaceholderGenerator(len(i.Values) * len(i.Values[0]))
+	phs := i.PlaceHolderGenerator(len(i.Values) * len(i.Values[0]))
 
 	var output []string
 	for _, valueRow := range i.Values {
@@ -33,7 +33,7 @@ func (i Insert) getValuesStr() string {
 
 func (i Insert) ToSql() (string, []interface{}) {
 	base := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
-		i.Into,
+		i.Table,
 		strings.Join(i.Columns, ","),
 		i.getValuesStr(),
 	)

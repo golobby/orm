@@ -132,4 +132,22 @@ func TestSelect(t *testing.T) {
 		assert.Empty(t, args)
 		assert.Equal(t, `SELECT id,name FROM users RIGHT JOIN addresses ON users.id = addresses.user_id LEFT JOIN user_credits ON users.id = user_credits.user_id`, sql)
 	})
+
+	t.Run("select with subquery", func(t *testing.T) {
+		s := Select{}
+		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
+		s.SubQuery = &Select{
+			Table: "users",
+			Where: &Where{Cond: Cond{
+				Lhs: "age",
+				Op:  LT,
+				Rhs: 10,
+			}},
+		}
+		sql, args, err := s.ToSql()
+		assert.NoError(t, err)
+		assert.EqualValues(t, []interface{}{10}, args)
+		assert.Equal(t, `SELECT * FROM (SELECT * FROM users WHERE age < ? )`, sql)
+
+	})
 }
