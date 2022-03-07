@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golobby/orm/qb"
 	"github.com/jedib0t/go-pretty/table"
 
 	//Drivers
@@ -150,7 +149,7 @@ func getDialect(driver string) (*Dialect, error) {
 	}
 }
 
-// Insert given Entity
+// insertStmt given Entity
 func Insert(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
@@ -162,7 +161,7 @@ func Insert(objs ...Entity) error {
 		values = append(values, genericValuesOf(obj, false))
 	}
 
-	q, args := qb.Insert{
+	q, args := insertStmt{
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                s.getTable(),
 		Columns:              cols,
@@ -207,17 +206,7 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-
-	q, args, err := qb.Select{
-		PlaceholderGenerator: md.dialect.PlaceHolderGenerator,
-		Table:                md.Table,
-		Selected:             &qb.Selected{Columns: md.Columns(true)},
-		Where: &qb.WhereClause{Cond: qb.Cond{
-			Lhs: md.pkName(),
-			Op:  qb.Eq,
-			Rhs: id,
-		}},
-	}.ToSql()
+	q, args, err := NewQueryBuilder().SetDialect(md.dialect).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
 	if err != nil {
 		return *out, err
 	}
@@ -246,20 +235,12 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 // Update given Entity in database
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
-	q, args := qb.Update{
-		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
-		Table:                s.Table,
-		Set:                  toTuples(obj, false),
-		Where: &qb.WhereClause{
-			Cond: qb.Cond{
-				Lhs: s.pkName(),
-				Op:  qb.Eq,
-				Rhs: genericGetPKValue(obj),
-			},
-		},
-	}.ToSql()
+	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
 
-	_, err := getSchemaFor(obj).getSQLDB().Exec(q, args...)
+	if err != nil {
+		return err
+	}
+	_, err = s.getSQLDB().Exec(q, args...)
 	return err
 }
 
@@ -267,17 +248,12 @@ func Update(obj Entity) error {
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
 
-	q, args := qb.Delete{
-		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
-		Table:                s.Table,
-		Where: &qb.WhereClause{Cond: qb.Cond{
-			Lhs: s.pkName(),
-			Op:  qb.Eq,
-			Rhs: genericGetPKValue(obj),
-		}},
-	}.ToSql()
+	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).Delete().ToSql()
+	if err != nil {
+		return err
+	}
 
-	_, err := getSchemaFor(obj).getSQLDB().Exec(q, args...)
+	_, err = getSchemaFor(obj).getSQLDB().Exec(q, args...)
 	return err
 }
 
@@ -307,16 +283,7 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	s := getSchemaFor(owner)
 	var q string
 	var args []interface{}
-	q, args, err := qb.Select{
-		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
-		Table:                c.PropertyTable,
-		Selected:             &qb.Selected{Columns: outSchema.Columns(true)},
-		Where: &qb.WhereClause{Cond: qb.Cond{
-			Lhs: c.PropertyForeignKey,
-			Op:  qb.Eq,
-			Rhs: genericGetPKValue(owner),
-		}},
-	}.ToSql()
+	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
 		return nil, err
@@ -345,18 +312,8 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 	}
 	//settings default config Values
 
-	var q string
-	var args []interface{}
-	q, args, err := qb.Select{
-		PlaceholderGenerator: property.dialect.PlaceHolderGenerator,
-		Table:                c.PropertyTable,
-		Selected:             &qb.Selected{Columns: property.Columns(true)},
-		Where: &qb.WhereClause{Cond: qb.Cond{
-			Lhs: c.PropertyForeignKey,
-			Op:  qb.Eq,
-			Rhs: genericGetPKValue(owner),
-		}},
-	}.ToSql()
+	q, args, err := NewQueryBuilder().SetDialect(property.dialect).Table(c.PropertyTable).
+		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
 		return *out, err
@@ -387,16 +344,8 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 	}
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
-	q, args, err := qb.Select{
-		PlaceholderGenerator: owner.dialect.PlaceHolderGenerator,
-		Table:                c.OwnerTable,
-		Selected:             &qb.Selected{Columns: owner.Columns(true)},
-		Where: &qb.WhereClause{Cond: qb.Cond{
-			Lhs: c.ForeignColumnName,
-			Op:  qb.Eq,
-			Rhs: ownerID,
-		}},
-	}.ToSql()
+
+	q, args, err := NewQueryBuilder().SetDialect(owner.dialect).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
 
 	if err != nil {
 		return *out, err
@@ -481,7 +430,7 @@ func addProperty(to Entity, items ...Entity) error {
 			}
 		}
 	}
-	i := qb.Insert{
+	i := insertStmt{
 		PlaceHolderGenerator: getSchemaFor(to).dialect.PlaceHolderGenerator,
 		Table:                getSchemaFor(items[0]).getTable(),
 	}
@@ -539,11 +488,10 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
 
-func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
+func Query[OUTPUT Entity](s *QueryBuilder) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	sch := getSchemaFor(*o)
-	s.PlaceholderGenerator = sch.dialect.PlaceHolderGenerator
-	s.Table = sch.Table
+	s.SetDialect(sch.dialect).Table(sch.Table)
 	q, args, err := s.ToSql()
 	if err != nil {
 		return nil, err
@@ -558,55 +506,23 @@ func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
 		return nil, err
 	}
 	return output, nil
-
 }
 
-func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, err error) {
+func Exec[E Entity](stmt *QueryBuilder) (lastInsertedId int64, rowsAffected int64, err error) {
 	e := new(E)
 	s := getSchemaFor(*e)
-	var isDelete bool
 	var lastInsertedID int64
-	switch stmt.(type) {
-	case qb.Insert:
-		myStmt := stmt.(qb.Insert)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
-	case qb.Update:
-		myStmt := stmt.(qb.Update)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
-	case qb.Delete:
-		isDelete = true
-		myStmt := stmt.(qb.Delete)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
-	case *qb.Insert:
-		myStmt := stmt.(*qb.Insert)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
-	case *qb.Update:
-		myStmt := stmt.(*qb.Update)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
-	case *qb.Delete:
-		isDelete = true
-		myStmt := stmt.(*qb.Delete)
-		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
-		myStmt.Table = s.Table
-		stmt = myStmt
+	stmt.SetDialect(s.dialect).Table(s.Table)
+	q, args, err := stmt.ToSql()
+	if err != nil {
+		return -1, -1, err
 	}
-	q, args := stmt.ToSql()
 	res, err := s.getSQLDB().Exec(q, args...)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	if !isDelete {
+	if stmt.typ == queryType_UPDATE {
 		lastInsertedID, err = res.LastInsertId()
 		if err != nil {
 			return 0, 0, err

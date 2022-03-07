@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 
 func TestInsert(t *testing.T) {
 	t.Run("insert into multiple rows", func(t *testing.T) {
-		i := Insert{}
+		i := insertStmt{}
 		i.Table = "users"
 		i.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		i.Columns = []string{"name", "age"}
@@ -19,7 +19,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("insert into single row", func(t *testing.T) {
-		i := Insert{}
+		i := insertStmt{}
 		i.Table = "users"
 		i.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		i.Columns = []string{"name", "age"}

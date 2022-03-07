@@ -1,18 +1,18 @@
-package qb
+package orm
 
 import (
 	"fmt"
 	"strings"
 )
 
-type Insert struct {
+type insertStmt struct {
 	PlaceHolderGenerator func(n int) []string
 	Table                string
 	Columns              []string
 	Values               [][]interface{}
 }
 
-func (i Insert) flatValues() []interface{} {
+func (i insertStmt) flatValues() []interface{} {
 	var values []interface{}
 	for _, row := range i.Values {
 		values = append(values, row...)
@@ -20,7 +20,7 @@ func (i Insert) flatValues() []interface{} {
 	return values
 }
 
-func (i Insert) getValuesStr() string {
+func (i insertStmt) getValuesStr() string {
 	phs := i.PlaceHolderGenerator(len(i.Values) * len(i.Values[0]))
 
 	var output []string
@@ -31,7 +31,7 @@ func (i Insert) getValuesStr() string {
 	return strings.Join(output, ",")
 }
 
-func (i Insert) ToSql() (string, []interface{}) {
+func (i insertStmt) ToSql() (string, []interface{}) {
 	base := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
 		i.Table,
 		strings.Join(i.Columns, ","),

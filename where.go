@@ -1,4 +1,4 @@
-package qb
+package orm
 
 import (
 	"fmt"
@@ -38,31 +38,30 @@ func (b Cond) ToSql() (string, []interface{}) {
 	}
 }
 
-type WhereClause struct {
+const (
+	nextType_AND = "AND"
+	nextType_OR  = "OR"
+)
+
+type whereClause struct {
 	PlaceHolderGenerator func(n int) []string
-	Or                   *WhereClause
-	And                  *WhereClause
+	nextTyp              string
+	next                 *whereClause
 	Cond
 }
 
-func (w WhereClause) ToSql() (string, []interface{}) {
+func (w whereClause) ToSql() (string, []interface{}) {
 	w.Cond.PlaceHolderGenerator = w.PlaceHolderGenerator
 	base, args := w.Cond.ToSql()
-	if w.And != nil && w.Or != nil {
+	if w.next == nil {
 		return base, args
 	}
-	if w.And != nil {
-		and, andArgs := w.And.ToSql()
-		base += " AND " + and
-		args = append(args, andArgs)
+	if w.next != nil {
+		next, nextArgs := w.next.ToSql()
+		base += " " + w.nextTyp + " " + next
+		args = append(args, nextArgs)
 		return base, args
 	}
 
-	if w.Or != nil {
-		or, orArgs := w.And.ToSql()
-		base += " OR " + or
-		args = append(args, orArgs)
-		return base, args
-	}
 	return base, args
 }
