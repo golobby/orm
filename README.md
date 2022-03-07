@@ -49,11 +49,11 @@ type User struct {
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.Table("users")
+    e.Table("users").Connection("default") // You can omit .Connection if you have only on connection.
 }
 
 func (u User) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.HasMany()
+	// we talk about relationships later
 }
 ```
 as you see our user entity is nothing else than a simple struct and two methods.
@@ -61,6 +61,22 @@ Entities in GolobbyORM are implementations of `Entity` interface which defines t
 - ConfigureEntity: configures table and database connection.
 - ConfigureRelations: configures relations that `Entity` has with other relations.
 
+after creating your entities you should initialize orm.
+
+```go
+package main
+
+import "github.com/golobby/orm"
+
+func main() {
+  orm.Initialize(orm.ConnectionConfig{
+    Name:             "default",
+    Driver:           "sqlite3",
+    ConnectionString: ":memory:",
+    Entities:         []orm.Entity{&User{}},
+  })
+}
+```
 #### Conventions
 ##### Column names
 GolobbyORM for each struct field(except slice, arrays, maps and other nested structs) assumes a respective column named using snake case syntax.
@@ -129,6 +145,51 @@ _, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Where("id", 1).Delete()
 _, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)
 ```
 ### Relationships
+GolobbyORM makes it easy to have entities that have relationships with each other. As you have already seen in entity definition
+you have a `ConfigureRelations` method which let's you define relations of an `Entity`.
+#### HasMany
+```go
+type Post struct {}
+
+func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
+    r.HasMany(&Comment{}, orm.HasManyConfig{})
+}
+```
+As you can see we are defining a `Post` entity which has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object, by default it will infer all fields for you.
+#### HasOne
+```go
+type Post struct {}
+
+func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
+    r.HasOne(&HeaderPicture{}, orm.HasOneConfig{})
+}
+```
+As you can see we are defining a `Post` entity which has a `HasOne` relation with `HeaderPicture`. You can configure how GolobbyORM queries `HasOne` relation with `orm.HasOneConfig` object, by default it will infer all fields for you.
+#### BelongsTo
+```go
+type Comment struct {}
+
+func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
+    r.BelongsTo(&Post{}, orm.BelongsToConfig{})
+}
+```
+As you can see we are defining a `Comment` entity which has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object, by default it will infer all fields for you.
+
+#### BelongsToMany
+```go
+type Post struct {}
+
+func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
+    r.BelongsToMany(&Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
+type Category struct{}
+func(c Category) ConfigureRelations(r *orm.RelationConfigurator) {
+    r.BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+}
+
+```
+we are defining a `Post` entity and also a `Category` entity which have a many2many relationship, as you can see it's mandatory for us to configure IntermediateTable name which GolobbyORM cannot infer by itself now.
 
 ## License
 
