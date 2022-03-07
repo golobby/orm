@@ -4,7 +4,7 @@
 
 [//]: # ([![CodeQL]&#40;https://github.com/golobby/orm/workflows/CodeQL/badge.svg&#41;]&#40;https://github.com/golobby/orm/actions?query=workflow%3ACodeQL&#41;)
 
-[//]: # ([![Go Report Card]&#40;https://goreportcard.com/badge/github.com/golobby/orm&#41;]&#40;https://goreportcard.com/report/github.com/golobby/orm&#41;)
+[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
 [![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
 
 # golobby/orm
