@@ -32,6 +32,7 @@ GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe datab
       - [Conventions](#conventions)
         * [Column names](#column-names)
         * [Primary Key](#primary-key)
+    + [Initializing ORM](#Initializing-ORM)
     + [Fetching an entity from database](#fetching-an-entity-from-database)
     + [Saving entities or Insert/Update](#saving-entities-or-insert-update)
     + [Deleting entities](#deleting-entities)
@@ -42,6 +43,7 @@ GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe datab
       - [BelongsToMany](#belongstomany)
       - [Saving with relation](#saving-with-relation)
   * [License](#license)
+  
   
 ### Introduction
 GolobbyORM an object-relational mapper (ORM) that makes it enjoyable to interact with your database. 
@@ -76,23 +78,7 @@ as you see our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface which defines two methods:
 - ConfigureEntity: configures table and database connection.
 - ConfigureRelations: configures relations that `Entity` has with other relations.
-
-after creating your entities you should initialize orm.
-
-```go
-package main
-
-import "github.com/golobby/orm"
-
-func main() {
-  orm.Initialize(orm.ConnectionConfig{
-    Name:             "default",
-    Driver:           "sqlite3",
-    ConnectionString: ":memory:",
-    Entities:         []orm.Entity{&User{}},
-  })
-}
-```
+- 
 #### Conventions
 ##### Column names
 GolobbyORM for each struct field(except slice, arrays, maps and other nested structs) assumes a respective column named using snake case syntax.
@@ -109,6 +95,23 @@ GolobbyORM assumes that each entity has primary key named `id`, if you want to h
 package main
 type User struct {
 	PK int64 `orm:"pk=true"`
+}
+```
+
+### Initializing ORM
+after creating our entities we need to initialize GolobbyORM.
+```go
+package main
+
+import "github.com/golobby/orm"
+
+func main() {
+  orm.Initialize(orm.ConnectionConfig{
+    Name:             "default",
+    Driver:           "sqlite3",
+    ConnectionString: ":memory:",
+    Entities:         []orm.Entity{&User{}},
+  })
 }
 ```
 
