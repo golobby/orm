@@ -7,21 +7,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
 [![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
 
-# golobby/orm
+# GolobbyORM
 
-GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
-
-## Features
-- Simple, type safe, elegant API with help of `Generics`
-- Minimum reflection usage, mostly at startup of application
-- No code generation
-- Query builder for various query types
-- Binding query results to entities
-- Supports relationship/Association types
-    - HasMany
-    - HasOne
-    - BelongsTo
-    - BelongsToMany (ManyToMany)
+GoLobbyORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
 ## Table Of Contents
 - [golobby/orm](#golobby-orm)
@@ -43,7 +31,19 @@ GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe datab
       - [BelongsToMany](#belongstomany)
       - [Saving with relation](#saving-with-relation)
   * [License](#license)
-  
+
+## Features
+- Simple, type safe, elegant API with help of `Generics`
+- Minimum reflection usage, mostly at startup of application
+- No code generation
+- Query builder for various query types
+- Binding query results to entities
+- Supports relationship/Association types
+    - HasMany
+    - HasOne
+    - BelongsTo
+    - BelongsToMany (ManyToMany)
+
   
 ### Introduction
 GolobbyORM an object-relational mapper (ORM) that makes it enjoyable to interact with your database. 
