@@ -564,6 +564,8 @@ func Query[OUTPUT Entity](s qb.Select) ([]OUTPUT, error) {
 func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, err error) {
 	e := new(E)
 	s := getSchemaFor(*e)
+	var isDelete bool
+	var lastInsertedID int64
 	switch stmt.(type) {
 	case qb.Insert:
 		myStmt := stmt.(qb.Insert)
@@ -576,6 +578,7 @@ func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, er
 		myStmt.Table = s.Table
 		stmt = myStmt
 	case qb.Delete:
+		isDelete = true
 		myStmt := stmt.(qb.Delete)
 		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
 		myStmt.Table = s.Table
@@ -591,6 +594,7 @@ func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, er
 		myStmt.Table = s.Table
 		stmt = myStmt
 	case *qb.Delete:
+		isDelete = true
 		myStmt := stmt.(*qb.Delete)
 		myStmt.PlaceHolderGenerator = s.dialect.PlaceHolderGenerator
 		myStmt.Table = s.Table
@@ -602,17 +606,18 @@ func Exec[E Entity](stmt qb.ToSql) (lastInsertedId int64, rowsAffected int64, er
 		return 0, 0, err
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, 0, err
+	if !isDelete {
+		lastInsertedID, err = res.LastInsertId()
+		if err != nil {
+			return 0, 0, err
+		}
 	}
-
 	affected, err := res.RowsAffected()
 	if err != nil {
 		return 0, 0, err
 	}
 
-	return id, affected, nil
+	return lastInsertedID, affected, nil
 }
 
 func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {

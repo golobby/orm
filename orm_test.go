@@ -446,6 +446,44 @@ func TestExec(t *testing.T) {
 		assert.EqualValues(t, 1, id)
 		assert.EqualValues(t, 1, affected)
 	})
+	t.Run("test delete Delete", func(t *testing.T) {
+		setup(t)
+
+		assert.NoError(t, orm.Save(&Post{
+			Body: "first post",
+		}))
+
+		_, affected, err := orm.Exec[Post](qb.Delete{
+			Where: &qb.Where{
+				Cond: qb.Cond{
+					Lhs: "id",
+					Op:  qb.Eq,
+					Rhs: 1,
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, affected)
+	})
+	t.Run("test delete &Delete", func(t *testing.T) {
+		setup(t)
+
+		assert.NoError(t, orm.Save(&Post{
+			Body: "first post",
+		}))
+
+		_, affected, err := orm.Exec[Post](&qb.Delete{
+			Where: &qb.Where{
+				Cond: qb.Cond{
+					Lhs: "id",
+					Op:  qb.Eq,
+					Rhs: 1,
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, affected)
+	})
 	t.Run("test exec raw", func(t *testing.T) {
 		setup(t)
 		id, affected, err := orm.ExecRaw[Post](`INSERT INTO posts (id,body) VALUES (1, ?)`, "amirreza")
