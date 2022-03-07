@@ -454,7 +454,7 @@ func TestExec(t *testing.T) {
 		}))
 
 		_, affected, err := orm.Exec[Post](qb.Delete{
-			Where: &qb.Where{
+			where: &qb.Where{
 				Cond: qb.Cond{
 					Lhs: "id",
 					Op:  qb.Eq,
@@ -473,7 +473,7 @@ func TestExec(t *testing.T) {
 		}))
 
 		_, affected, err := orm.Exec[Post](&qb.Delete{
-			Where: &qb.Where{
+			where: &qb.Where{
 				Cond: qb.Cond{
 					Lhs: "id",
 					Op:  qb.Eq,

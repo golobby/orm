@@ -6,7 +6,7 @@ import (
 )
 
 func TestSelect(t *testing.T) {
-	t.Run("only select * from table", func(t *testing.T) {
+	t.Run("only select * from Table", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
 		str, args, err := s.ToSql()
@@ -14,11 +14,11 @@ func TestSelect(t *testing.T) {
 		assert.Empty(t, args)
 		assert.Equal(t, "SELECT * FROM users", str)
 	})
-	t.Run("select with where", func(t *testing.T) {
+	t.Run("select with WhereClause", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
 		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
-		s.Where = &Where{
+		s.Where = &WhereClause{
 			Cond: Cond{
 				Lhs: "age",
 				Op:  Eq,
@@ -33,14 +33,13 @@ func TestSelect(t *testing.T) {
 	t.Run("select with order by", func(t *testing.T) {
 		s := Select{}
 		s.Table = "users"
-		s.OrderBy = &OrderBy{
-			Columns: []string{"created_at", "updated_at"},
-			Order:   OrderByASC,
+		s.OrderBy = &OrderByClause{
+			Columns: [][2]string{{"created_at", OrderByASC}, {"updated_at", OrderByDesc}},
 		}
 		str, args, err := s.ToSql()
 		assert.NoError(t, err)
 		assert.Empty(t, args)
-		assert.Equal(t, "SELECT * FROM users ORDER BY created_at,updated_at ASC", str)
+		assert.Equal(t, "SELECT * FROM users ORDER BY created_at ASC,updated_at ASC", str)
 	})
 
 	t.Run("select with group by", func(t *testing.T) {
@@ -138,7 +137,7 @@ func TestSelect(t *testing.T) {
 		s.PlaceholderGenerator = Dialects.MySQL.PlaceHolderGenerator
 		s.SubQuery = &Select{
 			Table: "users",
-			Where: &Where{Cond: Cond{
+			Where: &WhereClause{Cond: Cond{
 				Lhs: "age",
 				Op:  LT,
 				Rhs: 10,

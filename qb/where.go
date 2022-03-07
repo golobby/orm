@@ -38,14 +38,14 @@ func (b Cond) ToSql() (string, []interface{}) {
 	}
 }
 
-type Where struct {
+type WhereClause struct {
 	PlaceHolderGenerator func(n int) []string
-	Or                   *Where
-	And                  *Where
+	Or                   *WhereClause
+	And                  *WhereClause
 	Cond
 }
 
-func (w Where) ToSql() (string, []interface{}) {
+func (w WhereClause) ToSql() (string, []interface{}) {
 	w.Cond.PlaceHolderGenerator = w.PlaceHolderGenerator
 	base, args := w.Cond.ToSql()
 	if w.And != nil && w.Or != nil {

@@ -14,8 +14,6 @@ import (
 type EntityConfigurator struct {
 	connection string
 	table      string
-	setPK      func(o Entity, value interface{})
-	getPK      func(o Entity) interface{}
 }
 
 func newEntityConfigurator() *EntityConfigurator {
@@ -30,15 +28,6 @@ func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
 	e.connection = name
 	return e
 }
-
-//func (e *EntityConfigurator) PrimaryKeySetter(f func(o Entity, value interface{})) *EntityConfigurator {
-//	e.setPK = f
-//	return e
-//}
-//func (e *EntityConfigurator) PrimaryKeyGetter(f func(o Entity) interface{}) *EntityConfigurator {
-//	e.getPK = f
-//	return e
-//}
 
 type RelationConfigurator struct {
 	this      Entity
@@ -157,7 +146,7 @@ func getConnectionFor(e Entity) *Connection {
 	e.ConfigureEntity(configurator)
 
 	if len(globalORM) > 1 && (configurator.connection == "" || configurator.table == "") {
-		panic("need Table and Connection name when having more than 1 Connection registered")
+		panic("need table and Connection name when having more than 1 Connection registered")
 	}
 	if len(globalORM) == 1 {
 		for _, db := range globalORM {
@@ -239,9 +228,9 @@ func fieldMetadataFromTag(t string) fieldTag {
 		key := parts[0]
 		value := parts[1]
 		kv[key] = value
-		if key == "dbCol" {
+		if key == "col" {
 			tag.Name = value
-		} else if key == "dbPK" {
+		} else if key == "pk" {
 			tag.PK = true
 		}
 		if tag.Name == "_" {
@@ -370,14 +359,6 @@ func schemaOf(v Entity) *schema {
 		schema.Table = userSchema.table
 	}
 
-	if userSchema.setPK != nil {
-		schema.setPK = userSchema.setPK
-	}
-
-	if userSchema.getPK != nil {
-		schema.getPK = userSchema.getPK
-	}
-
 	if schema.Table == "" {
 		schema.Table = initTableName(v)
 	}
@@ -415,7 +396,7 @@ func (e *schema) getDialect() *Dialect {
 
 func (e *schema) getConnection() *Connection {
 	if len(globalORM) > 1 && (e.Connection == "" || e.Table == "") {
-		panic("need Table and Connection name when having more than 1 Connection registered")
+		panic("need table and Connection name when having more than 1 Connection registered")
 	}
 	if len(globalORM) == 1 {
 		for _, db := range globalORM {

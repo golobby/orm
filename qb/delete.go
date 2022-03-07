@@ -5,7 +5,7 @@ import "fmt"
 type Delete struct {
 	PlaceHolderGenerator func(n int) []string
 	Table                string
-	Where                *Where
+	Where                *WhereClause
 }
 
 func (d Delete) ToSql() (string, []interface{}) {

@@ -32,7 +32,7 @@ type Connection struct {
 func (c *Connection) Schematic() {
 	fmt.Printf("SQL Dialect: %s\n", c.Dialect.DriverName)
 	for t, schema := range c.Schemas {
-		fmt.Printf("Table: %s\n", t)
+		fmt.Printf("table: %s\n", t)
 		w := table.NewWriter()
 		w.AppendHeader(table.Row{"SQL Name", "Type", "Is Primary Key", "Is Virtual"})
 		for _, field := range schema.fields {
@@ -81,7 +81,7 @@ func initTableName(e Entity) string {
 	e.ConfigureEntity(configurator)
 
 	if configurator.table == "" {
-		panic("Table name is mandatory for entities")
+		panic("table name is mandatory for entities")
 	}
 	return configurator.table
 }
@@ -212,7 +212,7 @@ func Find[T Entity](id interface{}) (T, error) {
 		PlaceholderGenerator: md.dialect.PlaceHolderGenerator,
 		Table:                md.Table,
 		Selected:             &qb.Selected{Columns: md.Columns(true)},
-		Where: &qb.Where{Cond: qb.Cond{
+		Where: &qb.WhereClause{Cond: qb.Cond{
 			Lhs: md.pkName(),
 			Op:  qb.Eq,
 			Rhs: id,
@@ -250,7 +250,7 @@ func Update(obj Entity) error {
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                s.Table,
 		Set:                  toTuples(obj, false),
-		Where: &qb.Where{
+		Where: &qb.WhereClause{
 			Cond: qb.Cond{
 				Lhs: s.pkName(),
 				Op:  qb.Eq,
@@ -270,7 +270,7 @@ func Delete(obj Entity) error {
 	q, args := qb.Delete{
 		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                s.Table,
-		Where: &qb.Where{Cond: qb.Cond{
+		Where: &qb.WhereClause{Cond: qb.Cond{
 			Lhs: s.pkName(),
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(obj),
@@ -311,7 +311,7 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 		PlaceholderGenerator: s.dialect.PlaceHolderGenerator,
 		Table:                c.PropertyTable,
 		Selected:             &qb.Selected{Columns: outSchema.Columns(true)},
-		Where: &qb.Where{Cond: qb.Cond{
+		Where: &qb.WhereClause{Cond: qb.Cond{
 			Lhs: c.PropertyForeignKey,
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(owner),
@@ -351,7 +351,7 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 		PlaceholderGenerator: property.dialect.PlaceHolderGenerator,
 		Table:                c.PropertyTable,
 		Selected:             &qb.Selected{Columns: property.Columns(true)},
-		Where: &qb.Where{Cond: qb.Cond{
+		Where: &qb.WhereClause{Cond: qb.Cond{
 			Lhs: c.PropertyForeignKey,
 			Op:  qb.Eq,
 			Rhs: genericGetPKValue(owner),
@@ -391,7 +391,7 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 		PlaceholderGenerator: owner.dialect.PlaceHolderGenerator,
 		Table:                c.OwnerTable,
 		Selected:             &qb.Selected{Columns: owner.Columns(true)},
-		Where: &qb.Where{Cond: qb.Cond{
+		Where: &qb.WhereClause{Cond: qb.Cond{
 			Lhs: c.ForeignColumnName,
 			Op:  qb.Eq,
 			Rhs: ownerID,

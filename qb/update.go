@@ -14,7 +14,7 @@ type Update struct {
 	PlaceHolderGenerator func(n int) []string
 	Table                string
 	Set                  [][2]interface{}
-	Where                *Where
+	Where                *WhereClause
 }
 
 func pop(phs *[]string) string {

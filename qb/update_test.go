@@ -7,7 +7,7 @@ import (
 )
 
 func TestUpdate(t *testing.T) {
-	t.Run("update no where", func(t *testing.T) {
+	t.Run("update no WhereClause", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
 		u.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator
@@ -20,7 +20,7 @@ func TestUpdate(t *testing.T) {
 		assert.Equal(t, `UPDATE users SET name=?`, sql)
 		assert.Equal(t, []interface{}{"amirreza"}, args)
 	})
-	t.Run("update with where", func(t *testing.T) {
+	t.Run("update with WhereClause", func(t *testing.T) {
 		u := Update{}
 		u.Table = "users"
 		u.PlaceHolderGenerator = Dialects.MySQL.PlaceHolderGenerator

@@ -12,13 +12,16 @@ const (
 	OrderByDesc = "DESC"
 )
 
-type OrderBy struct {
-	Columns []string
-	Order   orderByOrder
+type OrderByClause struct {
+	Columns [][2]string
 }
 
-func (o OrderBy) String() string {
-	return fmt.Sprintf("ORDER BY %s %s", strings.Join(o.Columns, ","), o.Order)
+func (o OrderByClause) String() string {
+	var tuples []string
+	for _, pair := range o.Columns {
+		tuples = append(tuples, fmt.Sprintf("%s %s", pair[0], pair[1]))
+	}
+	return fmt.Sprintf("ORDER BY %s", strings.Join(tuples, ","))
 }
 
 type GroupBy struct {
@@ -98,8 +101,8 @@ type Select struct {
 	Table                string
 	SubQuery             *Select
 	Selected             *Selected
-	Where                *Where
-	OrderBy              *OrderBy
+	Where                *WhereClause
+	OrderBy              *OrderByClause
 	GroupBy              *GroupBy
 	Joins                []*Join
 	Limit                *Limit
@@ -119,9 +122,9 @@ func (s Select) ToSql() (string, []interface{}, error) {
 	base += " " + s.Selected.String()
 	// from
 	if s.Table == "" && s.SubQuery == nil {
-		return "", nil, fmt.Errorf("table name cannot be empty")
+		return "", nil, fmt.Errorf("Table name cannot be empty")
 	} else if s.Table != "" && s.SubQuery != nil {
-		return "", nil, fmt.Errorf("cannot have both table and subquery")
+		return "", nil, fmt.Errorf("cannot have both Table and subquery")
 	}
 	if s.Table != "" {
 		base += " " + "FROM " + s.Table
@@ -141,7 +144,7 @@ func (s Select) ToSql() (string, []interface{}, error) {
 			base += " " + join.String()
 		}
 	}
-	// Where
+	// WhereClause
 	if s.Where != nil {
 		s.Where.PlaceHolderGenerator = s.PlaceholderGenerator
 		where, whereArgs := s.Where.ToSql()
@@ -149,7 +152,7 @@ func (s Select) ToSql() (string, []interface{}, error) {
 		args = append(args, whereArgs...)
 	}
 
-	// OrderBy
+	// OrderByClause
 	if s.OrderBy != nil {
 		base += " " + s.OrderBy.String()
 	}
