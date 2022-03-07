@@ -362,7 +362,7 @@ func TestQuery(t *testing.T) {
 		assert.NoError(t, orm.Save(post))
 		assert.Equal(t, int64(1), post.ID)
 
-		posts, err := orm.Query[Post](orm.NewQueryBuilder().Where("id", 1).SetSelect())
+		posts, err := orm.Query[Post](orm.NewQueryBuilder().Where("id", 1))
 		assert.NoError(t, err)
 		assert.Equal(t, []Post{*post}, posts)
 	})

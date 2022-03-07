@@ -86,7 +86,45 @@ user, err := orm.Find[User](1)
 `orm.Find` is a generic function that takes a generic parameter that specifies the type of `Entity` we want to query and it's primary key value.
 You can also use custom queries to get entities from database.
 ```go
+users, err := orm.Query[User](orm.NewQueryBuilder().Where("created_at", "<", "NOW()"))
+```
+GolobbyORM contains a powerful query builder which you can use to build `Select`, `Update` and `Delete` queries, but if you want to write a raw sql query you can.
+```go
+users, err := orm.QueryRaw[User](`SELECT * FROM users`)
+```
 
+### Saving entities or Insert/Update
+GolobbyORM makes it easy to persist an `Entity` to the database using `Save` method, it's an UPSERT method, if the primary key field is not zero inside entity
+it will go for update query, otherwise it goes for insert.
+```go
+// this will insert entity into the table
+err := orm.Save(&User{Name: "Amirreza"}) // INSERT INTO users (name) VALUES (?) , "Amirreza"
+```
+```go
+//this will update entity with id = 1
+orm.Save(&User{ID: 1, Name: "Amirreza2"}) // UPDATE users SET name=? WHERE id=?, "Amirreza2", 1
+```
+also you can do custom update queries using again query builder or raw sql as well.
+```go
+_, affected, err := orm.Exec[User](orm.NewQueryBuilder().Set("name", "amirreza2").Where("id", 1))
+```
+
+using raw sql
+
+```go
+_, affected, err := orm.ExecRaw[User](`UPDATE users SET name=? WHERE id=?`, "amirreza", 1)
+```
+### Deleting entities
+It is also easy to delete entities from database.
+```go
+err := orm.Delete(user)
+```
+you can also use query builder or raw sql.
+```go
+_, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Where("id", 1).Delete()) // DELETE FROM posts WHERE id=?`, 1
+```
+```go
+_, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)
 ```
 ## License
 

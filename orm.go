@@ -491,7 +491,7 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 func Query[OUTPUT Entity](s *QueryBuilder) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	sch := getSchemaFor(*o)
-	s.SetDialect(sch.dialect).Table(sch.Table)
+	s.SetDialect(sch.dialect).Table(sch.Table).SetSelect()
 	q, args, err := s.ToSql()
 	if err != nil {
 		return nil, err
