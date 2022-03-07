@@ -23,10 +23,26 @@ GoLobby ORM is a simple yet powerfull, fast, safe, customizable, type-safe datab
     - BelongsTo
     - BelongsToMany (ManyToMany)
 
-## Documentation
-- [Blog Example](https://github.com/golobby/orm/tree/master/blog_example.md)
-- [API Documentation](https://github.com/golobby/orm/tree/master/api.md)
-
+## Table Of Contents
+- [golobby/orm](#golobby-orm)
+  * [Features](#features)
+  * [Table Of Contents](#table-of-contents)
+    + [Introduction](#introduction)
+    + [Creating a new Entity](#creating-a-new-entity)
+      - [Conventions](#conventions)
+        * [Column names](#column-names)
+        * [Primary Key](#primary-key)
+    + [Fetching an entity from database](#fetching-an-entity-from-database)
+    + [Saving entities or Insert/Update](#saving-entities-or-insert-update)
+    + [Deleting entities](#deleting-entities)
+    + [Relationships](#relationships)
+      - [HasMany](#hasmany)
+      - [HasOne](#hasone)
+      - [BelongsTo](#belongsto)
+      - [BelongsToMany](#belongstomany)
+      - [Saving with relation](#saving-with-relation)
+  * [License](#license)
+  
 ### Introduction
 GolobbyORM an object-relational mapper (ORM) that makes it enjoyable to interact with your database. 
 When using GolobbyORM, each database table has a corresponding "Entity" that is used to interact with that table.
