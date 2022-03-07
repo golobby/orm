@@ -190,7 +190,11 @@ func(c Category) ConfigureRelations(r *orm.RelationConfigurator) {
 
 ```
 we are defining a `Post` entity and also a `Category` entity which have a many2many relationship, as you can see it's mandatory for us to configure IntermediateTable name which GolobbyORM cannot infer by itself now.
-
+#### Saving with relation
+You may need to save an entity which has some kind of relation with another entity, in that case you can use `Add` method.
+```go
+orm.Add(post, comments...) // inserts all comments passed in and also sets all post_id to the primary key of the given post.
+```
 ## License
 
 GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
