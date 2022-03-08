@@ -114,7 +114,7 @@ func main() {
   })
 }
 ```
-
+After this step we can start using ORM.
 ### Fetching an entity from database
 GolobbyORM makes it trivial to fetch entity from database using its primary key.
 ```go
@@ -175,6 +175,10 @@ func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object, by default it will infer all fields for you.
+now you can use this relationship anywhere in your code.
+```go
+comments, err := orm.HasMany[Comment](post)
+```
 #### HasOne
 ```go
 type Post struct {}
@@ -184,6 +188,10 @@ func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasOne` relation with `HeaderPicture`. You can configure how GolobbyORM queries `HasOne` relation with `orm.HasOneConfig` object, by default it will infer all fields for you.
+now you can use this relationship anywhere in your code.
+```go
+picture, err := orm.HasOne[HeaderPicture](post)
+```
 #### BelongsTo
 ```go
 type Comment struct {}
@@ -193,7 +201,10 @@ func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
 }
 ```
 As you can see we are defining a `Comment` entity which has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object, by default it will infer all fields for you.
-
+now you can use this relationship anywhere in your code.
+```go
+post, err := orm.BelongsTo[Post](comment)
+```
 #### BelongsToMany
 ```go
 type Post struct {}
@@ -209,6 +220,10 @@ func(c Category) ConfigureRelations(r *orm.RelationConfigurator) {
 
 ```
 we are defining a `Post` entity and also a `Category` entity which have a many2many relationship, as you can see it's mandatory for us to configure IntermediateTable name which GolobbyORM cannot infer by itself now.
+now you can use this relationship anywhere in your code.
+```go
+categories, err := orm.BelongsToMany[Category](post)
+```
 #### Saving with relation
 You may need to save an entity which has some kind of relation with another entity, in that case you can use `Add` method.
 ```go
