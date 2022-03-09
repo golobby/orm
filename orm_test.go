@@ -331,6 +331,11 @@ func TestBelongsToMany(t *testing.T) {
 	assert.Len(t, categories, 1)
 }
 
+func TestSchematic(t *testing.T) {
+	setup(t)
+	orm.Schematic()
+}
+
 //func TestQuery(t *testing.T) {
 //	t.Run(`test QueryBuilder using qb`, func(t *testing.T) {
 //		setup(t)

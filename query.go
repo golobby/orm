@@ -332,16 +332,16 @@ func (o Offset) String() string {
 	return fmt.Sprintf("OFFSET %d", o.N)
 }
 
-type Having struct {
-	PlaceHolderGenerator func(n int) []string
-	Cond                 Cond
-}
-
-func (h Having) ToSql() (string, []interface{}) {
-	h.Cond.PlaceHolderGenerator = h.PlaceHolderGenerator
-	cond, condArgs := h.Cond.ToSql()
-	return fmt.Sprintf("HAVING %s", cond), condArgs
-}
+//type Having struct {
+//	PlaceHolderGenerator func(n int) []string
+//	Cond                 Cond
+//}
+//
+//func (h Having) ToSql() (string, []interface{}) {
+//	h.Cond.PlaceHolderGenerator = h.PlaceHolderGenerator
+//	cond, condArgs := h.Cond.ToSql()
+//	return fmt.Sprintf("HAVING %s", cond), condArgs
+//}
 
 type selected struct {
 	Columns []string
