@@ -119,6 +119,9 @@ func Initialize(confs ...ConnectionConfig) error {
 
 func initialize(name string, dialect *Dialect, db *sql.DB) *Connection {
 	schemas := map[string]*schema{}
+	if name == "" {
+		name = "default"
+	}
 	s := &Connection{
 		Name:       name,
 		Connection: db,

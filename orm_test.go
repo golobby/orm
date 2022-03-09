@@ -80,7 +80,7 @@ func (c Category) Posts() ([]Post, error) {
 
 func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
-		Name:   "default",
+		//Name:   "default",
 		Driver: "sqlite3",
 		//ConnectionString: "orm.db",
 		ConnectionString: ":memory:",

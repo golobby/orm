@@ -104,7 +104,7 @@ import "github.com/golobby/orm"
 
 func main() {
   orm.Initialize(orm.ConnectionConfig{
-    Name:             "default",
+    //Name:             "default", You should specify connection name if you have multiple connections
     Driver:           "sqlite3",
     ConnectionString: ":memory:",
   })
