@@ -69,6 +69,7 @@ func (q *QueryBuilder[E]) One() (E, error) {
 	}
 	return output, nil
 }
+
 func (q *QueryBuilder[E]) Count() (int64, error) {
 	q.selected = &selected{Columns: []string{"COUNT(id)"}}
 	q.SetSelect()
@@ -111,6 +112,16 @@ func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
 		return nil, err
 	}
 	return getSchemaFor(*new(E)).getSQLDB().Exec(query, args...)
+}
+
+func (q *QueryBuilder[E]) Delete() (sql.Result, error) {
+	q.SetDelete()
+	return q.Execute()
+}
+
+func (q *QueryBuilder[E]) Update() (sql.Result, error) {
+	q.SetUpdate()
+	return q.Execute()
 }
 
 func (d *QueryBuilder[E]) toSqlDelete() (string, []interface{}, error) {
@@ -520,10 +531,6 @@ func (q *QueryBuilder[E]) SetDialect(dialect *Dialect) *QueryBuilder[E] {
 }
 func (q *QueryBuilder[E]) SetDelete() *QueryBuilder[E] {
 	q.typ = queryType_Delete
-	return q
-}
-func (q *QueryBuilder[E]) Delete() *QueryBuilder[E] {
-	q.SetDelete()
 	return q
 }
 
