@@ -13,11 +13,7 @@ type AuthorEmail struct {
 }
 
 func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("emails")
-}
-
-func (a AuthorEmail) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+	e.Table("emails").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 
 type HeaderPicture struct {
@@ -27,11 +23,7 @@ type HeaderPicture struct {
 }
 
 func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("header_pictures")
-}
-
-func (h HeaderPicture) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+	e.Table("header_pictures").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 
 type Post struct {
@@ -41,16 +33,12 @@ type Post struct {
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 	e.
-		Table("posts")
-
-}
-
-func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.
+		Table("posts").
 		HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
 		HasOne(AuthorEmail{}, orm.HasOneConfig{}).
 		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+
 }
 
 func (p *Post) Categories() ([]Category, error) {
@@ -68,11 +56,7 @@ type Comment struct {
 }
 
 func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("comments")
-}
-
-func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.BelongsTo(Post{}, orm.BelongsToConfig{})
+	e.Table("comments").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 
 func (c *Comment) Post() (Post, error) {
@@ -85,11 +69,7 @@ type Category struct {
 }
 
 func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("categories")
-}
-
-func (c Category) ConfigureRelations(r *orm.RelationConfigurator) {
-	r.BelongsToMany(Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+	e.Table("categories").BelongsToMany(Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 func (c Category) Posts() ([]Post, error) {

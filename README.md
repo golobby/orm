@@ -67,17 +67,12 @@ type User struct {
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.Table("users").Connection("default") // You can omit .Connection if you have only on connection.
-}
-
-func (u User) ConfigureRelations(r *orm.RelationConfigurator) {
-	// we talk about relationships later
+    e.Table("users")
 }
 ```
 as you see our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface which defines two methods:
-- ConfigureEntity: configures table and database connection.
-- ConfigureRelations: configures relations that `Entity` has with other relations.
+- ConfigureEntity: configures table and also relations to other entities.
 - 
 #### Conventions
 ##### Column names
@@ -175,8 +170,8 @@ you have a `ConfigureRelations` method which let's you define relations of an `E
 ```go
 type Post struct {}
 
-func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-    r.HasMany(&Comment{}, orm.HasManyConfig{})
+func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.HasMany(&Comment{}, orm.HasManyConfig{})
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object, by default it will infer all fields for you.
@@ -188,8 +183,8 @@ comments, err := orm.HasMany[Comment](post)
 ```go
 type Post struct {}
 
-func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-    r.HasOne(&HeaderPicture{}, orm.HasOneConfig{})
+func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.HasOne(&HeaderPicture{}, orm.HasOneConfig{})
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasOne` relation with `HeaderPicture`. You can configure how GolobbyORM queries `HasOne` relation with `orm.HasOneConfig` object, by default it will infer all fields for you.
@@ -201,8 +196,8 @@ picture, err := orm.HasOne[HeaderPicture](post)
 ```go
 type Comment struct {}
 
-func (c Comment) ConfigureRelations(r *orm.RelationConfigurator) {
-    r.BelongsTo(&Post{}, orm.BelongsToConfig{})
+func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 ```
 As you can see we are defining a `Comment` entity which has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object, by default it will infer all fields for you.
@@ -214,13 +209,13 @@ post, err := orm.BelongsTo[Post](comment)
 ```go
 type Post struct {}
 
-func (p Post) ConfigureRelations(r *orm.RelationConfigurator) {
-    r.BelongsToMany(&Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.BelongsToMany(&Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 type Category struct{}
-func(c Category) ConfigureRelations(r *orm.RelationConfigurator) {
-    r.BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+func(c Category) ConfigureEntity(r *orm.EntityConfigurator) {
+    e.BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 ```

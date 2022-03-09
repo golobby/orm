@@ -12,8 +12,11 @@ import (
 )
 
 type EntityConfigurator struct {
-	connection string
-	table      string
+	connection       string
+	table            string
+	this             Entity
+	relations        map[string]interface{}
+	resolveRelations []func()
 }
 
 func newEntityConfigurator() *EntityConfigurator {
@@ -24,120 +27,118 @@ func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
 	e.table = name
 	return e
 }
-func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
-	e.connection = name
-	return e
-}
 
-type RelationConfigurator struct {
-	this      Entity
-	relations map[string]interface{}
-}
-
-func newRelationsConfigurator(this Entity) *RelationConfigurator {
-	return &RelationConfigurator{this: this, relations: map[string]interface{}{}}
-}
-
-func (r *RelationConfigurator) HasMany(property Entity, config HasManyConfig) *RelationConfigurator {
-	if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-		r.relations[config.PropertyTable] = config
-		return r
+func (r *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *EntityConfigurator {
+	if r.relations == nil {
+		r.relations = map[string]interface{}{}
 	}
-	configurator := newEntityConfigurator()
-	property.ConfigureEntity(configurator)
-
-	configuratorOwner := newEntityConfigurator()
-
-	r.this.ConfigureEntity(configuratorOwner)
-
-	if config.PropertyTable == "" {
-		config.PropertyTable = configurator.table
-	}
-
-	if config.PropertyForeignKey == "" {
-		config.PropertyForeignKey = pluralize.NewClient().Singular(configuratorOwner.table) + "_id"
-	}
-
-	r.relations[configurator.table] = config
-
-	return r
-}
-
-func (r *RelationConfigurator) HasOne(property Entity, config HasOneConfig) *RelationConfigurator {
-	if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-		r.relations[config.PropertyTable] = config
-		return r
-	}
-
-	configurator := newEntityConfigurator()
-	property.ConfigureEntity(configurator)
-
-	configuratorOwner := newEntityConfigurator()
-
-	r.this.ConfigureEntity(configuratorOwner)
-
-	if config.PropertyTable == "" {
-		config.PropertyTable = configurator.table
-	}
-	if config.PropertyForeignKey == "" {
-		config.PropertyForeignKey = pluralize.NewClient().Singular(configuratorOwner.table) + "_id"
-	}
-
-	r.relations[configurator.table] = config
-	return r
-}
-
-func (r *RelationConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *RelationConfigurator {
-	if config.ForeignColumnName != "" && config.LocalForeignKey != "" && config.OwnerTable != "" {
-		r.relations[config.OwnerTable] = config
-		return r
-	}
-	ownerConfigurator := newEntityConfigurator()
-	owner.ConfigureEntity(ownerConfigurator)
-	if config.OwnerTable == "" {
-		config.OwnerTable = ownerConfigurator.table
-	}
-	if config.LocalForeignKey == "" {
-		config.LocalForeignKey = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
-	}
-	if config.ForeignColumnName == "" {
-		config.ForeignColumnName = "id"
-	}
-	r.relations[ownerConfigurator.table] = config
-	return r
-}
-
-func (r *RelationConfigurator) BelongsToMany(owner Entity, config BelongsToManyConfig) *RelationConfigurator {
-	ownerConfigurator := newEntityConfigurator()
-	owner.ConfigureEntity(ownerConfigurator)
-
-	propertyConfigurator := newEntityConfigurator()
-	r.this.ConfigureEntity(propertyConfigurator)
-
-	if config.ForeignLookupColumn == "" {
-		var pkName string
-		for _, field := range genericFieldsOf(owner) {
-			if field.IsPK {
-				pkName = field.Name
-			}
+	r.resolveRelations = append(r.resolveRelations, func() {
+		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
+			r.relations[config.PropertyTable] = config
+			return
 		}
-		config.ForeignLookupColumn = pkName
+		configurator := newEntityConfigurator()
+		property.ConfigureEntity(configurator)
 
-	}
-	if config.ForeignTable == "" {
-		config.ForeignTable = ownerConfigurator.table
-	}
-	if config.IntermediateTable == "" {
-		panic("cannot infer intermediate table yet")
-	}
-	if config.IntermediatePropertyID == "" {
-		config.IntermediatePropertyID = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
-	}
-	if config.IntermediateOwnerID == "" {
-		config.IntermediateOwnerID = pluralize.NewClient().Singular(propertyConfigurator.table) + "_id"
-	}
+		if config.PropertyTable == "" {
+			config.PropertyTable = configurator.table
+		}
 
-	r.relations[ownerConfigurator.table] = config
+		if config.PropertyForeignKey == "" {
+			config.PropertyForeignKey = pluralize.NewClient().Singular(r.table) + "_id"
+		}
+
+		r.relations[configurator.table] = config
+
+		return
+	})
+	return r
+}
+
+func (r *EntityConfigurator) HasOne(property Entity, config HasOneConfig) *EntityConfigurator {
+	if r.relations == nil {
+		r.relations = map[string]interface{}{}
+	}
+	r.resolveRelations = append(r.resolveRelations, func() {
+		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
+			r.relations[config.PropertyTable] = config
+			return
+		}
+
+		configurator := newEntityConfigurator()
+		property.ConfigureEntity(configurator)
+
+		if config.PropertyTable == "" {
+			config.PropertyTable = configurator.table
+		}
+		if config.PropertyForeignKey == "" {
+			config.PropertyForeignKey = pluralize.NewClient().Singular(r.table) + "_id"
+		}
+
+		r.relations[configurator.table] = config
+		return
+	})
+	return r
+}
+
+func (r *EntityConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *EntityConfigurator {
+	if r.relations == nil {
+		r.relations = map[string]interface{}{}
+	}
+	r.resolveRelations = append(r.resolveRelations, func() {
+		if config.ForeignColumnName != "" && config.LocalForeignKey != "" && config.OwnerTable != "" {
+			r.relations[config.OwnerTable] = config
+			return
+		}
+		ownerConfigurator := newEntityConfigurator()
+		owner.ConfigureEntity(ownerConfigurator)
+		if config.OwnerTable == "" {
+			config.OwnerTable = ownerConfigurator.table
+		}
+		if config.LocalForeignKey == "" {
+			config.LocalForeignKey = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
+		}
+		if config.ForeignColumnName == "" {
+			config.ForeignColumnName = "id"
+		}
+		r.relations[ownerConfigurator.table] = config
+	})
+	return r
+}
+
+func (r *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyConfig) *EntityConfigurator {
+	if r.relations == nil {
+		r.relations = map[string]interface{}{}
+	}
+	r.resolveRelations = append(r.resolveRelations, func() {
+		ownerConfigurator := newEntityConfigurator()
+		owner.ConfigureEntity(ownerConfigurator)
+
+		if config.ForeignLookupColumn == "" {
+			var pkName string
+			for _, field := range genericFieldsOf(owner) {
+				if field.IsPK {
+					pkName = field.Name
+				}
+			}
+			config.ForeignLookupColumn = pkName
+
+		}
+		if config.ForeignTable == "" {
+			config.ForeignTable = ownerConfigurator.table
+		}
+		if config.IntermediateTable == "" {
+			panic("cannot infer intermediate table yet")
+		}
+		if config.IntermediatePropertyID == "" {
+			config.IntermediatePropertyID = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
+		}
+		if config.IntermediateOwnerID == "" {
+			config.IntermediateOwnerID = pluralize.NewClient().Singular(r.table) + "_id"
+		}
+
+		r.relations[ownerConfigurator.table] = config
+	})
 	return r
 }
 
@@ -348,9 +349,10 @@ func genericGetPKValue(obj Entity) interface{} {
 
 func schemaOf(v Entity) *schema {
 	userSchema := newEntityConfigurator()
-	userRelations := newRelationsConfigurator(v)
 	v.ConfigureEntity(userSchema)
-	v.ConfigureRelations(userRelations)
+	for _, relation := range userSchema.resolveRelations {
+		relation()
+	}
 	schema := &schema{}
 	if userSchema.connection != "" {
 		schema.Connection = userSchema.connection
@@ -377,7 +379,7 @@ func schemaOf(v Entity) *schema {
 		schema.setPK = genericSetPkValue
 	}
 
-	schema.relations = userRelations.relations
+	schema.relations = userSchema.relations
 
 	return schema
 }

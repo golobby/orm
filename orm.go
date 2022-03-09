@@ -115,6 +115,7 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 		if md.dialect == nil {
 			md.dialect = dialect
 		}
+		md.Connection = name
 		schemas[fmt.Sprintf("%s", initTableName(entity))] = md
 	}
 	s := &Connection{
@@ -129,7 +130,6 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 
 type Entity interface {
 	ConfigureEntity(e *EntityConfigurator)
-	ConfigureRelations(r *RelationConfigurator)
 }
 
 func getDB(driver string, connectionString string) (*sql.DB, error) {

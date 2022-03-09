@@ -12,11 +12,6 @@ func (d Dummy) ConfigureEntity(e *EntityConfigurator) {
 	panic("implement me")
 }
 
-func (d Dummy) ConfigureRelations(r *RelationConfigurator) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func TestSelect(t *testing.T) {
 	t.Run("only select * from Table", func(t *testing.T) {
 		s := NewQueryBuilder[Dummy]()

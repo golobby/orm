@@ -18,9 +18,6 @@ func (u User) ConfigureEntity(e *EntityConfigurator) {
 	e.Table("users")
 }
 
-func (u User) ConfigureRelations(r *RelationConfigurator) {
-}
-
 type Address struct {
 	ID   int
 	Path string
