@@ -125,7 +125,6 @@ You can also use custom queries to get entities from database.
 ```go
 
 user, err := orm.Query[User]().Where("id", 1).One()
-// also you can use `WherePK` which return
 user, err := orm.Query[User]().WherePK(1).One()
 ```
 GolobbyORM contains a powerful query builder which you can use to build `Select`, `Update` and `Delete` queries, but if you want to write a raw sql query you can.
