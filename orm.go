@@ -248,12 +248,11 @@ func Update(obj Entity) error {
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
 
-	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).Delete().ToSql()
+	query, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
 	if err != nil {
 		return err
 	}
-
-	_, err = getSchemaFor(obj).getSQLDB().Exec(q, args...)
+	_, err = getSchemaFor(obj).getSQLDB().Exec(query, args...)
 	return err
 }
 

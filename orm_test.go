@@ -401,8 +401,9 @@ func TestExec(t *testing.T) {
 		assert.NoError(t, orm.Save(&Post{
 			Body: "first post",
 		}))
-
-		_, affected, err := orm.Exec[Post](orm.NewQueryBuilder[Post]().Where("id", 1).Delete())
+		res, err := orm.Query[Post]().Where("id", 1).Delete()
+		assert.NoError(t, err)
+		affected, err := res.RowsAffected()
 		assert.NoError(t, err)
 		assert.EqualValues(t, 1, affected)
 	})

@@ -116,14 +116,14 @@ func TestUpdate(t *testing.T) {
 }
 func TestDelete(t *testing.T) {
 	t.Run("delete without whereClause", func(t *testing.T) {
-		d := NewQueryBuilder[Dummy]().Table("users").Delete()
+		d := NewQueryBuilder[Dummy]().Table("users").SetDelete()
 		sql, args, err := d.ToSql()
 		assert.NoError(t, err)
 		assert.Equal(t, `DELETE FROM users`, sql)
 		assert.Empty(t, args)
 	})
 	t.Run("delete with whereClause", func(t *testing.T) {
-		d := NewQueryBuilder[Dummy]().Table("users").SetDialect(Dialects.MySQL).Where("created_at", ">", "2012-01-10").Delete()
+		d := NewQueryBuilder[Dummy]().Table("users").SetDialect(Dialects.MySQL).Where("created_at", ">", "2012-01-10").SetDelete()
 		sql, args, err := d.ToSql()
 		assert.NoError(t, err)
 		assert.Equal(t, `DELETE FROM users WHERE created_at > ?`, sql)
