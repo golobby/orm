@@ -146,7 +146,7 @@ orm.Save(&User{ID: 1, Name: "Amirreza2"}) // UPDATE users SET name=? WHERE id=?,
 ```
 also you can do custom update queries using again query builder or raw sql as well.
 ```go
-res, err := orm.Query[User]().Set("name", "amirreza2").Where("id", 1).Execute()
+res, err := orm.Query[User]().Set("name", "amirreza2").Where("id", 1).Update()
 ```
 
 using raw sql
@@ -161,9 +161,9 @@ err := orm.Delete(user)
 ```
 you can also use query builder or raw sql.
 ```go
-_, affected, err := orm.Query[Post]().WherePK(1).Delete().Execute()
+_, affected, err := orm.Query[Post]().WherePK(1).Delete()
 
-_, affected, err := orm.Query[Post]().Where("id", 1).Delete().Execute()
+_, affected, err := orm.Query[Post]().Where("id", 1).Delete()
 
 ```
 ```go
