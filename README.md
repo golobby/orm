@@ -67,13 +67,15 @@ type User struct {
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.Table("users")
+    e.
+		Table("users").
+		Connection("default") // You can omit connection name if you only have one.
+	
 }
 ```
 as you see our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface which defines two methods:
 - ConfigureEntity: configures table and also relations to other entities.
-- 
 #### Conventions
 ##### Column names
 GolobbyORM for each struct field(except slice, arrays, maps and other nested structs) assumes a respective column named using snake case syntax.
@@ -105,7 +107,6 @@ func main() {
     Name:             "default",
     Driver:           "sqlite3",
     ConnectionString: ":memory:",
-    Entities:         []orm.Entity{&User{}},
   })
 }
 ```

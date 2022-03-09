@@ -84,7 +84,6 @@ func setup(t *testing.T) {
 		Driver: "sqlite3",
 		//ConnectionString: "orm.db",
 		ConnectionString: ":memory:",
-		Entities:         []orm.Entity{&Comment{}, &Post{}, &Category{}, HeaderPicture{}, AuthorEmail{}},
 	})
 	//orm.Schematic()
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)

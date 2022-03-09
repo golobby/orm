@@ -28,6 +28,11 @@ func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
 	return e
 }
 
+func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
+	e.connection = name
+	return e
+}
+
 func (r *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *EntityConfigurator {
 	if r.relations == nil {
 		r.relations = map[string]interface{}{}
@@ -164,19 +169,26 @@ func getSchemaFor(e Entity) *schema {
 	configurator := newEntityConfigurator()
 	c := getConnectionFor(e)
 	e.ConfigureEntity(configurator)
-	return c.getSchema(configurator.table)
+	s := c.getSchema(configurator.table)
+	if s == nil {
+		s = schemaOf(e)
+		c.setSchema(e, s)
+	}
+	return s
 }
 
 type schema struct {
 	Connection string
 	Table      string
-	dialect    *Dialect
 	fields     []*field
 	relations  map[string]interface{}
 	setPK      func(o Entity, value interface{})
 	getPK      func(o Entity) interface{}
 }
 
+func (s *schema) getDialect() *Dialect {
+	return getDialectForConnection(s.Connection)
+}
 func (o *schema) Columns(withPK bool) []string {
 	var cols []string
 	for _, field := range o.fields {
@@ -186,7 +198,7 @@ func (o *schema) Columns(withPK bool) []string {
 		if !withPK && field.IsPK {
 			continue
 		}
-		if o.dialect.AddTableNameInSelectColumns {
+		if o.getDialect().AddTableNameInSelectColumns {
 			cols = append(cols, o.Table+"."+field.Name)
 		} else {
 			cols = append(cols, field.Name)
@@ -390,10 +402,6 @@ func (e *schema) getTable() string {
 
 func (e *schema) getSQLDB() *sql.DB {
 	return e.getConnection().Connection
-}
-
-func (e *schema) getDialect() *Dialect {
-	return e.dialect
 }
 
 func (e *schema) getConnection() *Connection {

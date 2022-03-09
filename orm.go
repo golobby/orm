@@ -60,6 +60,16 @@ func (d *Connection) getSchema(t string) *schema {
 	return d.Schemas[t]
 }
 
+func getDialectForConnection(connection string) *Dialect {
+	return GetConnection(connection).Dialect
+}
+
+func (d *Connection) setSchema(e Entity, s *schema) {
+	var configurator EntityConfigurator
+	e.ConfigureEntity(&configurator)
+	d.Schemas[configurator.table] = s
+}
+
 var globalORM = map[string]*Connection{}
 
 func GetConnection(name string) *Connection {
@@ -72,7 +82,6 @@ type ConnectionConfig struct {
 	ConnectionString string
 	DB               *sql.DB
 	Dialect          *Dialect
-	Entities         []Entity
 }
 
 func initTableName(e Entity) string {
@@ -103,21 +112,13 @@ func Initialize(confs ...ConnectionConfig) error {
 				return err
 			}
 		}
-		initialize(conf.Name, dialect, db, conf.Entities)
+		initialize(conf.Name, dialect, db)
 	}
 	return nil
 }
 
-func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *Connection {
+func initialize(name string, dialect *Dialect, db *sql.DB) *Connection {
 	schemas := map[string]*schema{}
-	for _, entity := range entities {
-		md := schemaOf(entity)
-		if md.dialect == nil {
-			md.dialect = dialect
-		}
-		md.Connection = name
-		schemas[fmt.Sprintf("%s", initTableName(entity))] = md
-	}
 	s := &Connection{
 		Name:       name,
 		Connection: db,
@@ -162,7 +163,7 @@ func Insert(objs ...Entity) error {
 	}
 
 	q, args := insertStmt{
-		PlaceHolderGenerator: s.dialect.PlaceHolderGenerator,
+		PlaceHolderGenerator: s.getDialect().PlaceHolderGenerator,
 		Table:                s.getTable(),
 		Columns:              cols,
 		Values:               values,
@@ -206,7 +207,7 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-	q, args, err := NewQueryBuilder[T]().SetDialect(md.dialect).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
+	q, args, err := NewQueryBuilder[T]().SetDialect(md.getDialect()).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
 	if err != nil {
 		return *out, err
 	}
@@ -235,7 +236,7 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 // Update given Entity in database
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
-	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
+	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
 
 	if err != nil {
 		return err
@@ -248,7 +249,7 @@ func Update(obj Entity) error {
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
 
-	query, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
+	query, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
 	if err != nil {
 		return err
 	}
@@ -282,7 +283,7 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	s := getSchemaFor(owner)
 	var q string
 	var args []interface{}
-	q, args, err := NewQueryBuilder[OUT]().SetDialect(s.dialect).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
+	q, args, err := NewQueryBuilder[OUT]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
 		return nil, err
@@ -311,7 +312,7 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 	}
 	//settings default config Values
 
-	q, args, err := NewQueryBuilder[PROPERTY]().SetDialect(property.dialect).Table(c.PropertyTable).
+	q, args, err := NewQueryBuilder[PROPERTY]().SetDialect(property.getDialect()).Table(c.PropertyTable).
 		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
@@ -344,7 +345,7 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
 
-	q, args, err := NewQueryBuilder[OWNER]().SetDialect(owner.dialect).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
+	q, args, err := NewQueryBuilder[OWNER]().SetDialect(owner.getDialect()).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
 
 	if err != nil {
 		return *out, err
@@ -430,7 +431,7 @@ func addProperty(to Entity, items ...Entity) error {
 		}
 	}
 	i := insertStmt{
-		PlaceHolderGenerator: getSchemaFor(to).dialect.PlaceHolderGenerator,
+		PlaceHolderGenerator: getSchemaFor(to).getDialect().PlaceHolderGenerator,
 		Table:                getSchemaFor(items[0]).getTable(),
 	}
 	ownerPKIdx := -1
@@ -510,7 +511,7 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 func Query[E Entity]() *QueryBuilder[E] {
 	q := NewQueryBuilder[E]()
 	s := getSchemaFor(*new(E))
-	q.SetDialect(s.dialect).Table(s.Table)
+	q.SetDialect(s.getDialect()).Table(s.Table)
 	return q
 }
 
@@ -518,7 +519,7 @@ func Exec[E Entity](stmt *QueryBuilder[E]) (lastInsertedId int64, rowsAffected i
 	e := new(E)
 	s := getSchemaFor(*e)
 	var lastInsertedID int64
-	stmt.SetDialect(s.dialect).Table(s.Table)
+	stmt.SetDialect(s.getDialect()).Table(s.Table)
 	q, args, err := stmt.ToSql()
 	if err != nil {
 		return -1, -1, err
