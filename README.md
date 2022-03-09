@@ -171,7 +171,7 @@ you have a `ConfigureRelations` method which let's you define relations of an `E
 type Post struct {}
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.HasMany(&Comment{}, orm.HasManyConfig{})
+    e.Table("posts").HasMany(&Comment{}, orm.HasManyConfig{})
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object, by default it will infer all fields for you.
@@ -184,7 +184,7 @@ comments, err := orm.HasMany[Comment](post)
 type Post struct {}
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.HasOne(&HeaderPicture{}, orm.HasOneConfig{})
+    e.Table("posts").HasOne(&HeaderPicture{}, orm.HasOneConfig{})
 }
 ```
 As you can see we are defining a `Post` entity which has a `HasOne` relation with `HeaderPicture`. You can configure how GolobbyORM queries `HasOne` relation with `orm.HasOneConfig` object, by default it will infer all fields for you.
@@ -197,7 +197,7 @@ picture, err := orm.HasOne[HeaderPicture](post)
 type Comment struct {}
 
 func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.BelongsTo(&Post{}, orm.BelongsToConfig{})
+    e.Table("comments").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 ```
 As you can see we are defining a `Comment` entity which has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object, by default it will infer all fields for you.
@@ -210,12 +210,12 @@ post, err := orm.BelongsTo[Post](comment)
 type Post struct {}
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.BelongsToMany(&Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+    e.Table("posts").BelongsToMany(&Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 type Category struct{}
 func(c Category) ConfigureEntity(r *orm.EntityConfigurator) {
-    e.BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+    e.Table("categories").BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
 
 ```
