@@ -497,6 +497,8 @@ func TestQuery(t *testing.T) {
 
 		_, err := orm.Query[Post]().WherePK(1).Delete().Execute()
 		assert.NoError(s, err)
-
+		count, err := orm.Query[Post]().WherePK(1).Count()
+		assert.NoError(s, err)
+		assert.EqualValues(s, 0, count)
 	})
 }

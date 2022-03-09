@@ -22,7 +22,7 @@ type QueryBuilder[E Entity] struct {
 	// select parts
 	orderBy  *orderByClause
 	groupBy  *GroupBy
-	selected *Selected
+	selected *selected
 	subQuery *QueryBuilder[E]
 	joins    []*Join
 	limit    *Limit
@@ -68,6 +68,24 @@ func (q *QueryBuilder[E]) One() (E, error) {
 		return *new(E), err
 	}
 	return output, nil
+}
+func (q *QueryBuilder[E]) Count() (int64, error) {
+	q.selected = &selected{Columns: []string{"COUNT(id)"}}
+	q.SetSelect()
+	query, args, err := q.ToSql()
+	if err != nil {
+		return 0, err
+	}
+	row := getSchemaFor(*new(E)).getSQLDB().QueryRow(query, args...)
+	if row.Err() != nil {
+		return 0, err
+	}
+	var counter int64
+	err = row.Scan(&counter)
+	if err != nil {
+		return 0, err
+	}
+	return counter, nil
 }
 
 func (q *QueryBuilder[E]) First() (E, error) {
@@ -148,7 +166,7 @@ func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
 	var args []interface{}
 	//select
 	if s.selected == nil {
-		s.selected = &Selected{
+		s.selected = &selected{
 			Columns: []string{"*"},
 		}
 	}
@@ -303,11 +321,11 @@ func (h Having) ToSql() (string, []interface{}) {
 	return fmt.Sprintf("HAVING %s", cond), condArgs
 }
 
-type Selected struct {
+type selected struct {
 	Columns []string
 }
 
-func (s Selected) String() string {
+func (s selected) String() string {
 	return fmt.Sprintf("%s", strings.Join(s.Columns, ","))
 }
 
@@ -468,7 +486,7 @@ func (q *QueryBuilder[E]) GroupBy(columns ...string) *QueryBuilder[E] {
 func (q *QueryBuilder[E]) Select(columns ...string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.selected == nil {
-		q.selected = &Selected{}
+		q.selected = &selected{}
 	}
 	q.selected.Columns = append(q.selected.Columns, columns...)
 	return q
