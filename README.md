@@ -123,7 +123,10 @@ user, err := orm.Find[User](1)
 `orm.Find` is a generic function that takes a generic parameter that specifies the type of `Entity` we want to query and it's primary key value.
 You can also use custom queries to get entities from database.
 ```go
-users, err := orm.Query[User](orm.NewQueryBuilder().Where("created_at", "<", "NOW()"))
+
+user, err := orm.Query[User]().Where("id", 1).One()
+// also you can use `WherePK` which return
+user, err := orm.Query[User]().WherePK(1).One()
 ```
 GolobbyORM contains a powerful query builder which you can use to build `Select`, `Update` and `Delete` queries, but if you want to write a raw sql query you can.
 ```go
@@ -143,7 +146,7 @@ orm.Save(&User{ID: 1, Name: "Amirreza2"}) // UPDATE users SET name=? WHERE id=?,
 ```
 also you can do custom update queries using again query builder or raw sql as well.
 ```go
-_, affected, err := orm.Exec[User](orm.NewQueryBuilder().Set("name", "amirreza2").Where("id", 1))
+res, err := orm.Query[User]().Set("name", "amirreza2").Where("id", 1).Execute()
 ```
 
 using raw sql
@@ -158,7 +161,10 @@ err := orm.Delete(user)
 ```
 you can also use query builder or raw sql.
 ```go
-_, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Where("id", 1).Delete()) // DELETE FROM posts WHERE id=?`, 1
+_, affected, err := orm.Query[Post]().WherePK(1).Delete().Execute()
+
+_, affected, err := orm.Query[Post]().Where("id", 1).Delete().Execute()
+
 ```
 ```go
 _, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)

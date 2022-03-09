@@ -52,7 +52,7 @@ func (o *schema) bind(rows *sql.Rows, obj interface{}) error {
 	if t.Kind() != reflect.Ptr {
 		return fmt.Errorf("obj should be a ptr")
 	}
-	// since passed input is always a pointer on deref is necessary
+	// since passed input is always a pointer one deref is necessary
 	t = t.Elem()
 	v = v.Elem()
 	if t.Kind() == reflect.Slice {

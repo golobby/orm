@@ -351,36 +351,36 @@ func TestBelongsToMany(t *testing.T) {
 	assert.Len(t, categories, 1)
 }
 
-func TestQuery(t *testing.T) {
-	t.Run(`test QueryBuilder using qb`, func(t *testing.T) {
-		setup(t)
-
-		post := &Post{
-			Body: "first Post",
-		}
-
-		assert.NoError(t, orm.Save(post))
-		assert.Equal(t, int64(1), post.ID)
-
-		posts, err := orm.Query[Post](orm.NewQueryBuilder().Where("id", 1))
-		assert.NoError(t, err)
-		assert.Equal(t, []Post{*post}, posts)
-	})
-	t.Run(`test QueryBuilder raw`, func(t *testing.T) {
-		setup(t)
-
-		post := &Post{
-			Body: "first Post",
-		}
-
-		assert.NoError(t, orm.Save(post))
-		assert.Equal(t, int64(1), post.ID)
-
-		posts, err := orm.QueryRaw[Post](`SELECT * FROM posts WHERE id = ?`, 1)
-		assert.NoError(t, err)
-		assert.Equal(t, []Post{*post}, posts)
-	})
-}
+//func TestQuery(t *testing.T) {
+//	t.Run(`test QueryBuilder using qb`, func(t *testing.T) {
+//		setup(t)
+//
+//		post := &Post{
+//			Body: "first Post",
+//		}
+//
+//		assert.NoError(t, orm.Save(post))
+//		assert.Equal(t, int64(1), post.ID)
+//
+//		posts, err := orm.Query[Post](orm.NewQueryBuilder[Post]().Where("id", 1))
+//		assert.NoError(t, err)
+//		assert.Equal(t, []Post{*post}, posts)
+//	})
+//	t.Run(`test QueryBuilder raw`, func(t *testing.T) {
+//		setup(t)
+//
+//		post := &Post{
+//			Body: "first Post",
+//		}
+//
+//		assert.NoError(t, orm.Save(post))
+//		assert.Equal(t, int64(1), post.ID)
+//
+//		posts, err := orm.QueryRaw[Post](`SELECT * FROM posts WHERE id = ?`, 1)
+//		assert.NoError(t, err)
+//		assert.Equal(t, []Post{*post}, posts)
+//	})
+//}
 
 func TestExec(t *testing.T) {
 
@@ -389,7 +389,7 @@ func TestExec(t *testing.T) {
 		assert.NoError(t, orm.Save(&Post{
 			Body: "first post",
 		}))
-		id, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Set("body", "first post body updated").Where("id", 1))
+		id, affected, err := orm.Exec[Post](orm.NewQueryBuilder[Post]().Set("body", "first post body updated").Where("id", 1))
 		assert.NoError(t, err)
 		assert.EqualValues(t, 1, id)
 		assert.EqualValues(t, 1, affected)
@@ -402,7 +402,7 @@ func TestExec(t *testing.T) {
 			Body: "first post",
 		}))
 
-		_, affected, err := orm.Exec[Post](orm.NewQueryBuilder().Where("id", 1).Delete())
+		_, affected, err := orm.Exec[Post](orm.NewQueryBuilder[Post]().Where("id", 1).Delete())
 		assert.NoError(t, err)
 		assert.EqualValues(t, 1, affected)
 	})
@@ -452,5 +452,51 @@ func TestAddProperty(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, []AuthorEmail{{ID: 1, Email: "myemail"}}, emails)
+	})
+}
+
+func TestQuery(t *testing.T) {
+	t.Run("querying single row", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		//post, err := orm.Query[Post]().Where("id", 1).First()
+		post, err := orm.Query[Post]().WherePK(1).First()
+		assert.NoError(t, err)
+		assert.EqualValues(t, Post{ID: 1, Body: "body 1"}, post)
+	})
+	t.Run("querying multiple rows", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{Body: "body 2"}))
+		assert.NoError(t, orm.Save(&Post{Body: "body 3"}))
+		posts, err := orm.Query[Post]().All()
+		assert.NoError(t, err)
+		assert.Len(t, posts, 3)
+		assert.Equal(t, "body 1", posts[0].Body)
+	})
+
+	t.Run("updating a row using query interface", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+
+		res, err := orm.Query[Post]().Set("body", "body jadid").Where("id", 1).Execute()
+		assert.NoError(t, err)
+
+		affected, err := res.RowsAffected()
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, affected)
+
+		post, err := orm.Find[Post](1)
+		assert.NoError(t, err)
+		assert.Equal(t, Post{ID: 1, Body: "body jadid"}, post)
+	})
+
+	t.Run("deleting a row using query interface", func(s *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+
+		_, err := orm.Query[Post]().WherePK(1).Delete().Execute()
+		assert.NoError(s, err)
+
 	})
 }

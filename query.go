@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 )
@@ -11,7 +12,7 @@ const (
 	queryType_Delete
 )
 
-type QueryBuilder struct {
+type QueryBuilder[E Entity] struct {
 	typ int
 	// general parts
 	where                *whereClause
@@ -22,16 +23,79 @@ type QueryBuilder struct {
 	orderBy  *orderByClause
 	groupBy  *GroupBy
 	selected *Selected
-	subQuery *QueryBuilder
+	subQuery *QueryBuilder[E]
 	joins    []*Join
 	limit    *Limit
 	offset   *Offset
 
 	// update parts
 	sets [][2]interface{}
+
+	//execution parts
+	db *sql.DB
 }
 
-func (d *QueryBuilder) toSqlDelete() (string, []interface{}, error) {
+func (q *QueryBuilder[E]) All() ([]E, error) {
+	q.SetSelect()
+	query, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := getSchemaFor(*new(E)).getSQLDB().Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	var output []E
+	err = getSchemaFor(*new(E)).bind(rows, &output)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+func (q *QueryBuilder[E]) One() (E, error) {
+	q.Limit(1)
+	query, args, err := q.ToSql()
+	if err != nil {
+		return *new(E), err
+	}
+	rows, err := getSchemaFor(*new(E)).getSQLDB().Query(query, args...)
+	if err != nil {
+		return *new(E), err
+	}
+	var output E
+	err = getSchemaFor(*new(E)).bind(rows, &output)
+	if err != nil {
+		return *new(E), err
+	}
+	return output, nil
+}
+
+func (q *QueryBuilder[E]) First() (E, error) {
+	q.OrderBy("id", OrderByASC)
+	return q.One()
+}
+
+func (q *QueryBuilder[E]) Latest() (E, error) {
+	q.OrderBy("id", OrderByDesc)
+	return q.One()
+}
+
+func (q *QueryBuilder[E]) WherePK(value interface{}) *QueryBuilder[E] {
+	return q.Where(getSchemaFor(*new(E)).pkName(), value)
+}
+
+func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
+	if q.typ == queryType_SELECT {
+		return nil, fmt.Errorf("query type is SELECT")
+	}
+	query, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	return getSchemaFor(*new(E)).getSQLDB().Exec(query, args...)
+}
+
+func (d *QueryBuilder[E]) toSqlDelete() (string, []interface{}, error) {
 	base := fmt.Sprintf("DELETE FROM %s", d.table)
 	var args []interface{}
 	if d.where != nil {
@@ -48,7 +112,7 @@ func pop(phs *[]string) string {
 	return top
 }
 
-func (u *QueryBuilder) kvString() string {
+func (u *QueryBuilder[E]) kvString() string {
 	phs := u.placeholderGenerator(len(u.sets))
 	var sets []string
 	for _, pair := range u.sets {
@@ -57,7 +121,7 @@ func (u *QueryBuilder) kvString() string {
 	return strings.Join(sets, ",")
 }
 
-func (u *QueryBuilder) args() []interface{} {
+func (u *QueryBuilder[E]) args() []interface{} {
 	var values []interface{}
 	for _, pair := range u.sets {
 		values = append(values, pair[1])
@@ -65,7 +129,7 @@ func (u *QueryBuilder) args() []interface{} {
 	return values
 }
 
-func (u *QueryBuilder) toSqlUpdate() (string, []interface{}, error) {
+func (u *QueryBuilder[E]) toSqlUpdate() (string, []interface{}, error) {
 	if u.table == "" {
 		return "", nil, fmt.Errorf("table cannot be empty")
 	}
@@ -79,7 +143,7 @@ func (u *QueryBuilder) toSqlUpdate() (string, []interface{}, error) {
 	}
 	return base, args, nil
 }
-func (s *QueryBuilder) toSqlSelect() (string, []interface{}, error) {
+func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
 	base := "SELECT"
 	var args []interface{}
 	//select
@@ -144,7 +208,7 @@ func (s *QueryBuilder) toSqlSelect() (string, []interface{}, error) {
 
 	return base, args, nil
 }
-func (q *QueryBuilder) ToSql() (string, []interface{}, error) {
+func (q *QueryBuilder[E]) ToSql() (string, []interface{}, error) {
 	if q.typ == queryType_SELECT {
 		return q.toSqlSelect()
 	} else if q.typ == queryType_Delete {
@@ -247,7 +311,7 @@ func (s Selected) String() string {
 	return fmt.Sprintf("%s", strings.Join(s.Columns, ","))
 }
 
-func (q *QueryBuilder) WhereIn(column string, values ...interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) WhereIn(column string, values ...interface{}) *QueryBuilder[E] {
 	if q.where == nil {
 		q.where = &whereClause{
 			Cond: Cond{
@@ -262,7 +326,7 @@ func (q *QueryBuilder) WhereIn(column string, values ...interface{}) *QueryBuild
 	}
 }
 
-func (q *QueryBuilder) OrderBy(column string, how string) *QueryBuilder {
+func (q *QueryBuilder[E]) OrderBy(column string, how string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.orderBy == nil {
 		q.orderBy = &orderByClause{}
@@ -271,7 +335,7 @@ func (q *QueryBuilder) OrderBy(column string, how string) *QueryBuilder {
 	return q
 }
 
-func (q *QueryBuilder) LeftJoin(table string, onLhs string, onRhs string) *QueryBuilder {
+func (q *QueryBuilder[E]) LeftJoin(table string, onLhs string, onRhs string) *QueryBuilder[E] {
 	q.SetSelect()
 	q.joins = append(q.joins, &Join{
 		Type:  JoinTypeLeft,
@@ -283,7 +347,7 @@ func (q *QueryBuilder) LeftJoin(table string, onLhs string, onRhs string) *Query
 	})
 	return q
 }
-func (q *QueryBuilder) RightJoin(table string, onLhs string, onRhs string) *QueryBuilder {
+func (q *QueryBuilder[E]) RightJoin(table string, onLhs string, onRhs string) *QueryBuilder[E] {
 	q.SetSelect()
 	q.joins = append(q.joins, &Join{
 		Type:  JoinTypeRight,
@@ -295,7 +359,7 @@ func (q *QueryBuilder) RightJoin(table string, onLhs string, onRhs string) *Quer
 	})
 	return q
 }
-func (q *QueryBuilder) InnerJoin(table string, onLhs string, onRhs string) *QueryBuilder {
+func (q *QueryBuilder[E]) InnerJoin(table string, onLhs string, onRhs string) *QueryBuilder[E] {
 	q.SetSelect()
 	q.joins = append(q.joins, &Join{
 		Type:  JoinTypeInner,
@@ -307,7 +371,7 @@ func (q *QueryBuilder) InnerJoin(table string, onLhs string, onRhs string) *Quer
 	})
 	return q
 }
-func (q *QueryBuilder) FullOuterJoin(table string, onLhs string, onRhs string) *QueryBuilder {
+func (q *QueryBuilder[E]) FullOuterJoin(table string, onLhs string, onRhs string) *QueryBuilder[E] {
 	q.SetSelect()
 	q.joins = append(q.joins, &Join{
 		Type:  JoinTypeFull,
@@ -320,7 +384,7 @@ func (q *QueryBuilder) FullOuterJoin(table string, onLhs string, onRhs string) *
 	return q
 }
 
-func (q *QueryBuilder) Where(parts ...interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	if len(parts) == 2 {
 		// Equal mode
 		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}}
@@ -334,14 +398,14 @@ func (q *QueryBuilder) Where(parts ...interface{}) *QueryBuilder {
 	}
 }
 
-func (q *QueryBuilder) AndWhere(parts ...interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) AndWhere(parts ...interface{}) *QueryBuilder[E] {
 	return q.addWhere("AND", parts...)
 }
 
-func (q *QueryBuilder) OrWhere(parts ...interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) OrWhere(parts ...interface{}) *QueryBuilder[E] {
 	return q.addWhere("OR", parts...)
 }
-func (q *QueryBuilder) addWhere(typ string, parts ...interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuilder[E] {
 	w := q.where
 	for {
 		if w == nil {
@@ -371,29 +435,29 @@ func (q *QueryBuilder) addWhere(typ string, parts ...interface{}) *QueryBuilder 
 	}
 }
 
-func (q *QueryBuilder) Offset(n int) *QueryBuilder {
+func (q *QueryBuilder[E]) Offset(n int) *QueryBuilder[E] {
 	q.SetSelect()
 	q.offset = &Offset{N: n}
 	return q
 }
 
-func (q *QueryBuilder) Limit(n int) *QueryBuilder {
+func (q *QueryBuilder[E]) Limit(n int) *QueryBuilder[E] {
 	q.SetSelect()
 	q.limit = &Limit{N: n}
 	return q
 }
 
-func (q *QueryBuilder) Table(t string) *QueryBuilder {
+func (q *QueryBuilder[E]) Table(t string) *QueryBuilder[E] {
 	q.table = t
 	return q
 }
 
-func (q *QueryBuilder) SetSelect() *QueryBuilder {
+func (q *QueryBuilder[E]) SetSelect() *QueryBuilder[E] {
 	q.typ = queryType_SELECT
 	return q
 }
 
-func (q *QueryBuilder) GroupBy(columns ...string) *QueryBuilder {
+func (q *QueryBuilder[E]) GroupBy(columns ...string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.groupBy == nil {
 		q.groupBy = &GroupBy{}
@@ -401,7 +465,7 @@ func (q *QueryBuilder) GroupBy(columns ...string) *QueryBuilder {
 	q.groupBy.Columns = append(q.groupBy.Columns, columns...)
 	return q
 }
-func (q *QueryBuilder) Select(columns ...string) *QueryBuilder {
+func (q *QueryBuilder[E]) Select(columns ...string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.selected == nil {
 		q.selected = &Selected{}
@@ -410,41 +474,41 @@ func (q *QueryBuilder) Select(columns ...string) *QueryBuilder {
 	return q
 }
 
-func (q *QueryBuilder) FromQuery(subQuery *QueryBuilder) *QueryBuilder {
+func (q *QueryBuilder[E]) FromQuery(subQuery *QueryBuilder[E]) *QueryBuilder[E] {
 	q.SetSelect()
 	q.subQuery = subQuery
 	q.subQuery.SetSelect()
 	return q
 }
 
-func (q *QueryBuilder) SetUpdate() *QueryBuilder {
+func (q *QueryBuilder[E]) SetUpdate() *QueryBuilder[E] {
 	q.typ = queryType_UPDATE
 	return q
 }
 
-func (q *QueryBuilder) Set(name string, value interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) Set(name string, value interface{}) *QueryBuilder[E] {
 	q.SetUpdate()
 	q.sets = append(q.sets, [2]interface{}{name, value})
 	return q
 }
-func (q *QueryBuilder) Sets(tuples ...[2]interface{}) *QueryBuilder {
+func (q *QueryBuilder[E]) Sets(tuples ...[2]interface{}) *QueryBuilder[E] {
 	q.SetUpdate()
 	q.sets = append(q.sets, tuples...)
 	return q
 }
-func (q *QueryBuilder) SetDialect(dialect *Dialect) *QueryBuilder {
+func (q *QueryBuilder[E]) SetDialect(dialect *Dialect) *QueryBuilder[E] {
 	q.placeholderGenerator = dialect.PlaceHolderGenerator
 	return q
 }
-func (q *QueryBuilder) SetDelete() *QueryBuilder {
+func (q *QueryBuilder[E]) SetDelete() *QueryBuilder[E] {
 	q.typ = queryType_Delete
 	return q
 }
-func (q *QueryBuilder) Delete() *QueryBuilder {
+func (q *QueryBuilder[E]) Delete() *QueryBuilder[E] {
 	q.SetDelete()
 	return q
 }
 
-func NewQueryBuilder() *QueryBuilder {
-	return &QueryBuilder{}
+func NewQueryBuilder[E Entity]() *QueryBuilder[E] {
+	return &QueryBuilder[E]{}
 }

@@ -206,7 +206,7 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-	q, args, err := NewQueryBuilder().SetDialect(md.dialect).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
+	q, args, err := NewQueryBuilder[T]().SetDialect(md.dialect).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
 	if err != nil {
 		return *out, err
 	}
@@ -235,7 +235,7 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 // Update given Entity in database
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
-	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
+	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
 
 	if err != nil {
 		return err
@@ -248,7 +248,7 @@ func Update(obj Entity) error {
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
 
-	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).Delete().ToSql()
+	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.dialect).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).Delete().ToSql()
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
 	s := getSchemaFor(owner)
 	var q string
 	var args []interface{}
-	q, args, err := NewQueryBuilder().SetDialect(s.dialect).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
+	q, args, err := NewQueryBuilder[OUT]().SetDialect(s.dialect).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
 		return nil, err
@@ -312,7 +312,7 @@ func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
 	}
 	//settings default config Values
 
-	q, args, err := NewQueryBuilder().SetDialect(property.dialect).Table(c.PropertyTable).
+	q, args, err := NewQueryBuilder[PROPERTY]().SetDialect(property.dialect).Table(c.PropertyTable).
 		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
 
 	if err != nil {
@@ -345,7 +345,7 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
 
-	q, args, err := NewQueryBuilder().SetDialect(owner.dialect).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
+	q, args, err := NewQueryBuilder[OWNER]().SetDialect(owner.dialect).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
 
 	if err != nil {
 		return *out, err
@@ -488,27 +488,34 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
 
-func Query[OUTPUT Entity](s *QueryBuilder) ([]OUTPUT, error) {
-	o := new(OUTPUT)
-	sch := getSchemaFor(*o)
-	s.SetDialect(sch.dialect).Table(sch.Table).SetSelect()
-	q, args, err := s.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
-	if err != nil {
-		return nil, err
-	}
-	var output []OUTPUT
-	err = getSchemaFor(*o).bind(rows, &output)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
+//func Query[OUTPUT Entity](s *QueryBuilder[OUTPUT]) ([]OUTPUT, error) {
+//	o := new(OUTPUT)
+//	sch := getSchemaFor(*o)
+//	s.SetDialect(sch.dialect).Table(sch.Table).SetSelect()
+//	q, args, err := s.ToSql()
+//	if err != nil {
+//		return nil, err
+//	}
+//	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
+//	if err != nil {
+//		return nil, err
+//	}
+//	var output []OUTPUT
+//	err = getSchemaFor(*o).bind(rows, &output)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return output, nil
+//}
+
+func Query[E Entity]() *QueryBuilder[E] {
+	q := NewQueryBuilder[E]()
+	s := getSchemaFor(*new(E))
+	q.SetDialect(s.dialect).Table(s.Table)
+	return q
 }
 
-func Exec[E Entity](stmt *QueryBuilder) (lastInsertedId int64, rowsAffected int64, err error) {
+func Exec[E Entity](stmt *QueryBuilder[E]) (lastInsertedId int64, rowsAffected int64, err error) {
 	e := new(E)
 	s := getSchemaFor(*e)
 	var lastInsertedID int64
