@@ -480,7 +480,9 @@ func TestQuery(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
 
-		res, err := orm.Query[Post]().Set("body", "body jadid").Where("id", 1).Update()
+		res, err := orm.Query[Post]().Where("id", 1).Update(orm.KV{
+			"body": "body jadid",
+		})
 		assert.NoError(t, err)
 
 		affected, err := res.RowsAffected()

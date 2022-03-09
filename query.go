@@ -119,8 +119,19 @@ func (q *QueryBuilder[E]) Delete() (sql.Result, error) {
 	return q.Execute()
 }
 
-func (q *QueryBuilder[E]) Update() (sql.Result, error) {
+func asTuples(toUpdate map[string]interface{}) [][2]interface{} {
+	var tuples [][2]interface{}
+	for k, v := range toUpdate {
+		tuples = append(tuples, [2]interface{}{k, v})
+	}
+	return tuples
+}
+
+type KV = map[string]interface{}
+
+func (q *QueryBuilder[E]) Update(toUpdate map[string]interface{}) (sql.Result, error) {
 	q.SetUpdate()
+	q.sets = append(q.sets, asTuples(toUpdate)...)
 	return q.Execute()
 }
 
@@ -520,6 +531,7 @@ func (q *QueryBuilder[E]) Set(name string, value interface{}) *QueryBuilder[E] {
 	q.sets = append(q.sets, [2]interface{}{name, value})
 	return q
 }
+
 func (q *QueryBuilder[E]) Sets(tuples ...[2]interface{}) *QueryBuilder[E] {
 	q.SetUpdate()
 	q.sets = append(q.sets, tuples...)

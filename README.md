@@ -145,7 +145,7 @@ orm.Save(&User{ID: 1, Name: "Amirreza2"}) // UPDATE users SET name=? WHERE id=?,
 ```
 also you can do custom update queries using again query builder or raw sql as well.
 ```go
-res, err := orm.Query[User]().Set("name", "amirreza2").Where("id", 1).Update()
+res, err := orm.Query[User]().Where("id", 1).Update(orm.KV{"name": "amirreza2"})
 ```
 
 using raw sql
