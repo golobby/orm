@@ -165,8 +165,7 @@ _, affected, err := orm.Query[Post]().Where("id", 1).Delete()
 _, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)
 ```
 ### Relationships
-GolobbyORM makes it easy to have entities that have relationships with each other. As you have already seen in entity definition
-you have a `ConfigureRelations` method which let's you define relations of an `Entity`.
+GolobbyORM makes it easy to have entities that have relationships with each other. Configuring relations is using `ConfigureEntity` method as you will see.
 #### HasMany
 ```go
 type Post struct {}
@@ -178,9 +177,15 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 As you can see we are defining a `Post` entity which has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object, by default it will infer all fields for you.
 now you can use this relationship anywhere in your code.
 ```go
-comments, err := orm.HasMany[Comment](post)
+comments, err := orm.HasMany[Comment](post).All()
+```
+`HasMany` and other relation functions in GolobbyORM return `QueryBuilder` and you can use them like other query builders and create even more
+complex queries for relationships. for example you can create a query for getting all comments of a post that are created today.
+```go
+todayComments, err := orm.HasMany[Comment](post).Where("created_at", "CURDATE()").All()
 ```
 #### HasOne
+Configuring a `HasOne` relation is like `HasMany`.
 ```go
 type Post struct {}
 
@@ -193,6 +198,7 @@ now you can use this relationship anywhere in your code.
 ```go
 picture, err := orm.HasOne[HeaderPicture](post)
 ```
+`HasOne` also returns a query builder and you can create more complex queries for relations.
 #### BelongsTo
 ```go
 type Comment struct {}
