@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           stable: false
+          check-latest: true
           go-version: ${{ matrix.go }}
 
       - name: Coveralls
