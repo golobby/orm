@@ -35,6 +35,15 @@ type QueryBuilder[E Entity] struct {
 	db *sql.DB
 }
 
+type raw struct {
+	sql  string
+	args []interface{}
+}
+
+func Raw(sql string, args ...interface{}) *raw {
+	return &raw{sql: sql, args: args}
+}
+
 func (q *QueryBuilder[E]) All() ([]E, error) {
 	q.SetSelect()
 	query, args, err := q.ToSql()
@@ -52,6 +61,7 @@ func (q *QueryBuilder[E]) All() ([]E, error) {
 	}
 	return output, nil
 }
+
 func (q *QueryBuilder[E]) One() (E, error) {
 	q.Limit(1)
 	query, args, err := q.ToSql()
@@ -351,21 +361,6 @@ func (s selected) String() string {
 	return fmt.Sprintf("%s", strings.Join(s.Columns, ","))
 }
 
-func (q *QueryBuilder[E]) WhereIn(column string, values ...interface{}) *QueryBuilder[E] {
-	if q.where == nil {
-		q.where = &whereClause{
-			Cond: Cond{
-				Lhs: column,
-				Op:  In,
-				Rhs: values,
-			},
-		}
-		return q
-	} else {
-		return q.addWhere("AND", append([]interface{}{column, In}, values...))
-	}
-}
-
 func (q *QueryBuilder[E]) OrderBy(column string, how string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.orderBy == nil {
@@ -425,9 +420,25 @@ func (q *QueryBuilder[E]) FullOuterJoin(table string, onLhs string, onRhs string
 }
 
 func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
-	if len(parts) == 2 {
-		// Equal mode
-		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}}
+	if q.where != nil {
+		return q.addWhere("AND", parts...)
+	}
+	if len(parts) == 1 {
+		if r, isRaw := parts[0].(*raw); isRaw {
+			q.where = &whereClause{raw: r.sql, args: r.args}
+			return q
+		} else {
+			panic("when you have one argument passed to where, it should be *raw")
+		}
+
+	} else if len(parts) == 2 {
+		if strings.Index(parts[0].(string), " ") == -1 {
+			// Equal mode
+			q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}}
+		} else {
+			// Raw mode
+			q.where = &whereClause{raw: parts[0].(string), args: parts[1:]}
+		}
 		return q
 	} else if len(parts) == 3 {
 		// operator mode
@@ -438,6 +449,10 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	}
 }
 
+func (q *QueryBuilder[E]) WhereIn(column string, values ...interface{}) *QueryBuilder[E] {
+	return q.Where(append([]interface{}{column, In}, values...)...)
+}
+
 func (q *QueryBuilder[E]) AndWhere(parts ...interface{}) *QueryBuilder[E] {
 	return q.addWhere("AND", parts...)
 }
@@ -445,6 +460,7 @@ func (q *QueryBuilder[E]) AndWhere(parts ...interface{}) *QueryBuilder[E] {
 func (q *QueryBuilder[E]) OrWhere(parts ...interface{}) *QueryBuilder[E] {
 	return q.addWhere("OR", parts...)
 }
+
 func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuilder[E] {
 	w := q.where
 	for {
@@ -462,7 +478,11 @@ func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuild
 	if w == nil {
 		w = &whereClause{}
 	}
-	if len(parts) == 2 {
+	if len(parts) == 1 {
+		w.raw = parts[0].(*raw).sql
+		w.args = parts[0].(*raw).args
+		return q
+	} else if len(parts) == 2 {
 		// Equal mode
 		w.Cond = Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}
 		return q

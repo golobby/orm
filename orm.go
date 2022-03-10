@@ -4,11 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
-	"strings"
-
 	"github.com/jedib0t/go-pretty/table"
-
+	"reflect"
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -274,31 +271,16 @@ type HasManyConfig struct {
 	PropertyForeignKey string
 }
 
-func HasMany[OUT Entity](owner Entity) ([]OUT, error) {
+func HasMany[OUT Entity](owner Entity) *QueryBuilder[OUT] {
 	outSchema := getSchemaFor(*new(OUT))
 	// getting config from our cache
 	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
 	if !ok {
-		return nil, fmt.Errorf("wrong config passed for HasMany")
+		panic("wrong config passed for HasMany")
 	}
 
-	var out []OUT
 	s := getSchemaFor(owner)
-	var q string
-	var args []interface{}
-	q, args, err := NewQueryBuilder[OUT]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = bindContext[OUT](context.Background(), &out, q, args)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return NewQueryBuilder[OUT]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
 type HasOneConfig struct {
@@ -306,23 +288,16 @@ type HasOneConfig struct {
 	PropertyForeignKey string
 }
 
-func HasOne[PROPERTY Entity](owner Entity) (PROPERTY, error) {
-	out := new(PROPERTY)
+func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 	property := getSchemaFor(*new(PROPERTY))
 	c, ok := getSchemaFor(owner).relations[property.Table].(HasOneConfig)
 	if !ok {
-		return *new(PROPERTY), fmt.Errorf("wrong config passed for HasOne")
+		panic("wrong config passed for HasOne")
 	}
+
 	//settings default config Values
-
-	q, args, err := NewQueryBuilder[PROPERTY]().SetDialect(property.getDialect()).Table(c.PropertyTable).
-		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner)).ToSql()
-
-	if err != nil {
-		return *out, err
-	}
-	err = bindContext[PROPERTY](context.Background(), out, q, args)
-	return *out, err
+	return NewQueryBuilder[PROPERTY]().SetDialect(property.getDialect()).Table(c.PropertyTable).
+		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
 type BelongsToConfig struct {
@@ -331,12 +306,11 @@ type BelongsToConfig struct {
 	ForeignColumnName string
 }
 
-func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
-	out := new(OWNER)
+func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	owner := getSchemaFor(*new(OWNER))
 	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
 	if !ok {
-		return *new(OWNER), fmt.Errorf("wrong config passed for BelongsTo")
+		panic("wrong config passed for BelongsTo")
 	}
 
 	ownerIDidx := 0
@@ -348,13 +322,11 @@ func BelongsTo[OWNER Entity](property Entity) (OWNER, error) {
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
 
-	q, args, err := NewQueryBuilder[OWNER]().SetDialect(owner.getDialect()).Table(c.OwnerTable).Select(owner.Columns(true)...).Where(c.ForeignColumnName, ownerID).ToSql()
+	return NewQueryBuilder[OWNER]().
+		SetDialect(owner.getDialect()).
+		Table(c.OwnerTable).Select(owner.Columns(true)...).
+		Where(c.ForeignColumnName, ownerID)
 
-	if err != nil {
-		return *out, err
-	}
-	err = bindContext[OWNER](context.Background(), out, q, args)
-	return *out, err
 }
 
 type BelongsToManyConfig struct {
@@ -366,35 +338,18 @@ type BelongsToManyConfig struct {
 }
 
 //BelongsToMany
-func BelongsToMany[OWNER Entity](property Entity) ([]OWNER, error) {
+func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	out := new(OWNER)
 	c, ok := getSchemaFor(property).relations[getSchemaFor(*out).Table].(BelongsToManyConfig)
 	if !ok {
-		return nil, fmt.Errorf("wrong config passed for HasMany")
+		panic("wrong config passed for HasMany")
 	}
-	q := fmt.Sprintf(`select %s from %s where %s IN (select %s from %s where %s = ?)`,
-		strings.Join(getSchemaFor(*out).Columns(true), ","),
-		getSchemaFor(*out).Table,
-		c.ForeignLookupColumn,
-		c.IntermediateOwnerID,
-		c.IntermediateTable,
-		c.IntermediatePropertyID,
-	)
-
-	args := []interface{}{genericGetPKValue(property)}
-
-	rows, err := getSchemaFor(*out).getSQLDB().Query(q, args...)
-
-	if err != nil {
-		return nil, err
-	}
-	var output []OWNER
-	err = getSchemaFor(*out).bind(rows, &output)
-	if err != nil {
-		return nil, err
-	}
-
-	return output, nil
+	return NewQueryBuilder[OWNER]().
+		Select(getSchemaFor(*out).Columns(true)...).
+		Table(getSchemaFor(*out).Table).
+		WhereIn(c.ForeignLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
+			c.IntermediateOwnerID,
+			c.IntermediateTable, c.IntermediatePropertyID), genericGetPKValue(property)))
 }
 
 //Add adds `items` to `to` using relations defined between items and to in ConfigureRelations method of `to`.

@@ -91,6 +91,35 @@ func TestSelect(t *testing.T) {
 		assert.Equal(t, `SELECT * FROM (SELECT * FROM users WHERE age < ? )`, sql)
 
 	})
+
+	t.Run("raw where", func(t *testing.T) {
+		sql, args, err :=
+			NewQueryBuilder[Dummy]().
+				SetDialect(Dialects.MySQL).
+				Table("users").
+				Where(Raw("id = ?", 1)).
+				AndWhere(Raw("age < ?", 10)).
+				SetSelect().
+				ToSql()
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, []interface{}{1, 10}, args)
+		assert.Equal(t, `SELECT * FROM users WHERE id = ? AND age < ?`, sql)
+	})
+
+	t.Run("raw where in", func(t *testing.T) {
+		sql, args, err :=
+			NewQueryBuilder[Dummy]().
+				SetDialect(Dialects.MySQL).
+				Table("users").
+				WhereIn("id", Raw("SELECT user_id FROM user_books WHERE book_id = ?", 10)).
+				SetSelect().
+				ToSql()
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, []interface{}{10}, args)
+		assert.Equal(t, `SELECT * FROM users WHERE id IN (SELECT user_id FROM user_books WHERE book_id = ?)`, sql)
+	})
 }
 func TestUpdate(t *testing.T) {
 	t.Run("update no whereClause", func(t *testing.T) {

@@ -42,11 +42,11 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (p *Post) Categories() ([]Category, error) {
-	return orm.BelongsToMany[Category](p)
+	return orm.BelongsToMany[Category](p).All()
 }
 
 func (p *Post) Comments() ([]Comment, error) {
-	return orm.HasMany[Comment](p)
+	return orm.HasMany[Comment](p).All()
 }
 
 type Comment struct {
@@ -60,7 +60,7 @@ func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (c *Comment) Post() (Post, error) {
-	return orm.BelongsTo[Post](c)
+	return orm.BelongsTo[Post](c).One()
 }
 
 type Category struct {
@@ -73,16 +73,14 @@ func (c Category) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (c Category) Posts() ([]Post, error) {
-	return orm.BelongsToMany[Post](c)
+	return orm.BelongsToMany[Post](c).All()
 }
 
 // enough models let's test
 
 func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
-		//Name:   "default",
-		Driver: "sqlite3",
-		//ConnectionString: "orm.db",
+		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 	})
 	//orm.Schematic()
@@ -256,7 +254,7 @@ func TestHasMany(t *testing.T) {
 		Body:   "comment 2",
 	}))
 
-	comments, err := orm.HasMany[Comment](post)
+	comments, err := orm.HasMany[Comment](post).All()
 	assert.NoError(t, err)
 
 	assert.Len(t, comments, 2)
@@ -279,7 +277,7 @@ func TestBelongsTo(t *testing.T) {
 	}
 	assert.NoError(t, orm.Save(comment))
 
-	post2, err := orm.BelongsTo[Post](comment)
+	post2, err := orm.BelongsTo[Post](comment).One()
 	assert.NoError(t, err)
 
 	assert.Equal(t, *post, post2)
@@ -299,7 +297,7 @@ func TestHasOne(t *testing.T) {
 	}
 	assert.NoError(t, orm.Save(headerPicture))
 
-	c1, err := orm.HasOne[HeaderPicture](post)
+	c1, err := orm.HasOne[HeaderPicture](post).One()
 	assert.NoError(t, err)
 
 	assert.Equal(t, headerPicture.PostID, c1.PostID)
@@ -324,7 +322,7 @@ func TestBelongsToMany(t *testing.T) {
 	_, _, err := orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
 	assert.NoError(t, err)
 
-	categories, err := orm.BelongsToMany[Category](post)
+	categories, err := orm.BelongsToMany[Category](post).All()
 	assert.NoError(t, err)
 
 	assert.Len(t, categories, 1)
