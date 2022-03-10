@@ -14,8 +14,7 @@ jobs:
         os:
           - ubuntu-latest
         go:
-          - 1.17
-          - 1.16
+          - 1.18-rc
 
     runs-on: ${{ matrix.os }}
 
