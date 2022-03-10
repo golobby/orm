@@ -14,7 +14,7 @@ jobs:
         os:
           - ubuntu-latest
         go:
-          - 1.18
+          - '1.18-rc1'
 
     runs-on: ${{ matrix.os }}
 
@@ -24,6 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
+          stable: false
           go-version: ${{ matrix.go }}
 
       - name: Coveralls
