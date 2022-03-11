@@ -12,15 +12,16 @@
 GoLobbyORM is a simple yet powerfull, fast, safe, customizable, type-safe database toolkit for Golang.
 
 ## Table Of Contents
-- [golobby/orm](#golobby-orm)
-  * [Features](#features)
+- [GolobbyORM](#golobbyorm)
   * [Table Of Contents](#table-of-contents)
+  * [Features](#features)
     + [Introduction](#introduction)
     + [Creating a new Entity](#creating-a-new-entity)
       - [Conventions](#conventions)
+        * [Timestamps](#timestamps)
         * [Column names](#column-names)
         * [Primary Key](#primary-key)
-    + [Initializing ORM](#Initializing-ORM)
+    + [Initializing ORM](#initializing-orm)
     + [Fetching an entity from database](#fetching-an-entity-from-database)
     + [Saving entities or Insert/Update](#saving-entities-or-insert-update)
     + [Deleting entities](#deleting-entities)
@@ -31,6 +32,7 @@ GoLobbyORM is a simple yet powerfull, fast, safe, customizable, type-safe databa
       - [BelongsToMany](#belongstomany)
       - [Saving with relation](#saving-with-relation)
   * [License](#license)
+
 
 ## Features
 - Simple, type safe, elegant API with help of `Generics`
