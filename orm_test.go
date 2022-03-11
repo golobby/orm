@@ -233,7 +233,7 @@ func TestSave(t *testing.T) {
 		myPost, err := orm.Find[Post](1)
 		assert.NoError(t, err)
 
-		assert.Equal(t, post, &myPost)
+		assert.EqualValues(t, post.Body, myPost.Body)
 	})
 
 }
@@ -281,7 +281,7 @@ func TestBelongsTo(t *testing.T) {
 	post2, err := orm.BelongsTo[Post](comment).One()
 	assert.NoError(t, err)
 
-	assert.Equal(t, *post, post2)
+	assert.Equal(t, post.Body, post2.Body)
 }
 
 func TestHasOne(t *testing.T) {
@@ -446,7 +446,9 @@ func TestQuery(t *testing.T) {
 		//post, err := orm.Query[Post]().Where("id", 1).First()
 		post, err := orm.Query[Post]().WherePK(1).First()
 		assert.NoError(t, err)
-		assert.EqualValues(t, Post{ID: 1, Body: "body 1"}, post)
+		assert.EqualValues(t, "body 1", post.Body)
+		assert.EqualValues(t, 1, post.ID)
+
 	})
 	t.Run("querying multiple rows", func(t *testing.T) {
 		setup(t)
@@ -474,7 +476,7 @@ func TestQuery(t *testing.T) {
 
 		post, err := orm.Find[Post](1)
 		assert.NoError(t, err)
-		assert.Equal(t, Post{ID: 1, Body: "body jadid"}, post)
+		assert.Equal(t, "body jadid", post.Body)
 	})
 
 	t.Run("deleting a row using query interface", func(s *testing.T) {

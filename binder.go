@@ -8,9 +8,9 @@ import (
 	"unsafe"
 )
 
-//pointerTupleFor creates a map of [column name] -> pointer to fill it
+//makeNewPointersOf creates a map of [column name] -> pointer to fill it
 //recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
-func pointerTupleFor(v reflect.Value) map[string]interface{} {
+func makeNewPointersOf(v reflect.Value) map[string]interface{} {
 	m := map[string]interface{}{}
 	actualV := v
 	for actualV.Type().Kind() == reflect.Ptr {
@@ -20,7 +20,7 @@ func pointerTupleFor(v reflect.Value) map[string]interface{} {
 		f := actualV.Field(i)
 		if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
 			f = reflect.NewAt(actualV.Type().Field(i).Type, unsafe.Pointer(actualV.Field(i).UnsafeAddr()))
-			fm := pointerTupleFor(f)
+			fm := makeNewPointersOf(f)
 			for k, p := range fm {
 				m[k] = p
 			}
@@ -37,7 +37,7 @@ func pointerTupleFor(v reflect.Value) map[string]interface{} {
 //then it will put them in a map with their correct field name as key, then loops over cts
 //and for each one gets appropriate one from the map and adds it to pointer list.
 func (o *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
-	nameToPtr := pointerTupleFor(v)
+	nameToPtr := makeNewPointersOf(v)
 	var scanInto []interface{}
 	for _, ct := range cts {
 		if nameToPtr[ct.Name()] != nil {

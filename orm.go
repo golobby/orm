@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/table"
 	"reflect"
+	"time"
+
 	//Drivers
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -159,6 +161,14 @@ func Insert(objs ...Entity) error {
 	cols := s.Columns(false)
 	var values [][]interface{}
 	for _, obj := range objs {
+		createdAtF := s.createdAt()
+		if createdAtF != nil {
+			genericSet(obj, createdAtF.Name, sql.NullTime{Time: time.Now(), Valid: true})
+		}
+		updatedAtF := s.updatedAt()
+		if updatedAtF != nil {
+			genericSet(obj, updatedAtF.Name, sql.NullTime{Time: time.Now(), Valid: true})
+		}
 		values = append(values, genericValuesOf(obj, false))
 	}
 

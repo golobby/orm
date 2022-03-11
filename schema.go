@@ -4,12 +4,10 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"reflect"
-	"strings"
-	"unsafe"
-
 	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
+	"reflect"
+	"strings"
 )
 
 type EntityConfigurator struct {
@@ -218,16 +216,22 @@ func (e *schema) pkName() string {
 }
 
 type field struct {
-	Name    string
-	IsPK    bool
-	Virtual bool
-	Type    reflect.Type
+	Name        string
+	IsPK        bool
+	Virtual     bool
+	IsCreatedAt bool
+	IsUpdatedAt bool
+	IsDeletedAt bool
+	Type        reflect.Type
 }
 
 type fieldTag struct {
-	Name    string
-	Virtual bool
-	PK      bool
+	Name        string
+	Virtual     bool
+	PK          bool
+	IsCreatedAt bool
+	IsUpdatedAt bool
+	IsDeletedAt bool
 }
 
 func fieldMetadataFromTag(t string) fieldTag {
@@ -246,6 +250,12 @@ func fieldMetadataFromTag(t string) fieldTag {
 			tag.Name = value
 		} else if key == "pk" {
 			tag.PK = true
+		} else if key == "created_at" {
+			tag.IsCreatedAt = true
+		} else if key == "updated_at" {
+			tag.IsUpdatedAt = true
+		} else if key == "deleted_at" {
+			tag.IsDeletedAt = true
 		}
 		if tag.Name == "_" {
 			tag.Virtual = true
@@ -266,6 +276,15 @@ func fieldMetadata(ft reflect.StructField) []*field {
 	}
 	if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
 		baseFm.IsPK = true
+	}
+	if tagParsed.IsCreatedAt || strings.ToLower(ft.Name) == "createdat" {
+		baseFm.IsCreatedAt = true
+	}
+	if tagParsed.IsUpdatedAt || strings.ToLower(ft.Name) == "updatedat" {
+		baseFm.IsUpdatedAt = true
+	}
+	if tagParsed.IsDeletedAt || strings.ToLower(ft.Name) == "deletedat" {
+		baseFm.IsDeletedAt = true
 	}
 	if tagParsed.Virtual {
 		baseFm.Virtual = true
@@ -361,29 +380,7 @@ func genericValuesOf(o Entity, withPK bool) []interface{} {
 }
 
 func genericSetPkValue(obj Entity, value interface{}) {
-	t := reflect.TypeOf(obj)
-	val := reflect.ValueOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		val = val.Elem()
-	}
-	pkIdx := -1
-	for i, field := range getSchemaFor(obj).fields {
-		if field.IsPK {
-			pkIdx = i
-		}
-	}
-	ptr := reflect.NewAt(t.Field(pkIdx).Type, unsafe.Pointer(val.Field(pkIdx).UnsafeAddr())).Elem()
-	toSetValue := reflect.ValueOf(value)
-	if t.Field(pkIdx).Type.AssignableTo(ptr.Type()) {
-		ptr.Set(toSetValue)
-	} else {
-		if t.Field(pkIdx).Type.ConvertibleTo(ptr.Type()) {
-			ptr.Set(toSetValue.Convert(ptr.Type()))
-		} else {
-			panic(fmt.Sprintf("value of type %s is not assignable to %s", t.Field(pkIdx).Type.String(), ptr.Type()))
-		}
-	}
+	genericSet(obj, getSchemaFor(obj).pkName(), value)
 }
 
 func genericGetPKValue(obj Entity) interface{} {
@@ -402,6 +399,62 @@ func genericGetPKValue(obj Entity) interface{} {
 	return ""
 }
 
+func (s *schema) createdAt() *field {
+	for _, f := range s.fields {
+		if f.IsCreatedAt {
+			return f
+		}
+	}
+	return nil
+}
+func (s *schema) updatedAt() *field {
+	for _, f := range s.fields {
+		if f.IsUpdatedAt {
+			return f
+		}
+	}
+	return nil
+}
+
+func (s *schema) deletedAt() *field {
+	for _, f := range s.fields {
+		if f.IsDeletedAt {
+			return f
+		}
+	}
+	return nil
+}
+func pointersOf(v reflect.Value) map[string]interface{} {
+	m := map[string]interface{}{}
+	actualV := v
+	for actualV.Type().Kind() == reflect.Ptr {
+		actualV = actualV.Elem()
+	}
+	for i := 0; i < actualV.NumField(); i++ {
+		f := actualV.Field(i)
+		if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
+			fm := pointersOf(f)
+			for k, p := range fm {
+				m[k] = p
+			}
+		} else {
+			fm := fieldMetadata(actualV.Type().Field(i))[0]
+			m[fm.Name] = actualV.Field(i)
+		}
+	}
+
+	return m
+}
+func genericSet(obj Entity, name string, value interface{}) {
+	n2p := pointersOf(reflect.ValueOf(obj))
+	var val interface{}
+	for k, v := range n2p {
+		if k == name {
+			val = v
+		}
+	}
+	val.(reflect.Value).Set(reflect.ValueOf(value))
+}
 func schemaOf(v Entity) *schema {
 	userSchema := newEntityConfigurator()
 	v.ConfigureEntity(userSchema)
