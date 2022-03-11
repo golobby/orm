@@ -159,7 +159,12 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 	return s
 }
 
+//Entity defines the interface that each of your structs that
+//you want to use as database entities should have,
+//it's a simple one and its ConfigureEntity.
 type Entity interface {
+	//ConfigureEntity should be defined for all of your database entities
+	//and it can define Table, Connection and also relations of your Entity.
 	ConfigureEntity(e *EntityConfigurator)
 }
 
@@ -180,7 +185,8 @@ func getDialect(driver string) (*Dialect, error) {
 	}
 }
 
-// insertStmt given Entity
+// Insert given entities into database based on their ConfigureEntity
+// we can find table and also Connection name.
 func Insert(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
@@ -231,7 +237,10 @@ func isZero(val interface{}) bool {
 	}
 }
 
-// Save upserts given entity.
+// Save saves given entity, if primary key is set
+// we will make an update query and if
+// primary key is zero value we will
+// insert it.
 func Save(obj Entity) error {
 	if isZero(getSchemaFor(obj).getPK(obj)) {
 		return Insert(obj)
@@ -240,7 +249,7 @@ func Save(obj Entity) error {
 	}
 }
 
-// Find finds the Entity you want based on Entity generic type and primary key you passed.
+// Find finds the Entity you want based on generic type and primary key you passed.
 func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
@@ -271,7 +280,7 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 	return tuples
 }
 
-// Update given Entity in database
+// Update given Entity in database.
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
 	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
@@ -304,8 +313,18 @@ func bindContext[T Entity](ctx context.Context, output interface{}, q string, ar
 	return outputMD.bind(rows, output)
 }
 
+//HasManyConfig contains all information we need for querying HasMany relationships.
+//We can infer both fields if you have them in standard way but you
+// can specify them if you want custom ones.
 type HasManyConfig struct {
-	PropertyTable      string
+	// PropertyTable is table of the property of HasMany relationship,
+	// consider `Comment` in Post and Comment relationship,
+	// each Post HasMany Comment, so PropertyTable is
+	// `comments`.
+	PropertyTable string
+	// PropertyForeignKey is the foreign key column name in the property table,
+	// forexample in Post HasMany Comment, if comment has `post_id` column,
+	// it's the PropertyForeignKey field.
 	PropertyForeignKey string
 }
 
