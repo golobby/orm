@@ -15,6 +15,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+//Schematic prints all information ORM infered from your entities in startup, remember to pass
+//your entities in Entities when you call Initialize if you want their data infered
+//otherwise Schematic does not print correct data since GolobbyORM also
+//incrementaly cache your entities metadata and schema.
 func Schematic() {
 	for conn, connObj := range globalORM {
 		fmt.Printf("----------------%s---------------\n", conn)
@@ -79,11 +83,25 @@ func GetConnection(name string) *Connection {
 }
 
 type ConnectionConfig struct {
-	Name             string
-	Driver           string
+	// Name of your database connection, it's up to you to name them anything
+	// just remember that having a connection name is mandatory if
+	// you have multiple connections
+	Name string
+	// Which driver to be used for your connection, you can name [mysql, sqlite3, postgres]
+	Driver string
+	// Which connection string to be passed as second argument to sql.Open(driver, connectionString)
 	ConnectionString string
-	DB               *sql.DB
-	Dialect          *Dialect
+	// If you already have an active database connection configured pass it in this value and
+	// do not pass Driver and ConnectionString fields.
+	DB *sql.DB
+	// Which dialect of sql to generate queries for, you don't need it most of the times when you are using
+	// traditional databases such as mysql, sqlite3, postgres.
+	Dialect *Dialect
+	// List of entities that you want to use for this connection, remember that you can ignore this field
+	// and GolobbyORM will build our metadata cache incrementally but you will lose schematic
+	// information that we can provide you and also potentialy validations that we
+	// can do with the database
+	Entities []Entity
 }
 
 func initTableName(e Entity) string {
@@ -96,6 +114,7 @@ func initTableName(e Entity) string {
 	return configurator.table
 }
 
+//Initialize gets list of ConnectionConfig and builds up ORM for you.
 func Initialize(confs ...ConnectionConfig) error {
 	for _, conf := range confs {
 		var dialect *Dialect
@@ -114,15 +133,21 @@ func Initialize(confs ...ConnectionConfig) error {
 				return err
 			}
 		}
-		initialize(conf.Name, dialect, db)
+		initialize(conf.Name, dialect, db, conf.Entities)
 	}
 	return nil
 }
 
-func initialize(name string, dialect *Dialect, db *sql.DB) *Connection {
+func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *Connection {
 	schemas := map[string]*schema{}
 	if name == "" {
 		name = "default"
+	}
+	for _, entity := range entities {
+		s := schemaOf(entity)
+		var configurator EntityConfigurator
+		entity.ConfigureEntity(&configurator)
+		schemas[configurator.table] = s
 	}
 	s := &Connection{
 		Name:       name,
