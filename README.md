@@ -148,8 +148,8 @@ user, err := orm.Find[User](1)
 You can also use custom queries to get entities from database.
 ```go
 
-user, err := orm.Query[User]().Where("id", 1).One()
-user, err := orm.Query[User]().WherePK(1).One()
+user, err := orm.Query[User]().Where("id", 1).First()
+user, err := orm.Query[User]().WherePK(1).First()
 ```
 GolobbyORM contains a powerful query builder which you can use to build `Select`, `Update` and `Delete` queries, but if you want to write a raw sql query you can.
 ```go
@@ -238,7 +238,7 @@ func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
 As you can see we are defining a `Comment` entity which has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object, by default it will infer all fields for you.
 now you can use this relationship anywhere in your code.
 ```go
-post, err := orm.BelongsTo[Post](comment)
+post, err := orm.BelongsTo[Post](comment).First()
 ```
 #### BelongsToMany
 ```go
@@ -257,7 +257,7 @@ func(c Category) ConfigureEntity(r *orm.EntityConfigurator) {
 we are defining a `Post` entity and also a `Category` entity which have a many2many relationship, as you can see it's mandatory for us to configure IntermediateTable name which GolobbyORM cannot infer by itself now.
 now you can use this relationship anywhere in your code.
 ```go
-categories, err := orm.BelongsToMany[Category](post)
+categories, err := orm.BelongsToMany[Category](post).All()
 ```
 #### Saving with relation
 You may need to save an entity which has some kind of relation with another entity, in that case you can use `Add` method.

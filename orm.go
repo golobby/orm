@@ -258,7 +258,7 @@ func Update(obj Entity) error {
 // Delete given Entity from database
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
-
+	genericSet(obj, "deleted_at", sql.NullTime{Time: time.Now(), Valid: true})
 	query, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
 	if err != nil {
 		return err
@@ -455,26 +455,6 @@ func addProperty(to Entity, items ...Entity) error {
 func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
-
-//func Query[OUTPUT Entity](s *QueryBuilder[OUTPUT]) ([]OUTPUT, error) {
-//	o := new(OUTPUT)
-//	sch := getSchemaFor(*o)
-//	s.SetDialect(sch.dialect).Table(sch.Table).SetSelect()
-//	q, args, err := s.ToSql()
-//	if err != nil {
-//		return nil, err
-//	}
-//	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
-//	if err != nil {
-//		return nil, err
-//	}
-//	var output []OUTPUT
-//	err = getSchemaFor(*o).bind(rows, &output)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return output, nil
-//}
 
 func Query[E Entity]() *QueryBuilder[E] {
 	q := NewQueryBuilder[E]()
