@@ -82,6 +82,16 @@ Entities in GolobbyORM are implementations of `Entity` interface which defines t
 #### Conventions
 ##### Timestamps
 for having `created_at`, `updated_at`, `deleted_at` timestamps in your entities you can embed `orm.Timestamps` struct in your entity,
+```go
+type User struct {
+  ID       int64
+  Name     string
+  LastName string
+  Email    string
+  orm.Timestamps
+}
+
+```
 also if you want custom names for them you can do it like this.
 ```go
 type User struct {
