@@ -29,6 +29,7 @@ func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
 type Post struct {
 	ID   int64
 	Body string
+	orm.Timestamps
 }
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
@@ -84,7 +85,7 @@ func setup(t *testing.T) {
 		ConnectionString: ":memory:",
 	})
 	//orm.Schematic()
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text)`)
+	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)

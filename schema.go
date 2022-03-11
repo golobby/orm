@@ -2,6 +2,7 @@ package orm
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -252,6 +253,37 @@ func fieldMetadataFromTag(t string) fieldTag {
 	}
 	return tag
 }
+func fieldMetadata(ft reflect.StructField) []*field {
+	tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
+	var fms []*field
+	baseFm := &field{}
+	baseFm.Type = ft.Type
+	fms = append(fms, baseFm)
+	if tagParsed.Name != "" {
+		baseFm.Name = tagParsed.Name
+	} else {
+		baseFm.Name = strcase.ToSnake(ft.Name)
+	}
+	if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
+		baseFm.IsPK = true
+	}
+	if tagParsed.Virtual {
+		baseFm.Virtual = true
+	}
+	if ft.Type.Kind() == reflect.Struct || ft.Type.Kind() == reflect.Ptr {
+		t := ft.Type
+		if ft.Type.Kind() == reflect.Ptr {
+			t = ft.Type.Elem()
+		}
+		if !t.Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
+			for i := 0; i < t.NumField(); i++ {
+				fms = append(fms, fieldMetadata(t.Field(i))...)
+			}
+			fms = fms[1:]
+		}
+	}
+	return fms
+}
 
 func genericFieldsOf(obj interface{}) []*field {
 	t := reflect.TypeOf(obj)
@@ -269,23 +301,33 @@ func genericFieldsOf(obj interface{}) []*field {
 	var fms []*field
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
-		tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
-		fm := &field{}
-		fm.Type = ft.Type
-		if tagParsed.Name != "" {
-			fm.Name = tagParsed.Name
-		} else {
-			fm.Name = strcase.ToSnake(ft.Name)
-		}
-		if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
-			fm.IsPK = true
-		}
-		if tagParsed.Virtual || ft.Type.Kind() == reflect.Struct || ft.Type.Kind() == reflect.Slice || ft.Type.Kind() == reflect.Ptr {
-			fm.Virtual = true
-		}
-		fms = append(fms, fm)
+		fm := fieldMetadata(ft)
+		fms = append(fms, fm...)
 	}
 	return fms
+}
+
+func valuesOfField(vf reflect.Value) []interface{} {
+	var values []interface{}
+	if vf.Type().Kind() == reflect.Struct || vf.Type().Kind() == reflect.Ptr {
+		t := vf.Type()
+		if vf.Type().Kind() == reflect.Ptr {
+			t = vf.Type().Elem()
+		}
+		if !t.Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
+			//go into
+			// it does not implement driver.Valuer interface
+			for i := 0; i < vf.NumField(); i++ {
+				vif := vf.Field(i)
+				values = append(values, valuesOfField(vif)...)
+			}
+		} else {
+			values = append(values, vf.Interface())
+		}
+	} else {
+		values = append(values, vf.Interface())
+	}
+	return values
 }
 func genericValuesOf(o Entity, withPK bool) []interface{} {
 	t := reflect.TypeOf(o)
@@ -312,7 +354,8 @@ func genericValuesOf(o Entity, withPK bool) []interface{} {
 		if fields[i].Virtual {
 			continue
 		}
-		values = append(values, v.Field(i).Interface())
+		vf := v.Field(i)
+		values = append(values, valuesOfField(vf)...)
 	}
 	return values
 }

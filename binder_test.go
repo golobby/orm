@@ -12,6 +12,7 @@ import (
 type User struct {
 	ID   int
 	Name string
+	Timestamps
 }
 
 func (u User) ConfigureEntity(e *EntityConfigurator) {
@@ -29,7 +30,8 @@ func TestBind(t *testing.T) {
 		assert.NoError(t, err)
 		mock.
 			ExpectQuery("SELECT .* FROM users").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "amirreza"))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "deleted_at"}).
+				AddRow(1, "amirreza", "", "", ""))
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
