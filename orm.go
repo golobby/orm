@@ -4,11 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/jedib0t/go-pretty/table"
 	"reflect"
 	"time"
 
+	"github.com/jedib0t/go-pretty/table"
+
 	//Drivers
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 

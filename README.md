@@ -264,6 +264,9 @@ You may need to save an entity which has some kind of relation with another enti
 ```go
 orm.Add(post, comments...) // inserts all comments passed in and also sets all post_id to the primary key of the given post.
 ```
+
+### Query Builder
+#### Select
 ## License
 
 GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
