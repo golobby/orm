@@ -64,6 +64,7 @@ type User struct {
   Name     string
   LastName string
   Email    string
+  orm.Timestamps
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
@@ -77,6 +78,21 @@ as you see our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface which defines two methods:
 - ConfigureEntity: configures table and also relations to other entities.
 #### Conventions
+##### Timestamps
+for having `created_at`, `updated_at`, `deleted_at` timestamps in your entities you can embed `orm.Timestamps` struct in your entity,
+also if you want custom names for them you can do it like this.
+```go
+type User struct {
+    ID       int64
+    Name     string
+    LastName string
+    Email    string
+    MyCreatedAt sql.NullTime `orm:"created_at=true"`
+    MyUpdatedAt sql.NullTime `orm:"updated_at=true"`
+    MyDeletedAt sql.NullTime `orm:"deleted_at=true"`
+}
+```
+You can use `orm` struct tag and there is a key for each timestamp which you can use on any time compatible struct field.
 ##### Column names
 GolobbyORM for each struct field(except slice, arrays, maps and other nested structs) assumes a respective column named using snake case syntax.
 if you want to have a custom column name you should specify it in entity struct.
