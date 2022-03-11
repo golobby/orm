@@ -1,7 +1,9 @@
 package orm
 
 import (
+	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 
@@ -10,7 +12,7 @@ import (
 )
 
 type User struct {
-	ID   int
+	ID   int64
 	Name string
 	Timestamps
 }
@@ -31,7 +33,7 @@ func TestBind(t *testing.T) {
 		mock.
 			ExpectQuery("SELECT .* FROM users").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "deleted_at"}).
-				AddRow(1, "amirreza", "", "", ""))
+				AddRow(1, "amirreza", sql.NullTime{Time: time.Now(), Valid: true}, sql.NullTime{Time: time.Now(), Valid: true}, sql.NullTime{}))
 		rows, err := db.Query(`SELECT * FROM users`)
 		assert.NoError(t, err)
 
@@ -61,4 +63,21 @@ func TestBind(t *testing.T) {
 		assert.Equal(t, "amirreza", users[0].Name)
 		assert.Equal(t, "milad", users[1].Name)
 	})
+}
+
+func TestBindMap(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	mock.
+		ExpectQuery("SELECT .* FROM users").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at", "deleted_at"}).
+			AddRow(1, "amirreza", sql.NullTime{Time: time.Now(), Valid: true}, sql.NullTime{Time: time.Now(), Valid: true}, sql.NullTime{}))
+	rows, err := db.Query(`SELECT * FROM users`)
+	assert.NoError(t, err)
+
+	ms := bindToMap(rows)
+
+	assert.NotEmpty(t, ms)
+
+	assert.Len(t, ms, 1)
 }

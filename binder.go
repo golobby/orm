@@ -2,39 +2,47 @@ package orm
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"unsafe"
 )
 
-// ptrsFor does for each field in struct:
-// if field is primitive just allocate and add pointer
-// if field is struct call recursively and add all pointers
-func (o *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
-	t := v.Type()
-
-	if t.Kind() == reflect.Ptr {
-		v = v.Elem()
-		t = t.Elem()
+//pointerTupleFor creates a map of [column name] -> pointer to fill it
+//recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
+func pointerTupleFor(v reflect.Value) map[string]interface{} {
+	m := map[string]interface{}{}
+	actualV := v
+	for actualV.Type().Kind() == reflect.Ptr {
+		actualV = actualV.Elem()
 	}
-	tableName := o.Table
-	var scanInto []interface{}
-	for index := 0; index < len(cts); index++ {
-		ct := cts[index]
-		for i := 0; i < t.NumField(); i++ {
-			if o.fields[i].Virtual {
-				continue
+	for i := 0; i < actualV.NumField(); i++ {
+		f := actualV.Field(i)
+		if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
+			f = reflect.NewAt(actualV.Type().Field(i).Type, unsafe.Pointer(actualV.Field(i).UnsafeAddr()))
+			fm := pointerTupleFor(f)
+			for k, p := range fm {
+				m[k] = p
 			}
-			fieldName := o.fields[i].Name
-			if ct.Name() == fieldName || ct.Name() == tableName+"."+fieldName {
-				ptr := reflect.NewAt(t.Field(i).Type, unsafe.Pointer(v.Field(i).UnsafeAddr()))
-				actualPtr := ptr.Elem().Addr().Interface()
-				scanInto = append(scanInto, actualPtr)
-				newcts := append(cts[:index], cts[index+1:]...)
-				return append(scanInto, o.ptrsFor(v, newcts)...)
-			}
+		} else {
+			fm := fieldMetadata(actualV.Type().Field(i))[0]
+			m[fm.Name] = reflect.NewAt(actualV.Field(i).Type(), unsafe.Pointer(actualV.Field(i).UnsafeAddr())).Interface()
 		}
+	}
 
+	return m
+}
+
+//ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
+//then it will put them in a map with their correct field name as key, then loops over cts
+//and for each one gets appropriate one from the map and adds it to pointer list.
+func (o *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+	nameToPtr := pointerTupleFor(v)
+	var scanInto []interface{}
+	for _, ct := range cts {
+		if nameToPtr[ct.Name()] != nil {
+			scanInto = append(scanInto, nameToPtr[ct.Name()])
+		}
 	}
 
 	return scanInto
@@ -92,4 +100,30 @@ func (o *schema) bind(rows *sql.Rows, obj interface{}) error {
 	// v is either struct or slice
 	reflect.ValueOf(obj).Elem().Set(v)
 	return nil
+}
+
+func bindToMap(rows *sql.Rows) []map[string]interface{} {
+	cts, err := rows.ColumnTypes()
+	if err != nil {
+		panic(err)
+	}
+	var ms []map[string]interface{}
+	for rows.Next() {
+		var ptrs []interface{}
+		for _, ct := range cts {
+			ptrs = append(ptrs, reflect.New(ct.ScanType()).Interface())
+		}
+
+		err = rows.Scan(ptrs...)
+		if err != nil {
+			panic(err)
+		}
+		m := map[string]interface{}{}
+		for i, ptr := range ptrs {
+			m[cts[i].Name()] = reflect.ValueOf(ptr).Elem().Interface()
+		}
+
+		ms = append(ms, m)
+	}
+	return ms
 }
