@@ -28,7 +28,7 @@ type Object struct {
 }
 
 func (o Object) ConfigureEntity(e *EntityConfigurator) {
-	e.Table("objects")
+	e.Table("objects").Connection("default")
 }
 
 func TestGenericFieldsOf(t *testing.T) {
@@ -51,4 +51,16 @@ func TestGenericValuesOf(t *testing.T) {
 		vs := genericValuesOf(Object{}, true)
 		assert.Len(t, vs, 5)
 	})
+}
+
+func TestEntityConfigurator(t *testing.T) {
+	t.Run("test has many with user provided values", func(t *testing.T) {
+		setup(t)
+		var ec EntityConfigurator
+		ec.Table("users").Connection("default").HasMany(Object{}, HasManyConfig{
+			"objects", "user_id",
+		})
+
+	})
+
 }

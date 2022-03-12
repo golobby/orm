@@ -1,6 +1,7 @@
 package orm_test
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/golobby/orm"
@@ -9,15 +10,15 @@ import (
 
 type AuthorEmail struct {
 	ID    int64
-	Email string
+	Email string `orm:"column=email"`
 }
 
 func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("emails").BelongsTo(&Post{}, orm.BelongsToConfig{})
+	e.Table("emails").Connection("default").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 
 type HeaderPicture struct {
-	ID     int64
+	ID     int64 `orm:"column=id pk=true"`
 	PostID int64
 	Link   string
 }
@@ -27,9 +28,11 @@ func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 type Post struct {
-	ID   int64
-	Body string
-	orm.Timestamps
+	ID        int64
+	Body      string
+	CreatedAt sql.NullTime `orm:"created_at=true"`
+	UpdatedAt sql.NullTime `orm:"updated_at=true"`
+	DeletedAt sql.NullTime `orm:"deleted_at=true"`
 }
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
@@ -83,7 +86,7 @@ func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
-		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+		Entities:         []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 	})
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
