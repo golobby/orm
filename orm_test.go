@@ -337,37 +337,6 @@ func TestSchematic(t *testing.T) {
 	orm.Schematic()
 }
 
-//func TestQuery(t *testing.T) {
-//	t.Run(`test QueryBuilder using qb`, func(t *testing.T) {
-//		setup(t)
-//
-//		post := &Post{
-//			Body: "first Post",
-//		}
-//
-//		assert.NoError(t, orm.Save(post))
-//		assert.Equal(t, int64(1), post.ID)
-//
-//		posts, err := orm.Query[Post](orm.NewQueryBuilder[Post]().Where("id", 1))
-//		assert.NoError(t, err)
-//		assert.Equal(t, []Post{*post}, posts)
-//	})
-//	t.Run(`test QueryBuilder raw`, func(t *testing.T) {
-//		setup(t)
-//
-//		post := &Post{
-//			Body: "first Post",
-//		}
-//
-//		assert.NoError(t, orm.Save(post))
-//		assert.Equal(t, int64(1), post.ID)
-//
-//		posts, err := orm.QueryRaw[Post](`SELECT * FROM posts WHERE id = ?`, 1)
-//		assert.NoError(t, err)
-//		assert.Equal(t, []Post{*post}, posts)
-//	})
-//}
-
 func TestAddProperty(t *testing.T) {
 	t.Run("having pk value", func(t *testing.T) {
 		setup(t)
@@ -457,5 +426,22 @@ func TestQuery(t *testing.T) {
 		count, err := orm.Query[Post]().WherePK(1).Count()
 		assert.NoError(s, err)
 		assert.EqualValues(s, 0, count)
+	})
+
+	t.Run("latest", func(t *testing.T) {
+		setup(t)
+		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{Body: "body 2"}))
+
+		post, err := orm.Query[Post]().Latest()
+		assert.NoError(t, err)
+
+		assert.EqualValues(t, "body 2", post.Body)
+	})
+
+	t.Run("use .Execute when query type is select", func(t *testing.T) {
+		setup(t)
+		_, err := orm.Query[Post]().SetSelect().Execute()
+		assert.Error(t, err)
 	})
 }

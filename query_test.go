@@ -25,12 +25,17 @@ func TestSelect(t *testing.T) {
 	t.Run("select with whereClause", func(t *testing.T) {
 		s := NewQueryBuilder[Dummy]()
 
-		s.Table("users").SetDialect(Dialects.MySQL).Where("age", 10).AndWhere("age", "<", 10).SetSelect()
+		s.Table("users").SetDialect(Dialects.MySQL).
+			Where("age", 10).
+			AndWhere("age", "<", 10).
+			Where("name", "Amirreza").
+			OrWhere("age", GT, 11).
+			SetSelect()
 
 		str, args, err := s.ToSql()
 		assert.NoError(t, err)
-		assert.EqualValues(t, []interface{}{10, 10}, args)
-		assert.Equal(t, "SELECT * FROM users WHERE age = ? AND age < ?", str)
+		assert.EqualValues(t, []interface{}{10, 10, "Amirreza", 11}, args)
+		assert.Equal(t, "SELECT * FROM users WHERE age = ? AND age < ? AND name = ? OR age > ?", str)
 	})
 	t.Run("select with order by", func(t *testing.T) {
 		s := NewQueryBuilder[Dummy]().Table("users").OrderBy("created_at", OrderByASC).OrderBy("updated_at", OrderByDesc)
