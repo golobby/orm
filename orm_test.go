@@ -365,40 +365,6 @@ func TestSchematic(t *testing.T) {
 //	})
 //}
 
-func TestExec(t *testing.T) {
-
-	t.Run("test exec Update", func(t *testing.T) {
-		setup(t)
-		assert.NoError(t, orm.Save(&Post{
-			Body: "first post",
-		}))
-		id, affected, err := orm.Exec[Post](orm.NewQueryBuilder[Post]().Set("body", "first post body updated").Where("id", 1))
-		assert.NoError(t, err)
-		assert.EqualValues(t, 1, id)
-		assert.EqualValues(t, 1, affected)
-	})
-
-	t.Run("test delete &Delete", func(t *testing.T) {
-		setup(t)
-
-		assert.NoError(t, orm.Save(&Post{
-			Body: "first post",
-		}))
-		res, err := orm.Query[Post]().Where("id", 1).Delete()
-		assert.NoError(t, err)
-		affected, err := res.RowsAffected()
-		assert.NoError(t, err)
-		assert.EqualValues(t, 1, affected)
-	})
-	t.Run("test exec raw", func(t *testing.T) {
-		setup(t)
-		id, affected, err := orm.ExecRaw[Post](`INSERT INTO posts (id,body) VALUES (1, ?)`, "amirreza")
-		assert.NoError(t, err)
-		assert.EqualValues(t, 1, id)
-		assert.EqualValues(t, 1, affected)
-	})
-}
-
 func TestAddProperty(t *testing.T) {
 	t.Run("having pk value", func(t *testing.T) {
 		setup(t)

@@ -118,18 +118,18 @@ func (r *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyCon
 		ownerConfigurator := newEntityConfigurator()
 		owner.ConfigureEntity(ownerConfigurator)
 
-		if config.ForeignLookupColumn == "" {
+		if config.OwnerLookupColumn == "" {
 			var pkName string
 			for _, field := range genericFieldsOf(owner) {
 				if field.IsPK {
 					pkName = field.Name
 				}
 			}
-			config.ForeignLookupColumn = pkName
+			config.OwnerLookupColumn = pkName
 
 		}
-		if config.ForeignTable == "" {
-			config.ForeignTable = ownerConfigurator.table
+		if config.OwnerTable == "" {
+			config.OwnerTable = ownerConfigurator.table
 		}
 		if config.IntermediateTable == "" {
 			panic("cannot infer intermediate table yet")

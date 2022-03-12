@@ -421,15 +421,40 @@ func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 
 }
 
+//BelongsToManyConfig contains information that we
+//need for creating many to many queries.
 type BelongsToManyConfig struct {
-	IntermediateTable      string
+	//IntermediateTable is the name of the middle table
+	//in a BelongsToMany (Many to Many) relationship.
+	//for example when we have Post BelongsToMany
+	//Category, this table will be post_categories
+	//table, remember that this field cannot be
+	//inferred.
+	IntermediateTable string
+	//IntermediatePropertyID is the name of the column name
+	//of property foreign key in intermediate table,
+	//for example when we have Post BelongsToMany
+	//Category, in post_categories table, it would
+	//be post_id.
 	IntermediatePropertyID string
-	IntermediateOwnerID    string
-	ForeignTable           string
-	ForeignLookupColumn    string
+	//IntermediateOwnerID is the name of the column name
+	//of property foreign key in intermediate table,
+	//for example when we have Post BelongsToMany
+	//Category, in post_categories table, it would
+	//be category_id.
+	IntermediateOwnerID string
+	//Table name of the owner in BelongsToMany relation,
+	//for example in Post BelongsToMany Category
+	//Owner table is name of Category table
+	//for example `categories`.
+	OwnerTable string
+	//OwnerLookupColumn is name of the column in the owner
+	//table that is used in query, for example in Post BelongsToMany Category
+	//Owner lookup column would be Category primary key which is id.
+	OwnerLookupColumn string
 }
 
-//BelongsToMany
+//BelongsToMany configures a QueryBuilder for a BelongsToMany relationship
 func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	out := new(OWNER)
 	c, ok := getSchemaFor(property).relations[getSchemaFor(*out).Table].(BelongsToManyConfig)
@@ -439,12 +464,12 @@ func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	return NewQueryBuilder[OWNER]().
 		Select(getSchemaFor(*out).Columns(true)...).
 		Table(getSchemaFor(*out).Table).
-		WhereIn(c.ForeignLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
+		WhereIn(c.OwnerLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
 			c.IntermediateOwnerID,
 			c.IntermediateTable, c.IntermediatePropertyID), genericGetPKValue(property)))
 }
 
-//Add adds `items` to `to` using relations defined between items and to in ConfigureRelations method of `to`.
+//Add adds `items` to `to` using relations defined between items and to in ConfigureEntity method of `to`.
 func Add(to Entity, items ...Entity) error {
 	if len(items) == 0 {
 		return nil
@@ -538,6 +563,7 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
 
+//Query creates a new QueryBuilder for given type parameter, sets dialect and table as well.
 func Query[E Entity]() *QueryBuilder[E] {
 	q := NewQueryBuilder[E]()
 	s := getSchemaFor(*new(E))
@@ -545,34 +571,7 @@ func Query[E Entity]() *QueryBuilder[E] {
 	return q
 }
 
-func Exec[E Entity](stmt *QueryBuilder[E]) (lastInsertedId int64, rowsAffected int64, err error) {
-	e := new(E)
-	s := getSchemaFor(*e)
-	var lastInsertedID int64
-	stmt.SetDialect(s.getDialect()).Table(s.Table)
-	q, args, err := stmt.ToSql()
-	if err != nil {
-		return -1, -1, err
-	}
-	res, err := s.getSQLDB().Exec(q, args...)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	if stmt.typ == queryType_UPDATE {
-		lastInsertedID, err = res.LastInsertId()
-		if err != nil {
-			return 0, 0, err
-		}
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return lastInsertedID, affected, nil
-}
-
+//ExecRaw executes given query string and arguments on given type parameter database connection.
 func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
 	e := new(E)
 
@@ -594,6 +593,7 @@ func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
 	return id, affected, nil
 }
 
+//QueryRaw queries given query string and arguments on given type parameter database connection.
 func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
