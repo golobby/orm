@@ -40,7 +40,7 @@ GoLobbyORM is a simple yet powerful, fast, safe, customizable, type-safe databas
         * [Order By](#order-by)
         * [Limit](#limit)
         * [Offset](#offset)
-        * [First, Latest](#first--latest)
+        * [First, Latest](#first-latest)
       - [Update](#update)
         * [Where](#where-1)
         * [Table](#table-1)
