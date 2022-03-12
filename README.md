@@ -22,8 +22,9 @@ GoLobbyORM is a simple yet powerful, fast, safe, customizable, type-safe databas
         * [Column names](#column-names)
         * [Primary Key](#primary-key)
     + [Initializing ORM](#initializing-orm)
-    + [Fetching an entity from database](#fetching-an-entity-from-database)
+    + [Fetching an entity from a database](#fetching-an-entity-from-a-database)
     + [Saving entities or Insert/Update](#saving-entities-or-insert-update)
+    + [Using raw SQL](#using-raw-sql)
     + [Deleting entities](#deleting-entities)
     + [Relationships](#relationships)
       - [HasMany](#hasmany)
@@ -31,6 +32,22 @@ GoLobbyORM is a simple yet powerful, fast, safe, customizable, type-safe databas
       - [BelongsTo](#belongsto)
       - [BelongsToMany](#belongstomany)
       - [Saving with relation](#saving-with-relation)
+    + [Query Builder](#query-builder)
+      - [Select](#select)
+        * [Column names](#column-names-1)
+        * [Table](#table)
+        * [Where](#where)
+        * [Order By](#order-by)
+        * [Limit](#limit)
+        * [Offset](#offset)
+        * [First, Latest](#first--latest)
+      - [Update](#update)
+        * [Where](#where-1)
+        * [Table](#table-1)
+        * [Set](#set)
+      - [Delete](#delete)
+        * [Table](#table-2)
+        * [Where](#where-2)
   * [License](#license)
 
 
@@ -325,8 +342,37 @@ You can use `First`, `Latest` method which are also executers of query as you al
 ```go
 orm.Query[Post]().First() // SELECT * FROM posts ORDER BY id ASC LIMIT 1
 orm.Query[Post]().Latest() // SELECT * FROM posts ORDER BY id DESC LIMIT 1
-
 ```
+#### Update
+Each `Update` query consists of following:
+```sql
+UPDATE [table name] SET [col=val] WHERE [cond1 AND/OR cond2 AND/OR ...]
+```
+##### Where
+Just like select where stuff, same code.
+
+##### Table
+Same as select.
+
+##### Set
+You can use `Set`, `Sets`, `Update` method to set values.
+```go
+orm.Query[Post]().Where("id", 1).Set("read", true).Update() // UPDATE posts SET read=? WHERE id = ?, [true, 1]
+orm.Query[Post]().Where("id", 1).Sets([2]interface{}{"read", true}).Update() // UPDATE posts SET read=? WHERE id = ?, [true, 1]
+orm.Query[Post]().Where("id", 1).Update(orm.KV{
+"read": true,
+}) // UPDATE posts SET read=? WHERE id = ?, [true, 1]
+```
+
+#### Delete
+Each `Delete` query consists of following:
+```sql
+DELETE FROM [table name] WHERE [cond1 AND/OR cond2 AND/OR ...]
+```
+##### Table
+Same as Select and Update.
+##### Where
+Same as Select and Update.
 ## License
 
 GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
