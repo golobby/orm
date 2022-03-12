@@ -315,7 +315,7 @@ func bindContext[T Entity](ctx context.Context, output interface{}, q string, ar
 
 //HasManyConfig contains all information we need for querying HasMany relationships.
 //We can infer both fields if you have them in standard way but you
-// can specify them if you want custom ones.
+//can specify them if you want custom ones.
 type HasManyConfig struct {
 	// PropertyTable is table of the property of HasMany relationship,
 	// consider `Comment` in Post and Comment relationship,
@@ -328,8 +328,13 @@ type HasManyConfig struct {
 	PropertyForeignKey string
 }
 
-func HasMany[OUT Entity](owner Entity) *QueryBuilder[OUT] {
-	outSchema := getSchemaFor(*new(OUT))
+// HasMany configures a QueryBuilder for a HasMany relationship
+// this relationship will be defined for owner argument
+// that has many of PROPERTY generic type for example
+// HasMany[Comment](&Post{})
+// is for Post HasMany Comment relationship.
+func HasMany[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
+	outSchema := getSchemaFor(*new(PROPERTY))
 	// getting config from our cache
 	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
 	if !ok {
@@ -337,14 +342,28 @@ func HasMany[OUT Entity](owner Entity) *QueryBuilder[OUT] {
 	}
 
 	s := getSchemaFor(owner)
-	return NewQueryBuilder[OUT]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
+	return NewQueryBuilder[PROPERTY]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
+//HasOneConfig contains all information we need for a HasOne relationship,
+//it's similar to HasManyConfig.
 type HasOneConfig struct {
-	PropertyTable      string
+	// PropertyTable is table of the property of HasOne relationship,
+	// consider `HeaderPicture` in Post and HeaderPicture relationship,
+	// each Post HasOne HeaderPicture, so PropertyTable is
+	// `header_pictures`.
+	PropertyTable string
+	// PropertyForeignKey is the foreign key column name in the property table,
+	// forexample in Post HasOne HeaderPicture, if header_picture has `post_id` column,
+	// it's the PropertyForeignKey field.
 	PropertyForeignKey string
 }
 
+// HasOne configures a QueryBuilder for a HasOne relationship
+// this relationship will be defined for owner argument
+// that has one of PROPERTY generic type for example
+// HasOne[HeaderPicture](&Post{})
+// is for Post HasOne HeaderPicture relationship.
 func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 	property := getSchemaFor(*new(PROPERTY))
 	c, ok := getSchemaFor(owner).relations[property.Table].(HasOneConfig)
