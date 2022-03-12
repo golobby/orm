@@ -376,12 +376,28 @@ func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
+//BelongsToConfig contains all information we need for a BelongsTo relationship
+//BelongsTo is a relationship between a Comment and it's Post,
+//A Comment BelongsTo Post.
 type BelongsToConfig struct {
-	OwnerTable        string
-	LocalForeignKey   string
+	//OwnerTable is the table that contains owner of a BelongsTo
+	//relationship.
+	OwnerTable string
+	//LocalForeignKey is name of the column that links property
+	//to its owner in BelongsTo relation. for example when
+	//a Comment BelongsTo Post, LocalForeignKey is
+	//post_id of Comment.
+	LocalForeignKey string
+	//ForeignColumnName is name of the column that LocalForeignKey
+	//column value will point to it, for example when
+	//a Comment BelongsTo Post, ForeignColumnName is
+	//id of Post.
 	ForeignColumnName string
 }
 
+//BelongsTo configures a QueryBuilder for a BelongsTo relationship between
+//OWNER type parameter and property argument, so
+//property BelongsTo OWNER.
 func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	owner := getSchemaFor(*new(OWNER))
 	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
