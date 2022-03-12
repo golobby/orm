@@ -303,7 +303,7 @@ const (
 	JoinTypeInner = "INNER"
 	JoinTypeLeft  = "LEFT"
 	JoinTypeRight = "RIGHT"
-	JoinTypeFull  = "FULL"
+	JoinTypeFull  = "FULL OUTER"
 	JoinTypeSelf  = "SELF"
 )
 
@@ -341,17 +341,6 @@ type Offset struct {
 func (o Offset) String() string {
 	return fmt.Sprintf("OFFSET %d", o.N)
 }
-
-//type Having struct {
-//	PlaceHolderGenerator func(n int) []string
-//	Cond                 Cond
-//}
-//
-//func (h Having) ToSql() (string, []interface{}) {
-//	h.Cond.PlaceHolderGenerator = h.PlaceHolderGenerator
-//	cond, condArgs := h.Cond.ToSql()
-//	return fmt.Sprintf("HAVING %s", cond), condArgs
-//}
 
 type selected struct {
 	Columns []string
@@ -406,6 +395,11 @@ func (q *QueryBuilder[E]) InnerJoin(table string, onLhs string, onRhs string) *Q
 	})
 	return q
 }
+
+func (q *QueryBuilder[E]) Join(table string, onLhs string, onRhs string) *QueryBuilder[E] {
+	return q.InnerJoin(table, onLhs, onRhs)
+}
+
 func (q *QueryBuilder[E]) FullOuterJoin(table string, onLhs string, onRhs string) *QueryBuilder[E] {
 	q.SetSelect()
 	q.joins = append(q.joins, &Join{
@@ -425,7 +419,7 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	}
 	if len(parts) == 1 {
 		if r, isRaw := parts[0].(*raw); isRaw {
-			q.where = &whereClause{raw: r.sql, args: r.args}
+			q.where = &whereClause{raw: r.sql, args: r.args, PlaceHolderGenerator: q.placeholderGenerator}
 			return q
 		} else {
 			panic("when you have one argument passed to where, it should be *raw")
@@ -434,19 +428,97 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	} else if len(parts) == 2 {
 		if strings.Index(parts[0].(string), " ") == -1 {
 			// Equal mode
-			q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}}
+			q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}, PlaceHolderGenerator: q.placeholderGenerator}
 		} else {
 			// Raw mode
-			q.where = &whereClause{raw: parts[0].(string), args: parts[1:]}
+			q.where = &whereClause{raw: parts[0].(string), args: parts[1:], PlaceHolderGenerator: q.placeholderGenerator}
 		}
 		return q
 	} else if len(parts) == 3 {
 		// operator mode
-		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}}
+		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}, PlaceHolderGenerator: q.placeholderGenerator}
 		return q
 	} else {
 		panic("wrong number of arguments passed to Where")
 	}
+}
+
+type binaryOp string
+
+const (
+	Eq      = "="
+	GT      = ">"
+	LT      = "<"
+	GE      = ">="
+	LE      = "<="
+	NE      = "!="
+	Between = "BETWEEN"
+	Like    = "LIKE"
+	In      = "IN"
+)
+
+type Cond struct {
+	PlaceHolderGenerator func(n int) []string
+
+	Lhs string
+	Op  binaryOp
+	Rhs interface{}
+}
+
+func (b Cond) ToSql() (string, []interface{}) {
+	var phs []string
+	if b.Op == In {
+		rhs, isInterfaceSlice := b.Rhs.([]interface{})
+		if isInterfaceSlice {
+			phs = b.PlaceHolderGenerator(len(rhs))
+			return fmt.Sprintf("%s IN (%s)", b.Lhs, strings.Join(phs, ",")), rhs
+		} else if rawThing, isRaw := b.Rhs.(*raw); isRaw {
+			return fmt.Sprintf("%s IN (%s)", b.Lhs, rawThing.sql), rawThing.args
+		} else {
+			panic("Right hand side of Cond when operator is IN should be either a interface{} slice or *raw")
+		}
+
+	} else {
+		phs = b.PlaceHolderGenerator(1)
+		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, pop(&phs)), []interface{}{b.Rhs}
+	}
+}
+
+const (
+	nextType_AND = "AND"
+	nextType_OR  = "OR"
+)
+
+type whereClause struct {
+	PlaceHolderGenerator func(n int) []string
+	nextTyp              string
+	next                 *whereClause
+	Cond
+	raw  string
+	args []interface{}
+}
+
+func (w whereClause) ToSql() (string, []interface{}) {
+	var base string
+	var args []interface{}
+	if w.raw != "" {
+		base = w.raw
+		args = w.args
+	} else {
+		w.Cond.PlaceHolderGenerator = w.PlaceHolderGenerator
+		base, args = w.Cond.ToSql()
+	}
+	if w.next == nil {
+		return base, args
+	}
+	if w.next != nil {
+		next, nextArgs := w.next.ToSql()
+		base += " " + w.nextTyp + " " + next
+		args = append(args, nextArgs...)
+		return base, args
+	}
+
+	return base, args
 }
 
 func (q *QueryBuilder[E]) WhereIn(column string, values ...interface{}) *QueryBuilder[E] {
@@ -454,11 +526,11 @@ func (q *QueryBuilder[E]) WhereIn(column string, values ...interface{}) *QueryBu
 }
 
 func (q *QueryBuilder[E]) AndWhere(parts ...interface{}) *QueryBuilder[E] {
-	return q.addWhere("AND", parts...)
+	return q.addWhere(nextType_AND, parts...)
 }
 
 func (q *QueryBuilder[E]) OrWhere(parts ...interface{}) *QueryBuilder[E] {
-	return q.addWhere("OR", parts...)
+	return q.addWhere(nextType_OR, parts...)
 }
 
 func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuilder[E] {
@@ -467,7 +539,7 @@ func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuild
 		if w == nil {
 			break
 		} else if w.next == nil {
-			w.next = &whereClause{}
+			w.next = &whereClause{PlaceHolderGenerator: q.placeholderGenerator}
 			w.nextTyp = typ
 			w = w.next
 			break
@@ -476,7 +548,7 @@ func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuild
 		}
 	}
 	if w == nil {
-		w = &whereClause{}
+		w = &whereClause{PlaceHolderGenerator: q.placeholderGenerator}
 	}
 	if len(parts) == 1 {
 		w.raw = parts[0].(*raw).sql

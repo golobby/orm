@@ -1,8 +1,9 @@
 package orm
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type Dummy struct{}
@@ -24,12 +25,12 @@ func TestSelect(t *testing.T) {
 	t.Run("select with whereClause", func(t *testing.T) {
 		s := NewQueryBuilder[Dummy]()
 
-		s.Table("users").Where("age", 10).SetSelect().SetDialect(Dialects.MySQL)
+		s.Table("users").SetDialect(Dialects.MySQL).Where("age", 10).AndWhere("age", "<", 10).SetSelect()
 
 		str, args, err := s.ToSql()
 		assert.NoError(t, err)
-		assert.EqualValues(t, []interface{}{10}, args)
-		assert.Equal(t, "SELECT * FROM users WHERE age = ?", str)
+		assert.EqualValues(t, []interface{}{10, 10}, args)
+		assert.Equal(t, "SELECT * FROM users WHERE age = ? AND age < ?", str)
 	})
 	t.Run("select with order by", func(t *testing.T) {
 		s := NewQueryBuilder[Dummy]().Table("users").OrderBy("created_at", OrderByASC).OrderBy("updated_at", OrderByDesc)
@@ -92,6 +93,29 @@ func TestSelect(t *testing.T) {
 
 	})
 
+	t.Run("select with inner join", func(t *testing.T) {
+		s := NewQueryBuilder[Dummy]().Table("users").Select("id", "name").InnerJoin("addresses", "users.id", "addresses.user_id")
+		str, args, err := s.ToSql()
+		assert.NoError(t, err)
+		assert.Empty(t, args)
+		assert.Equal(t, `SELECT id,name FROM users INNER JOIN addresses ON users.id = addresses.user_id`, str)
+	})
+
+	t.Run("select with join", func(t *testing.T) {
+		s := NewQueryBuilder[Dummy]().Table("users").Select("id", "name").Join("addresses", "users.id", "addresses.user_id")
+		str, args, err := s.ToSql()
+		assert.NoError(t, err)
+		assert.Empty(t, args)
+		assert.Equal(t, `SELECT id,name FROM users INNER JOIN addresses ON users.id = addresses.user_id`, str)
+	})
+
+	t.Run("select with full outer join", func(t *testing.T) {
+		s := NewQueryBuilder[Dummy]().Table("users").Select("id", "name").FullOuterJoin("addresses", "users.id", "addresses.user_id")
+		str, args, err := s.ToSql()
+		assert.NoError(t, err)
+		assert.Empty(t, args)
+		assert.Equal(t, `SELECT id,name FROM users FULL OUTER JOIN addresses ON users.id = addresses.user_id`, str)
+	})
 	t.Run("raw where", func(t *testing.T) {
 		sql, args, err :=
 			NewQueryBuilder[Dummy]().
@@ -105,6 +129,12 @@ func TestSelect(t *testing.T) {
 		assert.NoError(t, err)
 		assert.EqualValues(t, []interface{}{1, 10}, args)
 		assert.Equal(t, `SELECT * FROM users WHERE id = ? AND age < ?`, sql)
+	})
+	t.Run("no sql type matched", func(t *testing.T) {
+		sql, args, err := NewQueryBuilder[Dummy]().ToSql()
+		assert.Error(t, err)
+		assert.Empty(t, args)
+		assert.Empty(t, sql)
 	})
 
 	t.Run("raw where in", func(t *testing.T) {
