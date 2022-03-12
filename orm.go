@@ -104,16 +104,6 @@ type ConnectionConfig struct {
 	Entities []Entity
 }
 
-func initTableName(e Entity) string {
-	configurator := newEntityConfigurator()
-	e.ConfigureEntity(configurator)
-
-	if configurator.table == "" {
-		panic("table name is mandatory for entities")
-	}
-	return configurator.table
-}
-
 //Initialize gets list of ConnectionConfig and builds up ORM for you.
 func Initialize(confs ...ConnectionConfig) error {
 	for _, conf := range confs {

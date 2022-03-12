@@ -266,7 +266,67 @@ orm.Add(post, comments...) // inserts all comments passed in and also sets all p
 ```
 
 ### Query Builder
+GolobbyORM contains a powerful query builder to help you build complex queries with ease. QueryBuilder is accessible from `orm.Query[Entity]` method
+which will create a new query builder for you with given type parameter.
+Query builder can build `SELECT`,`UPDATE`,`DELETE` queries for you.
 #### Select
+Let's start with `Select` queries.
+Each `Select` query consists of following:
+```sql
+SELECT [column names] FROM [table name] WHERE [cond1 AND/OR cond2 AND/OR ...] ORDER BY [column] [ASC/DESC] LIMIT [N] OFFSET [N] GROUP BY [col]
+```
+Query builder has methods for constructing each part, of course not all of these parts are necessary.
+##### Column names
+for setting column names to select use `Select` method as following:
+```go
+orm.Query[Post]().Select("id", "title")
+```
+##### Table
+for setting table name for select use `Table` method as following:
+```go
+orm.Query[Post]().Table("users")
+```
+##### Where
+for adding where conditions based on what kind of where you want you can use any of following:
+```go
+orm.Query[Post]().Where("name", "amirreza") // Equal mode: WHERE name = ?, ["amirreza"]
+orm.Query[Post]().Where("age", "<", 19) // Operator mode: WHERE age < ?, [19]
+orm.Query[Post]().WhereIn("id", 1,2,3,4,5) // WhereIn: WHERE id IN (?,?,?,?,?), [1,2,3,4,5]
+```
+You can also chain these together.
+```go
+orm.Query[Post]().
+	Where("name", "amirreza").
+	AndWhere("age", "<", 10).
+	OrWhere("id", "!=", 1)
+    // WHERE name = ? AND age < ? OR id != ?, ["amirreza", 10, 1]
+```
+##### Order By
+You can set order by of query using `OrderBy` as following.
+```go
+orm.Query[Post]().OrderBy("id", orm.ASC) // ORDER BY id ASC
+orm.Query[Post]().OrderBy("id", orm.DESC) // ORDER BY id DESC
+```
+
+##### Limit
+You can set limit setting of query using `Limit` as following
+```go
+orm.Query[Post]().Limit1(1) // LIMIT 1
+```
+
+##### Offset
+You can set limit setting of query using `Offset` as following
+```go
+orm.Query[Post]().Offset(1) // OFFSET 1
+```
+
+##### First, Latest
+You can use `First`, `Latest` method which are also executers of query as you already seen to get first or latest record.
+```go
+orm.Query[Post]().First() // SELECT * FROM posts ORDER BY id ASC LIMIT 1
+orm.Query[Post]().Latest() // SELECT * FROM posts ORDER BY id DESC LIMIT 1
+
+```
 ## License
 
 GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).

@@ -467,10 +467,8 @@ func schemaOf(v Entity) *schema {
 	}
 	if userSchema.table != "" {
 		schema.Table = userSchema.table
-	}
-
-	if schema.Table == "" {
-		schema.Table = initTableName(v)
+	} else {
+		panic("you need to have table name for getting schema.")
 	}
 
 	if schema.Connection == "" {

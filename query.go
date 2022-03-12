@@ -109,15 +109,15 @@ func (q *QueryBuilder[E]) Count() (int64, error) {
 	return counter, nil
 }
 
-//First is like One but it also do a OrderBy("id", OrderByASC)
+//First is like One but it also do a OrderBy("id", ASC)
 func (q *QueryBuilder[E]) First() (E, error) {
-	q.OrderBy("id", OrderByASC)
+	q.OrderBy("id", ASC)
 	return q.One()
 }
 
-//Latest is like One but it also do a OrderBy("id", OrderByDesc)
+//Latest is like One but it also do a OrderBy("id", DESC)
 func (q *QueryBuilder[E]) Latest() (E, error) {
-	q.OrderBy("id", OrderByDesc)
+	q.OrderBy("id", DESC)
 	return q.One()
 }
 
@@ -295,8 +295,8 @@ func (q *QueryBuilder[E]) ToSql() (string, []interface{}, error) {
 type orderByOrder string
 
 const (
-	OrderByASC  = "ASC"
-	OrderByDesc = "DESC"
+	ASC  = "ASC"
+	DESC = "DESC"
 )
 
 type orderByClause struct {
@@ -466,6 +466,9 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	} else if len(parts) == 3 {
 		// operator mode
 		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}, PlaceHolderGenerator: q.placeholderGenerator}
+		return q
+	} else if len(parts) > 3 && parts[1].(string) == "IN" {
+		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2:]}, PlaceHolderGenerator: q.placeholderGenerator}
 		return q
 	} else {
 		panic("wrong number of arguments passed to Where")

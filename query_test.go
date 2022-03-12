@@ -38,7 +38,7 @@ func TestSelect(t *testing.T) {
 		assert.Equal(t, "SELECT * FROM users WHERE age = ? AND age < ? AND name = ? OR age > ?", str)
 	})
 	t.Run("select with order by", func(t *testing.T) {
-		s := NewQueryBuilder[Dummy]().Table("users").OrderBy("created_at", OrderByASC).OrderBy("updated_at", OrderByDesc)
+		s := NewQueryBuilder[Dummy]().Table("users").OrderBy("created_at", ASC).OrderBy("updated_at", DESC)
 		str, args, err := s.ToSql()
 		assert.NoError(t, err)
 		assert.Empty(t, args)
@@ -154,6 +154,20 @@ func TestSelect(t *testing.T) {
 		assert.NoError(t, err)
 		assert.EqualValues(t, []interface{}{10}, args)
 		assert.Equal(t, `SELECT * FROM users WHERE id IN (SELECT user_id FROM user_books WHERE book_id = ?)`, sql)
+	})
+	t.Run("where in", func(t *testing.T) {
+		sql, args, err :=
+			NewQueryBuilder[Dummy]().
+				SetDialect(Dialects.MySQL).
+				Table("users").
+				WhereIn("id", 1, 2, 3, 4, 5, 6).
+				SetSelect().
+				ToSql()
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, []interface{}{1, 2, 3, 4, 5, 6}, args)
+		assert.Equal(t, `SELECT * FROM users WHERE id IN (?,?,?,?,?,?)`, sql)
+
 	})
 }
 func TestUpdate(t *testing.T) {
