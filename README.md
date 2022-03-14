@@ -6,7 +6,7 @@
 
 # Golobby ORM
 
-GoLobbyORM is a simple yet powerful, fast, safe, customizable, type-safe database toolkit for Golang.
+GoLobby ORM is a lightweight yet powerful, fast, customizable, type-safe object-relational mapper for the Go programming language.
 
 ## Table Of Contents
 - [GolobbyORM](#golobbyorm)
