@@ -9,8 +9,6 @@
 GoLobby ORM is a lightweight yet powerful, fast, customizable, type-safe object-relational mapper for the Go programming language.
 
 ## Table Of Contents
-- [GolobbyORM](#golobbyorm)
-  * [Table Of Contents](#table-of-contents)
   * [Features](#features)
     + [Introduction](#introduction)
     + [Creating a new Entity](#creating-a-new-entity)
