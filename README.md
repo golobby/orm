@@ -61,6 +61,52 @@ When using Golobby ORM, each database table has a corresponding "Entity" to inte
     - One to Many
     - Many to Many
 
+## Quick Start
+
+The following example demonstrates how to use the GoLobby ORM.
+
+```go
+package main
+
+import "github.com/golobby/orm"
+
+// User entity
+type User struct {
+  ID        int64
+  FirstName string
+  LastName  string
+  Email     string
+  orm.Timestamps
+}
+
+// It will be called by ORM to setup entity.
+func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
+    // Specify related database table for the entity.
+    e.Table("users")
+}
+
+func main() {
+  // Setup ORM
+  orm.Initialize(orm.ConnectionConfig{
+    // Name:          "default",  // Optional. Specify connection names if you have more than on database.
+    Driver:           "sqlite3",  // Database type. Currently supported sqlite3, mysql, mariadb, postgresql. 
+    ConnectionString: ":memory:", // Database DSN.
+  })
+  
+  // Find user by primary key (ID)
+  user1, err := orm.Find[User](1)
+  
+  // Find user by Email
+  user2, err := orm.Query[User]().Where("email", "jack@mail.com").First()
+  
+  // Update entity
+  user2.FirstName = "Jack"
+  
+  // Save entity
+  orm.Save(&user)
+}
+```
+
 ### Creating a new Entity
 Let's create a new `Entity` to represent `User` in our application.
 
