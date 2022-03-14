@@ -94,13 +94,10 @@ func main() {
   })
   
   // Find user by primary key (ID)
-  user1, err := orm.Find[User](1)
-  
-  // Find user by Email
-  user2, err := orm.Query[User]().Where("email", "jack@mail.com").First()
+  user, err := orm.Find[User](1)
   
   // Update entity
-  user2.FirstName = "Jack"
+  user.Email = "jack@mail.com"
   
   // Save entity
   orm.Save(&user)
