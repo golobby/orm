@@ -45,25 +45,21 @@ GoLobby ORM is a lightweight yet powerful, fast, customizable, type-safe object-
         * [Where](#where-2)
   * [License](#license)
 
+## Introduction
+GoLobby ORM is an object-relational mapper (ORM) that makes it enjoyable to interact with your database. 
+When using Golobby ORM, each database table has a corresponding "Entity" to interact with that table using elegant APIs.
 
 ## Features
-- Simple, type safe, elegant API with help of `Generics`
-- Minimum reflection usage, mostly at startup of application
-- No code generation
-- Query builder for various query types
-- Binding query results to entities
-- Supports relationship/Association types
-    - HasMany
-    - HasOne
-    - BelongsTo
-    - BelongsToMany (ManyToMany)
-
-  
-### Introduction
-GolobbyORM is an object-relational mapper (ORM) that makes it enjoyable to interact with your database. 
-When using GolobbyORM, each database table has a corresponding "Entity" that is used to interact with that table.
-In addition to retrieving records from the database table, GolobbyORM entities allow you to insert,
-update, and delete records from the table as well.
+- Elegant and easy-to-use APIs with the help of Generics.
+- Type-safety.
+- Using reflection at startup to be fast during runtime. 
+- No code generation!
+- Query builder for various query types.
+- Binding query results to entities.
+- Supports different kinds of relationship/Association types:
+    - One to one
+    - One to Many
+    - Many to Many
 
 ### Creating a new Entity
 Let's create a new `Entity` to represent `User` in our application.
