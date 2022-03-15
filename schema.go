@@ -186,7 +186,7 @@ type schema struct {
 }
 
 func (s *schema) getDialect() *Dialect {
-	return getDialectForConnection(s.Connection)
+	return GetConnection(s.Connection).Dialect
 }
 func (o *schema) Columns(withPK bool) []string {
 	var cols []string
