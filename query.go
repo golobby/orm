@@ -188,7 +188,10 @@ func (d *QueryBuilder[E]) toSqlDelete() (string, []interface{}, error) {
 	var args []interface{}
 	if d.where != nil {
 		d.where.PlaceHolderGenerator = d.placeholderGenerator
-		where, whereArgs := d.where.ToSql()
+		where, whereArgs, err := d.where.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
 		base += " WHERE " + where
 		args = append(args, whereArgs...)
 	}
@@ -225,7 +228,10 @@ func (u *QueryBuilder[E]) toSqlUpdate() (string, []interface{}, error) {
 	args := u.args()
 	if u.where != nil {
 		u.where.PlaceHolderGenerator = u.placeholderGenerator
-		where, whereArgs := u.where.ToSql()
+		where, whereArgs, err := u.where.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
 		args = append(args, whereArgs...)
 		base += " WHERE " + where
 	}
@@ -246,9 +252,9 @@ func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
 	base += " " + s.selected.String()
 	// from
 	if s.table == "" && s.subQuery == nil {
-		panic("Table name cannot be empty")
+		return "", nil, fmt.Errorf("Table name cannot be empty")
 	} else if s.table != "" && s.subQuery != nil {
-		panic("cannot have both Table and subquery")
+		return "", nil, fmt.Errorf("cannot have both Table and subquery")
 	}
 	if s.table != "" {
 		base += " " + "FROM " + s.table
@@ -272,7 +278,10 @@ func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
 	// whereClause
 	if s.where != nil {
 		s.where.PlaceHolderGenerator = s.placeholderGenerator
-		where, whereArgs := s.where.ToSql()
+		where, whereArgs, err := s.where.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
 		base += " WHERE " + where
 		args = append(args, whereArgs...)
 	}
@@ -303,6 +312,9 @@ func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
 //ToSql creates sql query from QueryBuilder based on internal fields it would decide what kind
 //of query to build.
 func (q *QueryBuilder[E]) ToSql() (string, []interface{}, error) {
+	if q.err != nil {
+		return "", nil, q.err
+	}
 	if q.typ == queryType_SELECT {
 		return q.toSqlSelect()
 	} else if q.typ == queryType_Delete {
@@ -476,7 +488,8 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 			q.where = &whereClause{raw: r.sql, args: r.args, PlaceHolderGenerator: q.placeholderGenerator}
 			return q
 		} else {
-			panic("when you have one argument passed to where, it should be *raw")
+			q.err = fmt.Errorf("when you have one argument passed to where, it should be *raw")
+			return q
 		}
 
 	} else if len(parts) == 2 {
@@ -493,7 +506,8 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 		q.where = &whereClause{cond: cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2:]}, PlaceHolderGenerator: q.placeholderGenerator}
 		return q
 	} else {
-		panic("wrong number of arguments passed to Where")
+		q.err = fmt.Errorf("wrong number of arguments passed to Where")
+		return q
 	}
 }
 
@@ -519,22 +533,22 @@ type cond struct {
 	Rhs interface{}
 }
 
-func (b cond) ToSql() (string, []interface{}) {
+func (b cond) ToSql() (string, []interface{}, error) {
 	var phs []string
 	if b.Op == In {
 		rhs, isInterfaceSlice := b.Rhs.([]interface{})
 		if isInterfaceSlice {
 			phs = b.PlaceHolderGenerator(len(rhs))
-			return fmt.Sprintf("%s IN (%s)", b.Lhs, strings.Join(phs, ",")), rhs
+			return fmt.Sprintf("%s IN (%s)", b.Lhs, strings.Join(phs, ",")), rhs, nil
 		} else if rawThing, isRaw := b.Rhs.(*raw); isRaw {
-			return fmt.Sprintf("%s IN (%s)", b.Lhs, rawThing.sql), rawThing.args
+			return fmt.Sprintf("%s IN (%s)", b.Lhs, rawThing.sql), rawThing.args, nil
 		} else {
-			panic("Right hand side of Cond when operator is IN should be either a interface{} slice or *raw")
+			return "", nil, fmt.Errorf("Right hand side of Cond when operator is IN should be either a interface{} slice or *raw")
 		}
 
 	} else {
 		phs = b.PlaceHolderGenerator(1)
-		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, pop(&phs)), []interface{}{b.Rhs}
+		return fmt.Sprintf("%s %s %s", b.Lhs, b.Op, pop(&phs)), []interface{}{b.Rhs}, nil
 	}
 }
 
@@ -552,27 +566,34 @@ type whereClause struct {
 	args []interface{}
 }
 
-func (w whereClause) ToSql() (string, []interface{}) {
+func (w whereClause) ToSql() (string, []interface{}, error) {
 	var base string
 	var args []interface{}
+	var err error
 	if w.raw != "" {
 		base = w.raw
 		args = w.args
 	} else {
 		w.cond.PlaceHolderGenerator = w.PlaceHolderGenerator
-		base, args = w.cond.ToSql()
+		base, args, err = w.cond.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
 	}
 	if w.next == nil {
-		return base, args
+		return base, args, nil
 	}
 	if w.next != nil {
-		next, nextArgs := w.next.ToSql()
+		next, nextArgs, err := w.next.ToSql()
+		if err != nil {
+			return "", nil, err
+		}
 		base += " " + w.nextTyp + " " + next
 		args = append(args, nextArgs...)
-		return base, args
+		return base, args, nil
 	}
 
-	return base, args
+	return base, args, nil
 }
 
 //WhereIn adds a where clause to QueryBuilder using In operator.

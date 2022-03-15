@@ -359,15 +359,16 @@ type HasManyConfig struct {
 // HasMany[Comment](&Post{})
 // is for Post HasMany Comment relationship.
 func HasMany[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
+	q := NewQueryBuilder[PROPERTY]()
 	outSchema := getSchemaFor(*new(PROPERTY))
 	// getting config from our cache
 	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
 	if !ok {
-		panic("wrong config passed for HasMany")
+		q.err = fmt.Errorf("wrong config passed for HasMany")
 	}
 
 	s := getSchemaFor(owner)
-	return NewQueryBuilder[PROPERTY]().
+	return q.
 		SetDialect(s.getDialect()).
 		Table(c.PropertyTable).
 		Select(outSchema.Columns(true)...).
@@ -394,15 +395,19 @@ type HasOneConfig struct {
 // HasOne[HeaderPicture](&Post{})
 // is for Post HasOne HeaderPicture relationship.
 func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
+	q := NewQueryBuilder[PROPERTY]()
 	property := getSchemaFor(*new(PROPERTY))
 	c, ok := getSchemaFor(owner).relations[property.Table].(HasOneConfig)
 	if !ok {
-		panic("wrong config passed for HasOne")
+		q.err = fmt.Errorf("wrong config passed for HasOne")
 	}
 
 	//settings default config Values
-	return NewQueryBuilder[PROPERTY]().SetDialect(property.getDialect()).Table(c.PropertyTable).
-		Select(property.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
+	return q.
+		SetDialect(property.getDialect()).
+		Table(c.PropertyTable).
+		Select(property.Columns(true)...).
+		Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
 //BelongsToConfig contains all information we need for a BelongsTo relationship
@@ -428,10 +433,11 @@ type BelongsToConfig struct {
 //OWNER type parameter and property argument, so
 //property BelongsTo OWNER.
 func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
+	q := NewQueryBuilder[OWNER]()
 	owner := getSchemaFor(*new(OWNER))
 	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
 	if !ok {
-		panic("wrong config passed for BelongsTo")
+		q.err = fmt.Errorf("wrong config passed for BelongsTo")
 	}
 
 	ownerIDidx := 0
@@ -443,7 +449,7 @@ func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 
 	ownerID := genericValuesOf(property, true)[ownerIDidx]
 
-	return NewQueryBuilder[OWNER]().
+	return q.
 		SetDialect(owner.getDialect()).
 		Table(c.OwnerTable).Select(owner.Columns(true)...).
 		Where(c.ForeignColumnName, ownerID)
@@ -485,12 +491,13 @@ type BelongsToManyConfig struct {
 
 //BelongsToMany configures a QueryBuilder for a BelongsToMany relationship
 func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
+	q := NewQueryBuilder[OWNER]()
 	out := new(OWNER)
 	c, ok := getSchemaFor(property).relations[getSchemaFor(*out).Table].(BelongsToManyConfig)
 	if !ok {
-		panic("wrong config passed for HasMany")
+		q.err = fmt.Errorf("wrong config passed for HasMany")
 	}
-	return NewQueryBuilder[OWNER]().
+	return q.
 		Select(getSchemaFor(*out).Columns(true)...).
 		Table(getSchemaFor(*out).Table).
 		WhereIn(c.OwnerLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
@@ -515,7 +522,7 @@ func Add(to Entity, items ...Entity) error {
 	case HasOneConfig:
 		return addProperty(to, items[0])
 	case BelongsToManyConfig:
-		panic("not implemented yet")
+		return fmt.Errorf("adding to a belongs to many relation is not implemented yet")
 	default:
 		return fmt.Errorf("cannot add for relation: %T", rels[getSchemaFor(items[0]).Table])
 	}
@@ -554,7 +561,7 @@ func addProperty(to Entity, items ...Entity) error {
 		for _, item := range items {
 			vals := genericValuesOf(item, false)
 			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
-				panic("owner pk idx is not correct")
+				return fmt.Errorf("owner pk idx is not correct")
 			}
 			vals[ownerPKIdx] = ownerPK
 			i.Values = append(i.Values, vals)
@@ -568,7 +575,7 @@ func addProperty(to Entity, items ...Entity) error {
 		for _, item := range items {
 			vals := genericValuesOf(item, false)
 			if cols[ownerPKIdx] != getSchemaFor(items[0]).relations[getSchemaFor(to).Table].(BelongsToConfig).LocalForeignKey {
-				panic("owner pk idx is not correct")
+				return fmt.Errorf("owner pk idx is not correct")
 			}
 			vals = append(vals[:ownerPKIdx+1], vals[ownerPKIdx:]...)
 			vals[ownerPKIdx] = ownerPK
