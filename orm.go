@@ -68,10 +68,6 @@ func (c *Connection) getSchema(t string) *schema {
 	return c.Schemas[t]
 }
 
-func getDialectForConnection(connection string) *Dialect {
-	return GetConnection(connection).Dialect
-}
-
 func (c *Connection) setSchema(e Entity, s *schema) {
 	var configurator EntityConfigurator
 	e.ConfigureEntity(&configurator)
