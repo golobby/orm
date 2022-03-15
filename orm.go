@@ -15,14 +15,14 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var globalInstances = map[string]*Connection{}
+var globalConnections = map[string]*Connection{}
 
 // Schematic prints all information ORM inferred from your entities in startup, remember to pass
 // your entities in Entities when you call Initialize if you want their data inferred
 // otherwise Schematic does not print correct data since GoLobby ORM also
 // incrementally cache your entities metadata and schema.
 func Schematic() {
-	for conn, connObj := range globalInstances {
+	for conn, connObj := range globalConnections {
 		fmt.Printf("----------------%s---------------\n", conn)
 		connObj.Schematic()
 		fmt.Println("-----------------------------------")
@@ -75,7 +75,7 @@ func (c *Connection) setSchema(e Entity, s *schema) {
 }
 
 func GetConnection(name string) *Connection {
-	return globalInstances[name]
+	return globalConnections[name]
 }
 
 type ConnectionConfig struct {
@@ -101,8 +101,8 @@ type ConnectionConfig struct {
 }
 
 //Initialize gets list of ConnectionConfig and builds up ORM for you.
-func Initialize(confs ...ConnectionConfig) error {
-	for _, conf := range confs {
+func Initialize(configs ...ConnectionConfig) error {
+	for _, conf := range configs {
 		var dialect *Dialect
 		var db *sql.DB
 		var err error
@@ -141,7 +141,7 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 		Schemas:    schemas,
 		Dialect:    dialect,
 	}
-	globalInstances[fmt.Sprintf("%s", name)] = s
+	globalConnections[fmt.Sprintf("%s", name)] = s
 	return s
 }
 
