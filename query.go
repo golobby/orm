@@ -34,7 +34,8 @@ type QueryBuilder[E Entity] struct {
 	sets [][2]interface{}
 
 	//execution parts
-	db *sql.DB
+	db  *sql.DB
+	err error
 }
 
 type raw struct {
@@ -51,12 +52,15 @@ func Raw(sql string, args ...interface{}) *raw {
 //All create the Select query based on QueryBuilder and scan results into
 //slice of type parameter E.
 func (q *QueryBuilder[E]) All() ([]E, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
 	q.SetSelect()
-	query, args, err := q.ToSql()
+	queryString, args, err := q.ToSql()
 	if err != nil {
 		return nil, err
 	}
-	rows, err := getSchemaFor(*new(E)).getSQLDB().Query(query, args...)
+	rows, err := query(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +75,15 @@ func (q *QueryBuilder[E]) All() ([]E, error) {
 //One create the Select query based on QueryBuilder and scan results into
 //object of type parameter E.
 func (q *QueryBuilder[E]) One() (E, error) {
+	if q.err != nil {
+		return *new(E), q.err
+	}
 	q.Limit(1)
-	query, args, err := q.ToSql()
+	queryString, args, err := q.ToSql()
 	if err != nil {
 		return *new(E), err
 	}
-	rows, err := getSchemaFor(*new(E)).getSQLDB().Query(query, args...)
+	rows, err := query(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
 	if err != nil {
 		return *new(E), err
 	}
@@ -91,13 +98,16 @@ func (q *QueryBuilder[E]) One() (E, error) {
 //Count creates and execute a select query from QueryBuilder and set it's column list of selection
 //to COUNT(id).
 func (q *QueryBuilder[E]) Count() (int64, error) {
+	if q.err != nil {
+		return 0, q.err
+	}
 	q.selected = &selected{Columns: []string{"COUNT(id)"}}
 	q.SetSelect()
-	query, args, err := q.ToSql()
+	queryString, args, err := q.ToSql()
 	if err != nil {
 		return 0, err
 	}
-	row := getSchemaFor(*new(E)).getSQLDB().QueryRow(query, args...)
+	row := queryRow(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
 	if row.Err() != nil {
 		return 0, err
 	}
@@ -130,6 +140,9 @@ func (q *QueryBuilder[E]) WherePK(value interface{}) *QueryBuilder[E] {
 //Execute executes QueryBuilder query, remember to use this when you have an Update
 //or Delete Query.
 func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
 	if q.typ == queryType_SELECT {
 		return nil, fmt.Errorf("query type is SELECT")
 	}
@@ -137,11 +150,14 @@ func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getSchemaFor(*new(E)).getSQLDB().Exec(query, args...)
+	return exec(getSchemaFor(*new(E)).getSQLDB(), query, args...)
 }
 
 //Delete sets QueryBuilder type to be delete and then Executes it.
 func (q *QueryBuilder[E]) Delete() (sql.Result, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
 	q.SetDelete()
 	return q.Execute()
 }
@@ -159,6 +175,9 @@ type KV = map[string]interface{}
 //Update creates an Update query from QueryBuilder and executes in into database, also adds all given key values in
 //argument to list of key values of update query.
 func (q *QueryBuilder[E]) Update(toUpdate map[string]interface{}) (sql.Result, error) {
+	if q.err != nil {
+		return nil, q.err
+	}
 	q.SetUpdate()
 	q.sets = append(q.sets, asTuples(toUpdate)...)
 	return q.Execute()
@@ -213,6 +232,9 @@ func (u *QueryBuilder[E]) toSqlUpdate() (string, []interface{}, error) {
 	return base, args, nil
 }
 func (s *QueryBuilder[E]) toSqlSelect() (string, []interface{}, error) {
+	if s.err != nil {
+		return "", nil, s.err
+	}
 	base := "SELECT"
 	var args []interface{}
 	//select

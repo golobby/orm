@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -16,6 +15,7 @@ import (
 )
 
 var globalConnections = map[string]*Connection{}
+var globalLogger Logger
 
 // Schematic prints all information ORM inferred from your entities in startup, remember to pass
 // your entities in Entities when you call Initialize if you want their data inferred
@@ -34,6 +34,7 @@ type Connection struct {
 	Dialect    *Dialect
 	Connection *sql.DB
 	Schemas    map[string]*schema
+	Logger     Logger
 }
 
 func (c *Connection) Schematic() {
@@ -78,6 +79,11 @@ func GetConnection(name string) *Connection {
 	return globalConnections[name]
 }
 
+type ORMConfig struct {
+	//LogLevel
+	LogLevel LogLevel
+}
+
 type ConnectionConfig struct {
 	// Name of your database connection, it's up to you to name them anything
 	// just remember that having a connection name is mandatory if
@@ -101,15 +107,30 @@ type ConnectionConfig struct {
 }
 
 //Initialize gets list of ConnectionConfig and builds up ORM for you.
-func Initialize(configs ...ConnectionConfig) error {
+func Initialize(ormConfig *ORMConfig, configs ...ConnectionConfig) error {
+	//configure logger
+	var err error
+	if ormConfig == nil {
+		ormConfig = &ORMConfig{}
+	}
+	if ormConfig.LogLevel == 0 {
+		ormConfig.LogLevel = LogLevelDev
+	}
+	globalLogger, err = newZapLogger(ormConfig.LogLevel)
+	if err != nil {
+		return err
+	}
+
 	for _, conf := range configs {
 		var dialect *Dialect
 		var db *sql.DB
 		var err error
 		if conf.DB != nil && conf.Dialect != nil {
+			globalLogger.Infof("Configuring an open connection")
 			dialect = conf.Dialect
 			db = conf.DB
 		} else {
+			globalLogger.Infof("Opening and configuring a connection using %s", conf.Driver)
 			dialect, err = getDialect(conf.Driver)
 			if err != nil {
 				return err
@@ -119,30 +140,40 @@ func Initialize(configs ...ConnectionConfig) error {
 				return err
 			}
 		}
-		initialize(conf.Name, dialect, db, conf.Entities)
+		conf.DB = db
+		conf.Dialect = dialect
+
+		_, err = initialize(conf)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
-func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *Connection {
+func initialize(config ConnectionConfig) (*Connection, error) {
 	schemas := map[string]*schema{}
-	if name == "" {
-		name = "default"
+	if config.Name == "" {
+		config.Name = "default"
 	}
-	for _, entity := range entities {
+	globalLogger.Infof("Generating schema definitions for connection %s entities", config.Name)
+	globalLogger.Infof("Entities are: %v", entitiesAsList(config.Entities))
+	for _, entity := range config.Entities {
 		s := schemaOfHeavyReflectionStuff(entity)
 		var configurator EntityConfigurator
 		entity.ConfigureEntity(&configurator)
 		schemas[configurator.table] = s
 	}
 	s := &Connection{
-		Name:       name,
-		Connection: db,
+		Name:       config.Name,
+		Connection: config.DB,
 		Schemas:    schemas,
-		Dialect:    dialect,
+		Dialect:    config.Dialect,
 	}
-	globalConnections[fmt.Sprintf("%s", name)] = s
-	return s
+	globalConnections[fmt.Sprintf("%s", config.Name)] = s
+	globalLogger.Infof("%s registered successfully.", config.Name)
+	return s, nil
 }
 
 //Entity defines the interface that each of your structs that
@@ -177,6 +208,7 @@ func Insert(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
 	}
+	globalLogger.Debugf("Going to insert %d objects", len(objs))
 	s := getSchemaFor(objs[0])
 	cols := s.Columns(false)
 	var values [][]interface{}
@@ -199,7 +231,7 @@ func Insert(objs ...Entity) error {
 		Values:               values,
 	}.ToSql()
 
-	res, err := s.getSQLDB().Exec(q, args...)
+	res, err := exec(s.getSQLDB(), q, args...)
 	if err != nil {
 		return err
 	}
@@ -229,8 +261,10 @@ func isZero(val interface{}) bool {
 // insert it.
 func Save(obj Entity) error {
 	if isZero(getSchemaFor(obj).getPK(obj)) {
+		globalLogger.Debugf("Given object has no primary key set, going to insert it.")
 		return Insert(obj)
 	} else {
+		globalLogger.Debugf("Given object has primary key set, going for update.")
 		return Update(obj)
 	}
 }
@@ -240,11 +274,16 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-	q, args, err := NewQueryBuilder[T]().SetDialect(md.getDialect()).Table(md.Table).Select(md.Columns(true)...).Where(md.pkName(), id).ToSql()
+	q, args, err := NewQueryBuilder[T]().
+		SetDialect(md.getDialect()).
+		Table(md.Table).
+		Select(md.Columns(true)...).
+		Where(md.pkName(), id).
+		ToSql()
 	if err != nil {
 		return *out, err
 	}
-	err = bindContext[T](context.Background(), out, q, args)
+	err = bind[T](out, q, args)
 
 	if err != nil {
 		return *out, err
@@ -274,7 +313,7 @@ func Update(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.getSQLDB().Exec(q, args...)
+	_, err = exec(s.getSQLDB(), q, args...)
 	return err
 }
 
@@ -286,13 +325,13 @@ func Delete(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	_, err = getSchemaFor(obj).getSQLDB().Exec(query, args...)
+	_, err = exec(getSchemaFor(obj).getSQLDB(), query, args...)
 	return err
 }
 
-func bindContext[T Entity](ctx context.Context, output interface{}, q string, args []interface{}) error {
+func bind[T Entity](output interface{}, q string, args []interface{}) error {
 	outputMD := getSchemaFor(*new(T))
-	rows, err := outputMD.getConnection().Connection.QueryContext(ctx, q, args...)
+	rows, err := query(outputMD.getConnection().Connection, q, args...)
 	if err != nil {
 		return err
 	}
@@ -596,4 +635,22 @@ func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 		return nil, err
 	}
 	return output, nil
+}
+
+func exec(db *sql.DB, q string, args ...any) (sql.Result, error) {
+	globalLogger.Debugf(q)
+	globalLogger.Debugf("%v", args)
+	return db.Exec(q, args...)
+}
+
+func query(db *sql.DB, q string, args ...any) (*sql.Rows, error) {
+	globalLogger.Debugf(q)
+	globalLogger.Debugf("%v", args)
+	return db.Query(q, args...)
+}
+
+func queryRow(db *sql.DB, q string, args ...any) *sql.Row {
+	globalLogger.Debugf(q)
+	globalLogger.Debugf("%v", args)
+	return db.QueryRow(q, args...)
 }

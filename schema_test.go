@@ -7,7 +7,7 @@ import (
 )
 
 func setup(t *testing.T) {
-	err := Initialize(ConnectionConfig{
+	err := Initialize(nil, ConnectionConfig{
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 	})
