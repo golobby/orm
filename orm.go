@@ -6,15 +6,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/jedib0t/go-pretty/table"
-
 	// Drivers
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var globalConnections = map[string]*Connection{}
+var globalConnections = map[string]*connection{}
 var globalLogger Logger
 
 // Schematic prints all information ORM inferred from your entities in startup, remember to pass
@@ -27,56 +25,6 @@ func Schematic() {
 		connObj.Schematic()
 		fmt.Println("-----------------------------------")
 	}
-}
-
-type Connection struct {
-	Name       string
-	Dialect    *Dialect
-	Connection *sql.DB
-	Schemas    map[string]*schema
-	Logger     Logger
-}
-
-func (c *Connection) Schematic() {
-	fmt.Printf("SQL Dialect: %s\n", c.Dialect.DriverName)
-	for t, schema := range c.Schemas {
-		fmt.Printf("t: %s\n", t)
-		w := table.NewWriter()
-		w.AppendHeader(table.Row{"SQL Name", "Type", "Is Primary Key", "Is Virtual"})
-		for _, field := range schema.fields {
-			w.AppendRow(table.Row{field.Name, field.Type, field.IsPK, field.Virtual})
-		}
-		fmt.Println(w.Render())
-		for t, rel := range schema.relations {
-			switch rel.(type) {
-			case HasOneConfig:
-				fmt.Printf("%s 1-1 %s => %+v\n", t, t, rel)
-			case HasManyConfig:
-				fmt.Printf("%s 1-N %s => %+v\n", t, t, rel)
-
-			case BelongsToConfig:
-				fmt.Printf("%s N-1 %s => %+v\n", t, t, rel)
-
-			case BelongsToManyConfig:
-				fmt.Printf("%s N-N %s => %+v\n", t, t, rel)
-			}
-		}
-		fmt.Println("")
-	}
-}
-
-func (c *Connection) getSchema(t string) *schema {
-	return c.Schemas[t]
-}
-
-func (c *Connection) setSchema(e Entity, s *schema) {
-	var configurator EntityConfigurator
-	e.ConfigureEntity(&configurator)
-	c.Schemas[configurator.table] = s
-}
-
-func GetConnection(name string) *Connection {
-	return globalConnections[name]
 }
 
 type ORMConfig struct {
@@ -152,7 +100,7 @@ func Initialize(ormConfig *ORMConfig, configs ...ConnectionConfig) error {
 	return nil
 }
 
-func initialize(config ConnectionConfig) (*Connection, error) {
+func initialize(config ConnectionConfig) (*connection, error) {
 	schemas := map[string]*schema{}
 	if config.Name == "" {
 		config.Name = "default"
@@ -165,7 +113,7 @@ func initialize(config ConnectionConfig) (*Connection, error) {
 		entity.ConfigureEntity(&configurator)
 		schemas[configurator.table] = s
 	}
-	s := &Connection{
+	s := &connection{
 		Name:       config.Name,
 		Connection: config.DB,
 		Schemas:    schemas,
@@ -231,7 +179,7 @@ func Insert(objs ...Entity) error {
 		Values:               values,
 	}.ToSql()
 
-	res, err := exec(s.getSQLDB(), q, args...)
+	res, err := s.getConnection().exec(q, args...)
 	if err != nil {
 		return err
 	}
@@ -313,7 +261,7 @@ func Update(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	_, err = exec(s.getSQLDB(), q, args...)
+	_, err = s.getConnection().exec(q, args...)
 	return err
 }
 
@@ -325,13 +273,13 @@ func Delete(obj Entity) error {
 	if err != nil {
 		return err
 	}
-	_, err = exec(getSchemaFor(obj).getSQLDB(), query, args...)
+	_, err = s.getConnection().exec(query, args...)
 	return err
 }
 
 func bind[T Entity](output interface{}, q string, args []interface{}) error {
 	outputMD := getSchemaFor(*new(T))
-	rows, err := query(outputMD.getConnection().Connection, q, args...)
+	rows, err := outputMD.getConnection().query(q, args...)
 	if err != nil {
 		return err
 	}
@@ -642,22 +590,4 @@ func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 		return nil, err
 	}
 	return output, nil
-}
-
-func exec(db *sql.DB, q string, args ...any) (sql.Result, error) {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
-	return db.Exec(q, args...)
-}
-
-func query(db *sql.DB, q string, args ...any) (*sql.Rows, error) {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
-	return db.Query(q, args...)
-}
-
-func queryRow(db *sql.DB, q string, args ...any) *sql.Row {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
-	return db.QueryRow(q, args...)
 }

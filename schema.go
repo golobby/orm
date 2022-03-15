@@ -147,7 +147,7 @@ func (e *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyCon
 	return e
 }
 
-func getConnectionFor(e Entity) *Connection {
+func getConnectionFor(e Entity) *connection {
 	configurator := newEntityConfigurator()
 	e.ConfigureEntity(configurator)
 
@@ -499,7 +499,7 @@ func (s *schema) getSQLDB() *sql.DB {
 	return s.getConnection().Connection
 }
 
-func (s *schema) getConnection() *Connection {
+func (s *schema) getConnection() *connection {
 	if len(globalConnections) > 1 && (s.Connection == "" || s.Table == "") {
 		panic("need table and Connection name when having more than 1 Connection registered")
 	}

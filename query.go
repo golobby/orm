@@ -60,7 +60,7 @@ func (q *QueryBuilder[E]) All() ([]E, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := query(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
+	rows, err := getSchemaFor(*new(E)).getConnection().query(queryString, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (q *QueryBuilder[E]) One() (E, error) {
 	if err != nil {
 		return *new(E), err
 	}
-	rows, err := query(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
+	rows, err := getSchemaFor(*new(E)).getConnection().query(queryString, args...)
 	if err != nil {
 		return *new(E), err
 	}
@@ -107,7 +107,7 @@ func (q *QueryBuilder[E]) Count() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	row := queryRow(getSchemaFor(*new(E)).getSQLDB(), queryString, args...)
+	row := getSchemaFor(*new(E)).getConnection().queryRow(queryString, args...)
 	if row.Err() != nil {
 		return 0, err
 	}
@@ -150,7 +150,7 @@ func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return exec(getSchemaFor(*new(E)).getSQLDB(), query, args...)
+	return getSchemaFor(*new(E)).getConnection().exec(query, args...)
 }
 
 //Delete sets QueryBuilder type to be delete and then Executes it.
