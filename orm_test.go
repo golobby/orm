@@ -90,10 +90,9 @@ func (c Category) Posts() ([]Post, error) {
 // enough models let's test
 // Entities is mandatory
 // Errors should be carried
-// Name should be removed
 
 func setup(t *testing.T) {
-	err := orm.Initialize(orm.ConnectionConfig{
+	err := orm.Initialize(nil, orm.ConnectionConfig{
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
