@@ -36,7 +36,7 @@ func makeNewPointersOf(v reflect.Value) map[string]interface{} {
 //ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
 //then it will put them in a map with their correct field name as key, then loops over cts
 //and for each one gets appropriate one from the map and adds it to pointer list.
-func (o *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+func (s *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	nameToPtr := makeNewPointersOf(v)
 	var scanInto []interface{}
 	for _, ct := range cts {
@@ -49,7 +49,7 @@ func (o *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 }
 
 // bind binds given rows to the given object at obj. obj should be a pointer
-func (o *schema) bind(rows *sql.Rows, obj interface{}) error {
+func (s *schema) bind(rows *sql.Rows, obj interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (o *schema) bind(rows *sql.Rows, obj interface{}) error {
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs := o.ptrsFor(rowValue, newCts)
+			ptrs := s.ptrsFor(rowValue, newCts)
 			err = rows.Scan(ptrs...)
 			if err != nil {
 				return err
@@ -90,7 +90,7 @@ func (o *schema) bind(rows *sql.Rows, obj interface{}) error {
 		}
 	} else {
 		for rows.Next() {
-			ptrs := o.ptrsFor(v, cts)
+			ptrs := s.ptrsFor(v, cts)
 			err = rows.Scan(ptrs...)
 			if err != nil {
 				return err

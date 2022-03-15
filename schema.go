@@ -188,17 +188,17 @@ type schema struct {
 func (s *schema) getDialect() *Dialect {
 	return GetConnection(s.Connection).Dialect
 }
-func (o *schema) Columns(withPK bool) []string {
+func (s *schema) Columns(withPK bool) []string {
 	var cols []string
-	for _, field := range o.fields {
+	for _, field := range s.fields {
 		if field.Virtual {
 			continue
 		}
 		if !withPK && field.IsPK {
 			continue
 		}
-		if o.getDialect().AddTableNameInSelectColumns {
-			cols = append(cols, o.Table+"."+field.Name)
+		if s.getDialect().AddTableNameInSelectColumns {
+			cols = append(cols, s.Table+"."+field.Name)
 		} else {
 			cols = append(cols, field.Name)
 		}
@@ -206,8 +206,8 @@ func (o *schema) Columns(withPK bool) []string {
 	return cols
 }
 
-func (e *schema) pkName() string {
-	for _, field := range e.fields {
+func (s *schema) pkName() string {
+	for _, field := range s.fields {
 		if field.IsPK {
 			return field.Name
 		}
@@ -490,16 +490,16 @@ func schemaOf(v Entity) *schema {
 	return schema
 }
 
-func (e *schema) getTable() string {
-	return e.Table
+func (s *schema) getTable() string {
+	return s.Table
 }
 
-func (e *schema) getSQLDB() *sql.DB {
-	return e.getConnection().Connection
+func (s *schema) getSQLDB() *sql.DB {
+	return s.getConnection().Connection
 }
 
-func (e *schema) getConnection() *Connection {
-	if len(globalConnections) > 1 && (e.Connection == "" || e.Table == "") {
+func (s *schema) getConnection() *Connection {
+	if len(globalConnections) > 1 && (s.Connection == "" || s.Table == "") {
 		panic("need table and Connection name when having more than 1 Connection registered")
 	}
 	if len(globalConnections) == 1 {
@@ -507,7 +507,7 @@ func (e *schema) getConnection() *Connection {
 			return db
 		}
 	}
-	if db, exists := globalConnections[fmt.Sprintf("%s", e.Connection)]; exists {
+	if db, exists := globalConnections[fmt.Sprintf("%s", s.Connection)]; exists {
 		return db
 	}
 	panic("no db found")
