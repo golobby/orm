@@ -9,18 +9,20 @@ import (
 
 	"github.com/jedib0t/go-pretty/table"
 
-	//Drivers
+	// Drivers
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-//Schematic prints all information ORM infered from your entities in startup, remember to pass
-//your entities in Entities when you call Initialize if you want their data infered
-//otherwise Schematic does not print correct data since GolobbyORM also
-//incrementaly cache your entities metadata and schema.
+var globalInstances = map[string]*Connection{}
+
+// Schematic prints all information ORM inferred from your entities in startup, remember to pass
+// your entities in Entities when you call Initialize if you want their data inferred
+// otherwise Schematic does not print correct data since GoLobby ORM also
+// incrementally cache your entities metadata and schema.
 func Schematic() {
-	for conn, connObj := range globalORM {
+	for conn, connObj := range globalInstances {
 		fmt.Printf("----------------%s---------------\n", conn)
 		connObj.Schematic()
 		fmt.Println("-----------------------------------")
@@ -37,49 +39,47 @@ type Connection struct {
 func (c *Connection) Schematic() {
 	fmt.Printf("SQL Dialect: %s\n", c.Dialect.DriverName)
 	for t, schema := range c.Schemas {
-		fmt.Printf("table: %s\n", t)
+		fmt.Printf("t: %s\n", t)
 		w := table.NewWriter()
 		w.AppendHeader(table.Row{"SQL Name", "Type", "Is Primary Key", "Is Virtual"})
 		for _, field := range schema.fields {
 			w.AppendRow(table.Row{field.Name, field.Type, field.IsPK, field.Virtual})
 		}
 		fmt.Println(w.Render())
-		for table, rel := range schema.relations {
+		for t, rel := range schema.relations {
 			switch rel.(type) {
 			case HasOneConfig:
-				fmt.Printf("%s 1-1 %s => %+v\n", t, table, rel)
+				fmt.Printf("%s 1-1 %s => %+v\n", t, t, rel)
 			case HasManyConfig:
-				fmt.Printf("%s 1-N %s => %+v\n", t, table, rel)
+				fmt.Printf("%s 1-N %s => %+v\n", t, t, rel)
 
 			case BelongsToConfig:
-				fmt.Printf("%s N-1 %s => %+v\n", t, table, rel)
+				fmt.Printf("%s N-1 %s => %+v\n", t, t, rel)
 
 			case BelongsToManyConfig:
-				fmt.Printf("%s N-N %s => %+v\n", t, table, rel)
+				fmt.Printf("%s N-N %s => %+v\n", t, t, rel)
 			}
 		}
 		fmt.Println("")
 	}
 }
 
-func (d *Connection) getSchema(t string) *schema {
-	return d.Schemas[t]
+func (c *Connection) getSchema(t string) *schema {
+	return c.Schemas[t]
 }
 
 func getDialectForConnection(connection string) *Dialect {
 	return GetConnection(connection).Dialect
 }
 
-func (d *Connection) setSchema(e Entity, s *schema) {
+func (c *Connection) setSchema(e Entity, s *schema) {
 	var configurator EntityConfigurator
 	e.ConfigureEntity(&configurator)
-	d.Schemas[configurator.table] = s
+	c.Schemas[configurator.table] = s
 }
 
-var globalORM = map[string]*Connection{}
-
 func GetConnection(name string) *Connection {
-	return globalORM[name]
+	return globalInstances[name]
 }
 
 type ConnectionConfig struct {
@@ -145,7 +145,7 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 		Schemas:    schemas,
 		Dialect:    dialect,
 	}
-	globalORM[fmt.Sprintf("%s", name)] = s
+	globalInstances[fmt.Sprintf("%s", name)] = s
 	return s
 }
 

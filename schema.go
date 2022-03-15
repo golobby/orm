@@ -150,15 +150,15 @@ func getConnectionFor(e Entity) *Connection {
 	configurator := newEntityConfigurator()
 	e.ConfigureEntity(configurator)
 
-	if len(globalORM) > 1 && (configurator.connection == "" || configurator.table == "") {
+	if len(globalInstances) > 1 && (configurator.connection == "" || configurator.table == "") {
 		panic("need table and Connection name when having more than 1 Connection registered")
 	}
-	if len(globalORM) == 1 {
-		for _, db := range globalORM {
+	if len(globalInstances) == 1 {
+		for _, db := range globalInstances {
 			return db
 		}
 	}
-	if db, exists := globalORM[fmt.Sprintf("%s", configurator.connection)]; exists {
+	if db, exists := globalInstances[fmt.Sprintf("%s", configurator.connection)]; exists {
 		return db
 	}
 	panic("no db found")
@@ -499,15 +499,15 @@ func (e *schema) getSQLDB() *sql.DB {
 }
 
 func (e *schema) getConnection() *Connection {
-	if len(globalORM) > 1 && (e.Connection == "" || e.Table == "") {
+	if len(globalInstances) > 1 && (e.Connection == "" || e.Table == "") {
 		panic("need table and Connection name when having more than 1 Connection registered")
 	}
-	if len(globalORM) == 1 {
-		for _, db := range globalORM {
+	if len(globalInstances) == 1 {
+		for _, db := range globalInstances {
 			return db
 		}
 	}
-	if db, exists := globalORM[fmt.Sprintf("%s", e.Connection)]; exists {
+	if db, exists := globalInstances[fmt.Sprintf("%s", e.Connection)]; exists {
 		return db
 	}
 	panic("no db found")
