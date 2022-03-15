@@ -268,8 +268,6 @@ func TestHasMany(t *testing.T) {
 		Body:   "comment 2",
 	}))
 
-	orm.HasMany[Comment](post).Where("created_at", "<", "NOW()").AndWhere("")
-
 	comments, err := orm.HasMany[Comment](post).All()
 	assert.NoError(t, err)
 
