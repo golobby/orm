@@ -32,13 +32,13 @@ func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
 	return e
 }
 
-func (r *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *EntityConfigurator {
-	if r.relations == nil {
-		r.relations = map[string]interface{}{}
+func (e *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *EntityConfigurator {
+	if e.relations == nil {
+		e.relations = map[string]interface{}{}
 	}
-	r.resolveRelations = append(r.resolveRelations, func() {
+	e.resolveRelations = append(e.resolveRelations, func() {
 		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-			r.relations[config.PropertyTable] = config
+			e.relations[config.PropertyTable] = config
 			return
 		}
 		configurator := newEntityConfigurator()
@@ -49,23 +49,23 @@ func (r *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *Ent
 		}
 
 		if config.PropertyForeignKey == "" {
-			config.PropertyForeignKey = pluralize.NewClient().Singular(r.table) + "_id"
+			config.PropertyForeignKey = pluralize.NewClient().Singular(e.table) + "_id"
 		}
 
-		r.relations[configurator.table] = config
+		e.relations[configurator.table] = config
 
 		return
 	})
-	return r
+	return e
 }
 
-func (r *EntityConfigurator) HasOne(property Entity, config HasOneConfig) *EntityConfigurator {
-	if r.relations == nil {
-		r.relations = map[string]interface{}{}
+func (e *EntityConfigurator) HasOne(property Entity, config HasOneConfig) *EntityConfigurator {
+	if e.relations == nil {
+		e.relations = map[string]interface{}{}
 	}
-	r.resolveRelations = append(r.resolveRelations, func() {
+	e.resolveRelations = append(e.resolveRelations, func() {
 		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-			r.relations[config.PropertyTable] = config
+			e.relations[config.PropertyTable] = config
 			return
 		}
 
@@ -76,22 +76,22 @@ func (r *EntityConfigurator) HasOne(property Entity, config HasOneConfig) *Entit
 			config.PropertyTable = configurator.table
 		}
 		if config.PropertyForeignKey == "" {
-			config.PropertyForeignKey = pluralize.NewClient().Singular(r.table) + "_id"
+			config.PropertyForeignKey = pluralize.NewClient().Singular(e.table) + "_id"
 		}
 
-		r.relations[configurator.table] = config
+		e.relations[configurator.table] = config
 		return
 	})
-	return r
+	return e
 }
 
-func (r *EntityConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *EntityConfigurator {
-	if r.relations == nil {
-		r.relations = map[string]interface{}{}
+func (e *EntityConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *EntityConfigurator {
+	if e.relations == nil {
+		e.relations = map[string]interface{}{}
 	}
-	r.resolveRelations = append(r.resolveRelations, func() {
+	e.resolveRelations = append(e.resolveRelations, func() {
 		if config.ForeignColumnName != "" && config.LocalForeignKey != "" && config.OwnerTable != "" {
-			r.relations[config.OwnerTable] = config
+			e.relations[config.OwnerTable] = config
 			return
 		}
 		ownerConfigurator := newEntityConfigurator()
@@ -105,16 +105,16 @@ func (r *EntityConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *En
 		if config.ForeignColumnName == "" {
 			config.ForeignColumnName = "id"
 		}
-		r.relations[ownerConfigurator.table] = config
+		e.relations[ownerConfigurator.table] = config
 	})
-	return r
+	return e
 }
 
-func (r *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyConfig) *EntityConfigurator {
-	if r.relations == nil {
-		r.relations = map[string]interface{}{}
+func (e *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyConfig) *EntityConfigurator {
+	if e.relations == nil {
+		e.relations = map[string]interface{}{}
 	}
-	r.resolveRelations = append(r.resolveRelations, func() {
+	e.resolveRelations = append(e.resolveRelations, func() {
 		ownerConfigurator := newEntityConfigurator()
 		owner.ConfigureEntity(ownerConfigurator)
 
@@ -138,12 +138,12 @@ func (r *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyCon
 			config.IntermediatePropertyID = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
 		}
 		if config.IntermediateOwnerID == "" {
-			config.IntermediateOwnerID = pluralize.NewClient().Singular(r.table) + "_id"
+			config.IntermediateOwnerID = pluralize.NewClient().Singular(e.table) + "_id"
 		}
 
-		r.relations[ownerConfigurator.table] = config
+		e.relations[ownerConfigurator.table] = config
 	})
-	return r
+	return e
 }
 
 func getConnectionFor(e Entity) *Connection {
