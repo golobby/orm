@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	queryType_SELECT = iota + 1
-	queryType_UPDATE
-	queryType_Delete
+	queryTypeSELECT = iota + 1
+	queryTypeUPDATE
+	queryTypeDelete
 )
 
 //QueryBuilder is our query builder, almost all methods and functions in GolobbyORM
@@ -65,7 +65,7 @@ func (q *QueryBuilder[E]) All() ([]E, error) {
 		return nil, err
 	}
 	var output []E
-	err = getSchemaFor(*new(E)).bind(rows, &output)
+	err = newBinder[E](getSchemaFor(*new(E))).bind(rows, &output)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +88,14 @@ func (q *QueryBuilder[E]) One() (E, error) {
 		return *new(E), err
 	}
 	var output E
-	err = getSchemaFor(*new(E)).bind(rows, &output)
+	err = newBinder[E](getSchemaFor(*new(E))).bind(rows, &output)
 	if err != nil {
 		return *new(E), err
 	}
 	return output, nil
 }
 
-//Count creates and execute a select query from QueryBuilder and set it's column list of selection
+//Count creates and execute a select query from QueryBuilder and set it's field list of selection
 //to COUNT(id).
 func (q *QueryBuilder[E]) Count() (int64, error) {
 	if q.err != nil {
@@ -143,7 +143,7 @@ func (q *QueryBuilder[E]) Execute() (sql.Result, error) {
 	if q.err != nil {
 		return nil, q.err
 	}
-	if q.typ == queryType_SELECT {
+	if q.typ == queryTypeSELECT {
 		return nil, fmt.Errorf("query type is SELECT")
 	}
 	query, args, err := q.ToSql()
@@ -315,11 +315,11 @@ func (q *QueryBuilder[E]) ToSql() (string, []interface{}, error) {
 	if q.err != nil {
 		return "", nil, q.err
 	}
-	if q.typ == queryType_SELECT {
+	if q.typ == queryTypeSELECT {
 		return q.toSqlSelect()
-	} else if q.typ == queryType_Delete {
+	} else if q.typ == queryTypeDelete {
 		return q.toSqlDelete()
-	} else if q.typ == queryType_UPDATE {
+	} else if q.typ == queryTypeUPDATE {
 		return q.toSqlUpdate()
 	} else {
 		return "", nil, fmt.Errorf("no sql type matched")
@@ -667,7 +667,7 @@ func (q *QueryBuilder[E]) Table(t string) *QueryBuilder[E] {
 
 //SetSelect sets query type of QueryBuilder to Select.
 func (q *QueryBuilder[E]) SetSelect() *QueryBuilder[E] {
-	q.typ = queryType_SELECT
+	q.typ = queryTypeSELECT
 	return q
 }
 
@@ -681,7 +681,7 @@ func (q *QueryBuilder[E]) GroupBy(columns ...string) *QueryBuilder[E] {
 	return q
 }
 
-//Select adds columns to QueryBuilder select column list.
+//Select adds columns to QueryBuilder select field list.
 func (q *QueryBuilder[E]) Select(columns ...string) *QueryBuilder[E] {
 	q.SetSelect()
 	if q.selected == nil {
@@ -701,7 +701,7 @@ func (q *QueryBuilder[E]) FromQuery(subQuery *QueryBuilder[E]) *QueryBuilder[E] 
 }
 
 func (q *QueryBuilder[E]) SetUpdate() *QueryBuilder[E] {
-	q.typ = queryType_UPDATE
+	q.typ = queryTypeUPDATE
 	return q
 }
 
@@ -721,7 +721,7 @@ func (q *QueryBuilder[E]) SetDialect(dialect *Dialect) *QueryBuilder[E] {
 	return q
 }
 func (q *QueryBuilder[E]) SetDelete() *QueryBuilder[E] {
-	q.typ = queryType_Delete
+	q.typ = queryTypeDelete
 	return q
 }
 

@@ -10,7 +10,7 @@ import (
 
 type AuthorEmail struct {
 	ID    int64
-	Email string `orm:"column=email"`
+	Email string `orm:"field=email"`
 }
 
 func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
@@ -20,12 +20,8 @@ func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
 		BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 
-// func (a AuthorEmail) ConfigureValidator(e ) {
-// 	e.ShouldHave("ID", {String: true, })
-// }
-
 type HeaderPicture struct {
-	ID     int64 `orm:"column=id pk=true"`
+	ID     int64 `orm:"field=id pk=true"`
 	PostID int64
 	Link   string
 }
@@ -36,7 +32,7 @@ func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
 
 type Post struct {
 	ID        int64
-	Body      string
+	BodyText  string
 	CreatedAt sql.NullTime `orm:"created_at=true"`
 	UpdatedAt sql.NullTime `orm:"updated_at=true"`
 	DeletedAt sql.NullTime `orm:"deleted_at=true"`
@@ -48,7 +44,11 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 		HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
 		HasOne(AuthorEmail{}, orm.HasOneConfig{}).
-		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
+		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"}).
+		Fields().
+		Field("ID").CanBeNull().IsPrimaryKey().ColumnName("id").
+		Also().
+		Field("BodyText").ColumnName("body")
 
 }
 
@@ -109,43 +109,43 @@ func setup(t *testing.T) {
 func TestFind(t *testing.T) {
 	setup(t)
 	err := orm.Insert(&Post{
-		Body: "my body for insert",
+		BodyText: "my body for insert",
 	})
 
 	assert.NoError(t, err)
 
 	post, err := orm.Find[Post](1)
 	assert.NoError(t, err)
-	assert.Equal(t, "my body for insert", post.Body)
+	assert.Equal(t, "my body for insert", post.BodyText)
 	assert.Equal(t, int64(1), post.ID)
 }
 
 func TestInsert(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "my body for insert",
+		BodyText: "my body for insert",
 	}
 	err := orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 	var p Post
 	assert.NoError(t,
-		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.Body))
+		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.BodyText))
 
-	assert.Equal(t, "my body for insert", p.Body)
+	assert.Equal(t, "my body for insert", p.BodyText)
 }
 func TestInsertAll(t *testing.T) {
 	setup(t)
 
 	post1 := &Post{
-		Body: "Body1",
+		BodyText: "Body1",
 	}
 	post2 := &Post{
-		Body: "Body2",
+		BodyText: "Body2",
 	}
 
 	post3 := &Post{
-		Body: "Body3",
+		BodyText: "Body3",
 	}
 
 	err := orm.Insert(post1, post2, post3)
@@ -158,13 +158,13 @@ func TestInsertAll(t *testing.T) {
 func TestUpdateORM(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "my body for insert",
+		BodyText: "my body for insert",
 	}
 	err := orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
-	post.Body += " update text"
+	post.BodyText += " update text"
 	assert.NoError(t, orm.Update(post))
 
 	var body string
@@ -177,7 +177,7 @@ func TestUpdateORM(t *testing.T) {
 func TestDeleteORM(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "my body for insert",
+		BodyText: "my body for insert",
 	}
 	err := orm.Insert(post)
 	assert.NoError(t, err)
@@ -194,7 +194,7 @@ func TestDeleteORM(t *testing.T) {
 func TestAdd(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "my body for insert",
+		BodyText: "my body for insert",
 	}
 	err := orm.Insert(post)
 	assert.NoError(t, err)
@@ -225,7 +225,7 @@ func TestSave(t *testing.T) {
 	t.Run("save should insert", func(t *testing.T) {
 		setup(t)
 		post := &Post{
-			Body: "1",
+			BodyText: "1",
 		}
 		assert.NoError(t, orm.Save(post))
 		assert.Equal(t, int64(1), post.ID)
@@ -234,18 +234,18 @@ func TestSave(t *testing.T) {
 	t.Run("save should update", func(t *testing.T) {
 		setup(t)
 		post := &Post{
-			Body: "1",
+			BodyText: "1",
 		}
 		assert.NoError(t, orm.Save(post))
 		assert.Equal(t, int64(1), post.ID)
 
-		post.Body += "2"
+		post.BodyText += "2"
 		assert.NoError(t, orm.Save(post))
 
 		myPost, err := orm.Find[Post](1)
 		assert.NoError(t, err)
 
-		assert.EqualValues(t, post.Body, myPost.Body)
+		assert.EqualValues(t, post.BodyText, myPost.BodyText)
 	})
 
 }
@@ -253,7 +253,7 @@ func TestSave(t *testing.T) {
 func TestHasMany(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "first post",
+		BodyText: "first post",
 	}
 	assert.NoError(t, orm.Save(post))
 	assert.Equal(t, int64(1), post.ID)
@@ -279,7 +279,7 @@ func TestHasMany(t *testing.T) {
 func TestBelongsTo(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "first post",
+		BodyText: "first post",
 	}
 	assert.NoError(t, orm.Save(post))
 	assert.Equal(t, int64(1), post.ID)
@@ -293,13 +293,13 @@ func TestBelongsTo(t *testing.T) {
 	post2, err := orm.BelongsTo[Post](comment).One()
 	assert.NoError(t, err)
 
-	assert.Equal(t, post.Body, post2.Body)
+	assert.Equal(t, post.BodyText, post2.BodyText)
 }
 
 func TestHasOne(t *testing.T) {
 	setup(t)
 	post := &Post{
-		Body: "first post",
+		BodyText: "first post",
 	}
 	assert.NoError(t, orm.Save(post))
 	assert.Equal(t, int64(1), post.ID)
@@ -320,7 +320,7 @@ func TestBelongsToMany(t *testing.T) {
 	setup(t)
 
 	post := &Post{
-		Body: "first Post",
+		BodyText: "first Post",
 	}
 
 	assert.NoError(t, orm.Save(post))
@@ -351,7 +351,7 @@ func TestAddProperty(t *testing.T) {
 		setup(t)
 
 		post := &Post{
-			Body: "first post",
+			BodyText: "first post",
 		}
 
 		assert.NoError(t, orm.Save(post))
@@ -371,7 +371,7 @@ func TestAddProperty(t *testing.T) {
 	t.Run("not having PK value", func(t *testing.T) {
 		setup(t)
 		post := &Post{
-			Body: "first post",
+			BodyText: "first post",
 		}
 		assert.NoError(t, orm.Save(post))
 		assert.EqualValues(t, 1, post.ID)
@@ -389,28 +389,28 @@ func TestAddProperty(t *testing.T) {
 func TestQuery(t *testing.T) {
 	t.Run("querying single row", func(t *testing.T) {
 		setup(t)
-		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		//post, err := orm.Query[Post]().Where("id", 1).First()
 		post, err := orm.Query[Post]().WherePK(1).First()
 		assert.NoError(t, err)
-		assert.EqualValues(t, "body 1", post.Body)
+		assert.EqualValues(t, "body 1", post.BodyText)
 		assert.EqualValues(t, 1, post.ID)
 
 	})
 	t.Run("querying multiple rows", func(t *testing.T) {
 		setup(t)
-		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
-		assert.NoError(t, orm.Save(&Post{Body: "body 2"}))
-		assert.NoError(t, orm.Save(&Post{Body: "body 3"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 2"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 3"}))
 		posts, err := orm.Query[Post]().All()
 		assert.NoError(t, err)
 		assert.Len(t, posts, 3)
-		assert.Equal(t, "body 1", posts[0].Body)
+		assert.Equal(t, "body 1", posts[0].BodyText)
 	})
 
 	t.Run("updating a row using query interface", func(t *testing.T) {
 		setup(t)
-		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
 		res, err := orm.Query[Post]().Where("id", 1).Update(orm.KV{
 			"body": "body jadid",
@@ -423,12 +423,12 @@ func TestQuery(t *testing.T) {
 
 		post, err := orm.Find[Post](1)
 		assert.NoError(t, err)
-		assert.Equal(t, "body jadid", post.Body)
+		assert.Equal(t, "body jadid", post.BodyText)
 	})
 
 	t.Run("deleting a row using query interface", func(s *testing.T) {
 		setup(t)
-		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
 		_, err := orm.Query[Post]().WherePK(1).Delete()
 		assert.NoError(s, err)
@@ -439,13 +439,13 @@ func TestQuery(t *testing.T) {
 
 	t.Run("latest", func(t *testing.T) {
 		setup(t)
-		assert.NoError(t, orm.Save(&Post{Body: "body 1"}))
-		assert.NoError(t, orm.Save(&Post{Body: "body 2"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
+		assert.NoError(t, orm.Save(&Post{BodyText: "body 2"}))
 
 		post, err := orm.Query[Post]().Latest()
 		assert.NoError(t, err)
 
-		assert.EqualValues(t, "body 2", post.Body)
+		assert.EqualValues(t, "body 2", post.BodyText)
 	})
 
 	t.Run("use .Execute when query type is select", func(t *testing.T) {

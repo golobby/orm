@@ -8,9 +8,9 @@ import (
 	"unsafe"
 )
 
-//makeNewPointersOf creates a map of [column name] -> pointer to fill it
+//makeNewPointersOf creates a map of [field name] -> pointer to fill it
 //recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
-func makeNewPointersOf(v reflect.Value) map[string]interface{} {
+func (b *binder[T]) makeNewPointersOf(v reflect.Value) map[string]interface{} {
 	m := map[string]interface{}{}
 	actualV := v
 	for actualV.Type().Kind() == reflect.Ptr {
@@ -20,12 +20,18 @@ func makeNewPointersOf(v reflect.Value) map[string]interface{} {
 		f := actualV.Field(i)
 		if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
 			f = reflect.NewAt(actualV.Type().Field(i).Type, unsafe.Pointer(actualV.Field(i).UnsafeAddr()))
-			fm := makeNewPointersOf(f)
+			fm := b.makeNewPointersOf(f)
 			for k, p := range fm {
 				m[k] = p
 			}
 		} else {
-			fm := fieldMetadata(actualV.Type().Field(i))[0]
+			var fm *field
+			fm = b.s.getField(actualV.Type().Field(i))
+			if fm == nil {
+				var ec EntityConfigurator
+				(*new(T)).ConfigureEntity(&ec)
+				fm = fieldMetadata(actualV.Type().Field(i), ec.columnConstraints)[0]
+			}
 			m[fm.Name] = reflect.NewAt(actualV.Field(i).Type(), unsafe.Pointer(actualV.Field(i).UnsafeAddr())).Interface()
 		}
 	}
@@ -36,8 +42,8 @@ func makeNewPointersOf(v reflect.Value) map[string]interface{} {
 //ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
 //then it will put them in a map with their correct field name as key, then loops over cts
 //and for each one gets appropriate one from the map and adds it to pointer list.
-func (s *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
-	nameToPtr := makeNewPointersOf(v)
+func (b *binder[T]) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+	nameToPtr := b.makeNewPointersOf(v)
 	var scanInto []interface{}
 	for _, ct := range cts {
 		if nameToPtr[ct.Name()] != nil {
@@ -48,8 +54,16 @@ func (s *schema) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	return scanInto
 }
 
+type binder[T Entity] struct {
+	s *schema
+}
+
+func newBinder[T Entity](s *schema) *binder[T] {
+	return &binder[T]{s: s}
+}
+
 // bind binds given rows to the given object at obj. obj should be a pointer
-func (s *schema) bind(rows *sql.Rows, obj interface{}) error {
+func (b *binder[T]) bind(rows *sql.Rows, obj interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err
@@ -76,7 +90,7 @@ func (s *schema) bind(rows *sql.Rows, obj interface{}) error {
 			}
 			newCts := make([]*sql.ColumnType, len(cts))
 			copy(newCts, cts)
-			ptrs := s.ptrsFor(rowValue, newCts)
+			ptrs := b.ptrsFor(rowValue, newCts)
 			err = rows.Scan(ptrs...)
 			if err != nil {
 				return err
@@ -90,7 +104,7 @@ func (s *schema) bind(rows *sql.Rows, obj interface{}) error {
 		}
 	} else {
 		for rows.Next() {
-			ptrs := s.ptrsFor(v, cts)
+			ptrs := b.ptrsFor(v, cts)
 			err = rows.Scan(ptrs...)
 			if err != nil {
 				return err

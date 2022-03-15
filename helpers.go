@@ -5,8 +5,6 @@ import (
 	"reflect"
 )
 
-type phGenerator func(n int) []string
-
 func postgresPlaceholder(n int) []string {
 	output := []string{}
 	for i := 1; i < n+1; i++ {

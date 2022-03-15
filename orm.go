@@ -283,7 +283,7 @@ func bind[T Entity](output interface{}, q string, args []interface{}) error {
 	if err != nil {
 		return err
 	}
-	return outputMD.bind(rows, output)
+	return newBinder[T](outputMD).bind(rows, output)
 }
 
 //HasManyConfig contains all information we need for querying HasMany relationships.
@@ -295,8 +295,8 @@ type HasManyConfig struct {
 	// each Post HasMany Comment, so PropertyTable is
 	// `comments`.
 	PropertyTable string
-	// PropertyForeignKey is the foreign key column name in the property table,
-	// forexample in Post HasMany Comment, if comment has `post_id` column,
+	// PropertyForeignKey is the foreign key field name in the property table,
+	// forexample in Post HasMany Comment, if comment has `post_id` field,
 	// it's the PropertyForeignKey field.
 	PropertyForeignKey string
 }
@@ -331,8 +331,8 @@ type HasOneConfig struct {
 	// each Post HasOne HeaderPicture, so PropertyTable is
 	// `header_pictures`.
 	PropertyTable string
-	// PropertyForeignKey is the foreign key column name in the property table,
-	// forexample in Post HasOne HeaderPicture, if header_picture has `post_id` column,
+	// PropertyForeignKey is the foreign key field name in the property table,
+	// forexample in Post HasOne HeaderPicture, if header_picture has `post_id` field,
 	// it's the PropertyForeignKey field.
 	PropertyForeignKey string
 }
@@ -365,13 +365,13 @@ type BelongsToConfig struct {
 	//OwnerTable is the table that contains owner of a BelongsTo
 	//relationship.
 	OwnerTable string
-	//LocalForeignKey is name of the column that links property
+	//LocalForeignKey is name of the field that links property
 	//to its owner in BelongsTo relation. for example when
 	//a Comment BelongsTo Post, LocalForeignKey is
 	//post_id of Comment.
 	LocalForeignKey string
-	//ForeignColumnName is name of the column that LocalForeignKey
-	//column value will point to it, for example when
+	//ForeignColumnName is name of the field that LocalForeignKey
+	//field value will point to it, for example when
 	//a Comment BelongsTo Post, ForeignColumnName is
 	//id of Post.
 	ForeignColumnName string
@@ -414,13 +414,13 @@ type BelongsToManyConfig struct {
 	//table, remember that this field cannot be
 	//inferred.
 	IntermediateTable string
-	//IntermediatePropertyID is the name of the column name
+	//IntermediatePropertyID is the name of the field name
 	//of property foreign key in intermediate table,
 	//for example when we have Post BelongsToMany
 	//Category, in post_categories table, it would
 	//be post_id.
 	IntermediatePropertyID string
-	//IntermediateOwnerID is the name of the column name
+	//IntermediateOwnerID is the name of the field name
 	//of property foreign key in intermediate table,
 	//for example when we have Post BelongsToMany
 	//Category, in post_categories table, it would
@@ -431,9 +431,9 @@ type BelongsToManyConfig struct {
 	//Owner table is name of Category table
 	//for example `categories`.
 	OwnerTable string
-	//OwnerLookupColumn is name of the column in the owner
+	//OwnerLookupColumn is name of the field in the owner
 	//table that is used in query, for example in Post BelongsToMany Category
-	//Owner lookup column would be Category primary key which is id.
+	//Owner lookup field would be Category primary key which is id.
 	OwnerLookupColumn string
 }
 
@@ -585,7 +585,7 @@ func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 		return nil, err
 	}
 	var output []OUTPUT
-	err = getSchemaFor(*o).bind(rows, &output)
+	err = newBinder[OUTPUT](getSchemaFor(*o)).bind(rows, &output)
 	if err != nil {
 		return nil, err
 	}

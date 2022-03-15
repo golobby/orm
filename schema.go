@@ -5,147 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"reflect"
-	"strings"
-
-	"github.com/gertd/go-pluralize"
-	"github.com/iancoleman/strcase"
 )
-
-type EntityConfigurator struct {
-	connection       string
-	table            string
-	this             Entity
-	relations        map[string]interface{}
-	resolveRelations []func()
-}
-
-func newEntityConfigurator() *EntityConfigurator {
-	return &EntityConfigurator{}
-}
-
-func (e *EntityConfigurator) Table(name string) *EntityConfigurator {
-	e.table = name
-	return e
-}
-
-func (e *EntityConfigurator) Connection(name string) *EntityConfigurator {
-	e.connection = name
-	return e
-}
-
-func (e *EntityConfigurator) HasMany(property Entity, config HasManyConfig) *EntityConfigurator {
-	if e.relations == nil {
-		e.relations = map[string]interface{}{}
-	}
-	e.resolveRelations = append(e.resolveRelations, func() {
-		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-			e.relations[config.PropertyTable] = config
-			return
-		}
-		configurator := newEntityConfigurator()
-		property.ConfigureEntity(configurator)
-
-		if config.PropertyTable == "" {
-			config.PropertyTable = configurator.table
-		}
-
-		if config.PropertyForeignKey == "" {
-			config.PropertyForeignKey = pluralize.NewClient().Singular(e.table) + "_id"
-		}
-
-		e.relations[configurator.table] = config
-
-		return
-	})
-	return e
-}
-
-func (e *EntityConfigurator) HasOne(property Entity, config HasOneConfig) *EntityConfigurator {
-	if e.relations == nil {
-		e.relations = map[string]interface{}{}
-	}
-	e.resolveRelations = append(e.resolveRelations, func() {
-		if config.PropertyForeignKey != "" && config.PropertyTable != "" {
-			e.relations[config.PropertyTable] = config
-			return
-		}
-
-		configurator := newEntityConfigurator()
-		property.ConfigureEntity(configurator)
-
-		if config.PropertyTable == "" {
-			config.PropertyTable = configurator.table
-		}
-		if config.PropertyForeignKey == "" {
-			config.PropertyForeignKey = pluralize.NewClient().Singular(e.table) + "_id"
-		}
-
-		e.relations[configurator.table] = config
-		return
-	})
-	return e
-}
-
-func (e *EntityConfigurator) BelongsTo(owner Entity, config BelongsToConfig) *EntityConfigurator {
-	if e.relations == nil {
-		e.relations = map[string]interface{}{}
-	}
-	e.resolveRelations = append(e.resolveRelations, func() {
-		if config.ForeignColumnName != "" && config.LocalForeignKey != "" && config.OwnerTable != "" {
-			e.relations[config.OwnerTable] = config
-			return
-		}
-		ownerConfigurator := newEntityConfigurator()
-		owner.ConfigureEntity(ownerConfigurator)
-		if config.OwnerTable == "" {
-			config.OwnerTable = ownerConfigurator.table
-		}
-		if config.LocalForeignKey == "" {
-			config.LocalForeignKey = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
-		}
-		if config.ForeignColumnName == "" {
-			config.ForeignColumnName = "id"
-		}
-		e.relations[ownerConfigurator.table] = config
-	})
-	return e
-}
-
-func (e *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyConfig) *EntityConfigurator {
-	if e.relations == nil {
-		e.relations = map[string]interface{}{}
-	}
-	e.resolveRelations = append(e.resolveRelations, func() {
-		ownerConfigurator := newEntityConfigurator()
-		owner.ConfigureEntity(ownerConfigurator)
-
-		if config.OwnerLookupColumn == "" {
-			var pkName string
-			for _, field := range genericFieldsOf(owner) {
-				if field.IsPK {
-					pkName = field.Name
-				}
-			}
-			config.OwnerLookupColumn = pkName
-
-		}
-		if config.OwnerTable == "" {
-			config.OwnerTable = ownerConfigurator.table
-		}
-		if config.IntermediateTable == "" {
-			panic("cannot infer intermediate table yet")
-		}
-		if config.IntermediatePropertyID == "" {
-			config.IntermediatePropertyID = pluralize.NewClient().Singular(ownerConfigurator.table) + "_id"
-		}
-		if config.IntermediateOwnerID == "" {
-			config.IntermediateOwnerID = pluralize.NewClient().Singular(e.table) + "_id"
-		}
-
-		e.relations[ownerConfigurator.table] = config
-	})
-	return e
-}
 
 func getConnectionFor(e Entity) *connection {
 	configurator := newEntityConfigurator()
@@ -186,6 +46,15 @@ type schema struct {
 	getPK      func(o Entity) interface{}
 }
 
+func (s *schema) getField(sf reflect.StructField) *field {
+	for _, f := range s.fields {
+		if sf.Name == f.Name {
+			return f
+		}
+	}
+	return nil
+}
+
 func (s *schema) getDialect() *Dialect {
 	return GetConnection(s.Connection).Dialect
 }
@@ -216,96 +85,7 @@ func (s *schema) pkName() string {
 	return ""
 }
 
-type field struct {
-	Name        string
-	IsPK        bool
-	Virtual     bool
-	IsCreatedAt bool
-	IsUpdatedAt bool
-	IsDeletedAt bool
-	Type        reflect.Type
-}
-
-type fieldTag struct {
-	Name        string
-	Virtual     bool
-	PK          bool
-	IsCreatedAt bool
-	IsUpdatedAt bool
-	IsDeletedAt bool
-}
-
-func fieldMetadataFromTag(t string) fieldTag {
-	if t == "" {
-		return fieldTag{}
-	}
-	tuples := strings.Split(t, " ")
-	var tag fieldTag
-	kv := map[string]string{}
-	for _, tuple := range tuples {
-		parts := strings.Split(tuple, "=")
-		key := parts[0]
-		value := parts[1]
-		kv[key] = value
-		if key == "col" {
-			tag.Name = value
-		} else if key == "pk" {
-			tag.PK = true
-		} else if key == "created_at" {
-			tag.IsCreatedAt = true
-		} else if key == "updated_at" {
-			tag.IsUpdatedAt = true
-		} else if key == "deleted_at" {
-			tag.IsDeletedAt = true
-		}
-		if tag.Name == "_" {
-			tag.Virtual = true
-		}
-	}
-	return tag
-}
-func fieldMetadata(ft reflect.StructField) []*field {
-	tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
-	var fms []*field
-	baseFm := &field{}
-	baseFm.Type = ft.Type
-	fms = append(fms, baseFm)
-	if tagParsed.Name != "" {
-		baseFm.Name = tagParsed.Name
-	} else {
-		baseFm.Name = strcase.ToSnake(ft.Name)
-	}
-	if tagParsed.PK || strings.ToLower(ft.Name) == "id" {
-		baseFm.IsPK = true
-	}
-	if tagParsed.IsCreatedAt || strings.ToLower(ft.Name) == "createdat" {
-		baseFm.IsCreatedAt = true
-	}
-	if tagParsed.IsUpdatedAt || strings.ToLower(ft.Name) == "updatedat" {
-		baseFm.IsUpdatedAt = true
-	}
-	if tagParsed.IsDeletedAt || strings.ToLower(ft.Name) == "deletedat" {
-		baseFm.IsDeletedAt = true
-	}
-	if tagParsed.Virtual {
-		baseFm.Virtual = true
-	}
-	if ft.Type.Kind() == reflect.Struct || ft.Type.Kind() == reflect.Ptr {
-		t := ft.Type
-		if ft.Type.Kind() == reflect.Ptr {
-			t = ft.Type.Elem()
-		}
-		if !t.Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
-			for i := 0; i < t.NumField(); i++ {
-				fms = append(fms, fieldMetadata(t.Field(i))...)
-			}
-			fms = fms[1:]
-		}
-	}
-	return fms
-}
-
-func genericFieldsOf(obj interface{}) []*field {
+func genericFieldsOf(obj Entity) []*field {
 	t := reflect.TypeOf(obj)
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -317,11 +97,13 @@ func genericFieldsOf(obj interface{}) []*field {
 			t = t.Elem()
 		}
 	}
+	var ec EntityConfigurator
+	obj.ConfigureEntity(&ec)
 
 	var fms []*field
 	for i := 0; i < t.NumField(); i++ {
 		ft := t.Field(i)
-		fm := fieldMetadata(ft)
+		fm := fieldMetadata(ft, ec.columnConstraints)
 		fms = append(fms, fm...)
 	}
 	return fms
@@ -439,7 +221,7 @@ func pointersOf(v reflect.Value) map[string]interface{} {
 				m[k] = p
 			}
 		} else {
-			fm := fieldMetadata(actualV.Type().Field(i))[0]
+			fm := fieldMetadata(actualV.Type().Field(i), nil)[0]
 			m[fm.Name] = actualV.Field(i)
 		}
 	}

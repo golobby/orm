@@ -1,18 +1,16 @@
 package orm
 
+import "database/sql"
+
 type Dialect struct {
 	DriverName                  string
 	PlaceholderChar             string
 	IncludeIndexInPlaceholder   bool
 	AddTableNameInSelectColumns bool
 	PlaceHolderGenerator        func(n int) []string
+	ListTables                  func(db *sql.DB) ([]string, error)
+	ListColumns                 func(db *sql.DB, table string) ([]*field, error)
 }
-
-const (
-	DialectMySQL = iota + 1
-	DialectPostgres
-	DialectSQLite
-)
 
 var Dialects = &struct {
 	MySQL      *Dialect

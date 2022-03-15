@@ -39,7 +39,7 @@ func TestBind(t *testing.T) {
 
 		u := &User{}
 		md := schemaOfHeavyReflectionStuff(u)
-		err = md.bind(rows, u)
+		err = newBinder[User](md).bind(rows, u)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", u.Name)
@@ -57,7 +57,7 @@ func TestBind(t *testing.T) {
 
 		md := schemaOfHeavyReflectionStuff(&User{})
 		var users []*User
-		err = md.bind(rows, &users)
+		err = newBinder[User](md).bind(rows, &users)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "amirreza", users[0].Name)
