@@ -460,15 +460,15 @@ func (q *QueryBuilder[E]) Where(parts ...interface{}) *QueryBuilder[E] {
 	} else if len(parts) == 2 {
 		if strings.Index(parts[0].(string), " ") == -1 {
 			// Equal mode
-			q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}, PlaceHolderGenerator: q.placeholderGenerator}
+			q.where = &whereClause{cond: cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}, PlaceHolderGenerator: q.placeholderGenerator}
 		}
 		return q
 	} else if len(parts) == 3 {
 		// operator mode
-		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}, PlaceHolderGenerator: q.placeholderGenerator}
+		q.where = &whereClause{cond: cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}, PlaceHolderGenerator: q.placeholderGenerator}
 		return q
 	} else if len(parts) > 3 && parts[1].(string) == "IN" {
-		q.where = &whereClause{Cond: Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2:]}, PlaceHolderGenerator: q.placeholderGenerator}
+		q.where = &whereClause{cond: cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2:]}, PlaceHolderGenerator: q.placeholderGenerator}
 		return q
 	} else {
 		panic("wrong number of arguments passed to Where")
@@ -489,7 +489,7 @@ const (
 	In      = "IN"
 )
 
-type Cond struct {
+type cond struct {
 	PlaceHolderGenerator func(n int) []string
 
 	Lhs string
@@ -497,7 +497,7 @@ type Cond struct {
 	Rhs interface{}
 }
 
-func (b Cond) ToSql() (string, []interface{}) {
+func (b cond) ToSql() (string, []interface{}) {
 	var phs []string
 	if b.Op == In {
 		rhs, isInterfaceSlice := b.Rhs.([]interface{})
@@ -525,7 +525,7 @@ type whereClause struct {
 	PlaceHolderGenerator func(n int) []string
 	nextTyp              string
 	next                 *whereClause
-	Cond
+	cond
 	raw  string
 	args []interface{}
 }
@@ -537,8 +537,8 @@ func (w whereClause) ToSql() (string, []interface{}) {
 		base = w.raw
 		args = w.args
 	} else {
-		w.Cond.PlaceHolderGenerator = w.PlaceHolderGenerator
-		base, args = w.Cond.ToSql()
+		w.cond.PlaceHolderGenerator = w.PlaceHolderGenerator
+		base, args = w.cond.ToSql()
 	}
 	if w.next == nil {
 		return base, args
@@ -591,11 +591,11 @@ func (q *QueryBuilder[E]) addWhere(typ string, parts ...interface{}) *QueryBuild
 		return q
 	} else if len(parts) == 2 {
 		// Equal mode
-		w.Cond = Cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}
+		w.cond = cond{Lhs: parts[0].(string), Op: Eq, Rhs: parts[1]}
 		return q
 	} else if len(parts) == 3 {
 		// operator mode
-		w.Cond = Cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}
+		w.cond = cond{Lhs: parts[0].(string), Op: binaryOp(parts[1].(string)), Rhs: parts[2]}
 		return q
 	} else {
 		panic("wrong number of arguments passed to Where")

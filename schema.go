@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/gertd/go-pluralize"
-	"github.com/iancoleman/strcase"
 	"reflect"
 	"strings"
+
+	"github.com/gertd/go-pluralize"
+	"github.com/iancoleman/strcase"
 )
 
 type EntityConfigurator struct {
@@ -170,7 +171,7 @@ func getSchemaFor(e Entity) *schema {
 	e.ConfigureEntity(configurator)
 	s := c.getSchema(configurator.table)
 	if s == nil {
-		s = schemaOf(e)
+		s = schemaOfHeavyReflectionStuff(e)
 		c.setSchema(e, s)
 	}
 	return s
@@ -455,7 +456,7 @@ func genericSet(obj Entity, name string, value interface{}) {
 	}
 	val.(reflect.Value).Set(reflect.ValueOf(value))
 }
-func schemaOf(v Entity) *schema {
+func schemaOfHeavyReflectionStuff(v Entity) *schema {
 	userSchema := newEntityConfigurator()
 	v.ConfigureEntity(userSchema)
 	for _, relation := range userSchema.resolveRelations {

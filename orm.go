@@ -130,7 +130,7 @@ func initialize(name string, dialect *Dialect, db *sql.DB, entities []Entity) *C
 		name = "default"
 	}
 	for _, entity := range entities {
-		s := schemaOf(entity)
+		s := schemaOfHeavyReflectionStuff(entity)
 		var configurator EntityConfigurator
 		entity.ConfigureEntity(&configurator)
 		schemas[configurator.table] = s
@@ -328,7 +328,11 @@ func HasMany[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 	}
 
 	s := getSchemaFor(owner)
-	return NewQueryBuilder[PROPERTY]().SetDialect(s.getDialect()).Table(c.PropertyTable).Select(outSchema.Columns(true)...).Where(c.PropertyForeignKey, genericGetPKValue(owner))
+	return NewQueryBuilder[PROPERTY]().
+		SetDialect(s.getDialect()).
+		Table(c.PropertyTable).
+		Select(outSchema.Columns(true)...).
+		Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
 //HasOneConfig contains all information we need for a HasOne relationship,

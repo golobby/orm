@@ -14,8 +14,15 @@ type AuthorEmail struct {
 }
 
 func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("emails").Connection("default").BelongsTo(&Post{}, orm.BelongsToConfig{})
+	e.
+		Table("emails").
+		Connection("default").
+		BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
+
+// func (a AuthorEmail) ConfigureValidator(e ) {
+// 	e.ShouldHave("ID", {String: true, })
+// }
 
 type HeaderPicture struct {
 	ID     int64 `orm:"column=id pk=true"`
@@ -49,8 +56,8 @@ func (p *Post) Categories() ([]Category, error) {
 	return orm.BelongsToMany[Category](p).All()
 }
 
-func (p *Post) Comments() ([]Comment, error) {
-	return orm.HasMany[Comment](p).All()
+func (p *Post) Comments() *orm.QueryBuilder[Comment] {
+	return orm.HasMany[Comment](p)
 }
 
 type Comment struct {
@@ -81,6 +88,9 @@ func (c Category) Posts() ([]Post, error) {
 }
 
 // enough models let's test
+// Entities is mandatory
+// Errors should be carried
+// Name should be removed
 
 func setup(t *testing.T) {
 	err := orm.Initialize(orm.ConnectionConfig{
@@ -257,6 +267,8 @@ func TestHasMany(t *testing.T) {
 		PostID: post.ID,
 		Body:   "comment 2",
 	}))
+
+	orm.HasMany[Comment](post).Where("created_at", "<", "NOW()").AndWhere("")
 
 	comments, err := orm.HasMany[Comment](post).All()
 	assert.NoError(t, err)
