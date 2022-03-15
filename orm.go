@@ -27,7 +27,7 @@ func Schematic() {
 	}
 }
 
-type ORMConfig struct {
+type Config struct {
 	//LogLevel
 	LogLevel LogLevel
 }
@@ -55,12 +55,9 @@ type ConnectionConfig struct {
 }
 
 //Initialize gets list of ConnectionConfig and builds up ORM for you.
-func Initialize(ormConfig *ORMConfig, configs ...ConnectionConfig) error {
+func Initialize(ormConfig Config, configs ...ConnectionConfig) error {
 	//configure logger
 	var err error
-	if ormConfig == nil {
-		ormConfig = &ORMConfig{}
-	}
 	if ormConfig.LogLevel == 0 {
 		ormConfig.LogLevel = LogLevelDev
 	}

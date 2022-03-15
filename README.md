@@ -87,11 +87,15 @@ func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
 
 func main() {
   // Setup ORM
-  orm.Initialize(orm.ConnectionConfig{
+  err := orm.Initialize(orm.ORMConfig{LogLevel: orm.LogLevelDev}, orm.ConnectionConfig{
     // Name:          "default",  // Optional. Specify connection names if you have more than on database.
     Driver:           "sqlite3",  // Database type. Currently supported sqlite3, mysql, mariadb, postgresql. 
     ConnectionString: ":memory:", // Database DSN.
   })
+  
+  if err != nil {
+	  panic(err)
+  }
   
   // Find user by primary key (ID)
   user, err := orm.Find[User](1)
@@ -129,7 +133,7 @@ func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
 ```
 As you see, our user entity is nothing else than a simple struct and two methods.
 Entities in GolobbyORM are implementations of `Entity` interface, which defines two methods:
-- ConfigureEntity: configures table and also relations to other entities.
+- ConfigureEntity: configures table, fields, and also relations to other entities.
 #### Conventions
 ##### Timestamps
 for having `created_at`, `updated_at`, `deleted_at` timestamps in your entities you can embed `orm.Timestamps` struct in your entity,

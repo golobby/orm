@@ -46,7 +46,7 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 		HasOne(AuthorEmail{}, orm.HasOneConfig{}).
 		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"}).
 		Fields().
-		Field("ID").CanBeNull().IsPrimaryKey().ColumnName("id").
+		Field("ID").IsPrimaryKey().ColumnName("id").
 		Also().
 		Field("BodyText").ColumnName("body")
 
@@ -92,7 +92,7 @@ func (c Category) Posts() ([]Post, error) {
 // Errors should be carried
 
 func setup(t *testing.T) {
-	err := orm.Initialize(nil, orm.ConnectionConfig{
+	err := orm.Initialize(orm.Config{}, orm.ConnectionConfig{
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
