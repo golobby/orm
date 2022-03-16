@@ -13,7 +13,7 @@ func postgresPlaceholder(n int) []string {
 	return output
 }
 
-func mySQLPlaceHolder(n int) []string {
+func questionMarks(n int) []string {
 	output := []string{}
 	for i := 0; i < n; i++ {
 		output = append(output, "?")

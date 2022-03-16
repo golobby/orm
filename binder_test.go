@@ -75,8 +75,9 @@ func TestBindMap(t *testing.T) {
 	rows, err := db.Query(`SELECT * FROM users`)
 	assert.NoError(t, err)
 
-	ms := bindToMap(rows)
+	ms, err := bindToMap(rows)
 
+	assert.NoError(t, err)
 	assert.NotEmpty(t, ms)
 
 	assert.Len(t, ms, 1)
