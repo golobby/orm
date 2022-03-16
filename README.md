@@ -1,8 +1,8 @@
-[![GoDoc](https:// godoc.org/github.com/golobby/orm/?status.svg)](https://godoc.org/github.com/golobby/orm)
-[![CI](https:// github.com/golobby/orm/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/orm/actions/workflows/ci.yml)
-[![CodeQL](https:// github.com/golobby/orm/workflows/CodeQL/badge.svg)](https://github.com/golobby/orm/actions/workflows/codeql-analysis.yml)
-[![Go Report Card](https:// goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
-[![Coverage Status](https:// coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
+[![GoDoc](https://godoc.org/github.com/golobby/router/?status.svg)](https://godoc.org/github.com/golobby/router)
+[![CI](https://github.com/golobby/router/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/router/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/golobby/router/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/golobby/router/actions/workflows/codeql-analysis.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/router)](https://goreportcard.com/report/github.com/golobby/router)
+[![Coverage Status](https://coveralls.io/repos/github/golobby/router/badge.svg?r=1)](https://coveralls.io/github/golobby/router?branch=master)
 
 # Golobby ORM
 
