@@ -165,6 +165,7 @@ GoLobby ORM for each struct field(except slice, arrays, maps, and other nested s
 If you want a custom column name, you should specify it in the entity struct.
 ```go
 package main
+
 type User struct {
 	Name string `orm:"column=username"` // now this field will be mapped to `username` column in sql database. 
 }
@@ -305,6 +306,7 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 type Category struct{}
+
 func(c Category) ConfigureEntity(r *orm.EntityConfigurator) {
     e.Table("categories").BelongsToMany(&Post{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 }
