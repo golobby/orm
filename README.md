@@ -232,6 +232,7 @@ res, err := orm.Query[User]().Where("id", 1).Update(orm.KV{"name": "amirreza2"})
 ```go
 _, affected, err := orm.ExecRaw[User](`UPDATE users SET name=? WHERE id=?`, "amirreza", 1)
 ```
+```
 ### Deleting entities
 It is also easy to delete entities from a database.
 ```go

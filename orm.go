@@ -16,7 +16,7 @@ var globalConnections = map[string]*connection{}
 var globalLogger Logger
 
 // Schematic prints all information ORM inferred from your entities in startup, remember to pass
-// your entities in Entities when you call Initialize if you want their data inferred
+// your entities in Entities when you call SetupConnection if you want their data inferred
 // otherwise Schematic does not print correct data since GoLobby ORM also
 // incrementally cache your entities metadata and schema.
 func Schematic() {
@@ -54,14 +54,11 @@ type ConnectionConfig struct {
 	Entities []Entity
 }
 
-// Initialize gets list of ConnectionConfig and builds up ORM for you.
-func Initialize(ormConfig Config, configs ...ConnectionConfig) error {
+// SetupConnection declares a new connection for ORM.
+func SetupConnection(configs ...ConnectionConfig) error {
 	// configure logger
 	var err error
-	if ormConfig.LogLevel == 0 {
-		ormConfig.LogLevel = LogLevelDev
-	}
-	globalLogger, err = newZapLogger(ormConfig.LogLevel)
+	globalLogger, err = newZapLogger(LogLevelDev)
 	if err != nil {
 		return err
 	}

@@ -92,7 +92,7 @@ func (c Category) Posts() ([]Post, error) {
 // Errors should be carried
 
 func setup(t *testing.T) {
-	err := orm.Initialize(orm.Config{}, orm.ConnectionConfig{
+	err := orm.SetupConnection(orm.ConnectionConfig{
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 		Entities:         []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
