@@ -55,7 +55,7 @@ type ConnectionConfig struct {
 }
 
 // SetupConnection declares a new connection for ORM.
-func SetupConnection(configs ...ConnectionConfig) error {
+func SetupConnection(conf ConnectionConfig) error {
 	// configure logger
 	var err error
 	globalLogger, err = newZapLogger(LogLevelDev)
@@ -63,32 +63,29 @@ func SetupConnection(configs ...ConnectionConfig) error {
 		return err
 	}
 
-	for _, conf := range configs {
-		var dialect *Dialect
-		var db *sql.DB
-		var err error
-		if conf.DB != nil && conf.Dialect != nil {
-			globalLogger.Infof("Configuring an open connection")
-			dialect = conf.Dialect
-			db = conf.DB
-		} else {
-			globalLogger.Infof("Opening and configuring a connection using %s", conf.Driver)
-			dialect, err = getDialect(conf.Driver)
-			if err != nil {
-				return err
-			}
-			db, err = getDB(conf.Driver, conf.ConnectionString)
-			if err != nil {
-				return err
-			}
-		}
-		conf.DB = db
-		conf.Dialect = dialect
-
-		_, err = initialize(conf)
+	var dialect *Dialect
+	var db *sql.DB
+	if conf.DB != nil && conf.Dialect != nil {
+		globalLogger.Infof("Configuring an open connection")
+		dialect = conf.Dialect
+		db = conf.DB
+	} else {
+		globalLogger.Infof("Opening and configuring a connection using %s", conf.Driver)
+		dialect, err = getDialect(conf.Driver)
 		if err != nil {
 			return err
 		}
+		db, err = getDB(conf.Driver, conf.ConnectionString)
+		if err != nil {
+			return err
+		}
+	}
+	conf.DB = db
+	conf.Dialect = dialect
+
+	_, err = initialize(conf)
+	if err != nil {
+		return err
 	}
 
 	return nil
