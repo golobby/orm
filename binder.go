@@ -8,8 +8,8 @@ import (
 	"unsafe"
 )
 
-//makeNewPointersOf creates a map of [field name] -> pointer to fill it
-//recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
+// makeNewPointersOf creates a map of [field name] -> pointer to fill it
+// recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
 func (b *binder[T]) makeNewPointersOf(v reflect.Value) map[string]interface{} {
 	m := map[string]interface{}{}
 	actualV := v
@@ -39,9 +39,9 @@ func (b *binder[T]) makeNewPointersOf(v reflect.Value) map[string]interface{} {
 	return m
 }
 
-//ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
-//then it will put them in a map with their correct field name as key, then loops over cts
-//and for each one gets appropriate one from the map and adds it to pointer list.
+// ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
+// then it will put them in a map with their correct field name as key, then loops over cts
+// and for each one gets appropriate one from the map and adds it to pointer list.
 func (b *binder[T]) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
 	nameToPtr := b.makeNewPointersOf(v)
 	var scanInto []interface{}

@@ -35,7 +35,7 @@ jobs:
         language: [ 'go' ]
         # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
         # Learn more:
-        # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
+        # https:// docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
 
     steps:
       - name: Checkout repository
@@ -57,7 +57,7 @@ jobs:
         uses: github/codeql-action/autobuild@v1
 
       # ℹ️ Command-line programs to run using the OS shell.
-      # 📚 https://git.io/JvXDl
+      # 📚 https:// git.io/JvXDl
 
       # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
       #    and modify them (or add more) to build your code if your project

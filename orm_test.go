@@ -390,7 +390,7 @@ func TestQuery(t *testing.T) {
 	t.Run("querying single row", func(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
-		//post, err := orm.Query[Post]().Where("id", 1).First()
+		// post, err := orm.Query[Post]().Where("id", 1).First()
 		post, err := orm.Query[Post]().WherePK(1).First()
 		assert.NoError(t, err)
 		assert.EqualValues(t, "body 1", post.BodyText)

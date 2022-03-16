@@ -9,7 +9,7 @@ import (
 type Dummy struct{}
 
 func (d Dummy) ConfigureEntity(e *EntityConfigurator) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

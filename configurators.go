@@ -161,14 +161,14 @@ type FieldConfigurator struct {
 	isDeletedAt bool
 }
 
-//func (fc *FieldConfigurator) CanBeNull() *FieldConfigurator {
+// func (fc *FieldConfigurator) CanBeNull() *FieldConfigurator {
 //	fc.nullable = sql.NullBool{
 //		Bool:  true,
 //		Valid: true,
 //	}
 //	return fc
 //}
-//func (fc *FieldConfigurator) CannotBeNull() *FieldConfigurator {
+// func (fc *FieldConfigurator) CannotBeNull() *FieldConfigurator {
 //	fc.nullable = sql.NullBool{
 //		Bool:  false,
 //		Valid: true,

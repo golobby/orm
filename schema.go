@@ -117,7 +117,7 @@ func valuesOfField(vf reflect.Value) []interface{} {
 			t = vf.Type().Elem()
 		}
 		if !t.Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
-			//go into
+			// go into
 			// it does not implement driver.Valuer interface
 			for i := 0; i < vf.NumField(); i++ {
 				vif := vf.Field(i)

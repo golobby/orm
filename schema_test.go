@@ -11,7 +11,7 @@ func setup(t *testing.T) {
 		Driver:           "sqlite3",
 		ConnectionString: ":memory:",
 	})
-	//orm.Schematic()
+	// orm.Schematic()
 	_, err = GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
 	_, err = GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
 	_, err = GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)

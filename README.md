@@ -1,8 +1,8 @@
-[![GoDoc](https://godoc.org/github.com/golobby/orm/?status.svg)](https://godoc.org/github.com/golobby/orm)
-[![CI](https://github.com/golobby/orm/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/orm/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/golobby/orm/workflows/CodeQL/badge.svg)](https://github.com/golobby/orm/actions/workflows/codeql-analysis.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
-[![Coverage Status](https://coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
+[![GoDoc](https:// godoc.org/github.com/golobby/orm/?status.svg)](https://godoc.org/github.com/golobby/orm)
+[![CI](https:// github.com/golobby/orm/actions/workflows/ci.yml/badge.svg)](https://github.com/golobby/orm/actions/workflows/ci.yml)
+[![CodeQL](https:// github.com/golobby/orm/workflows/CodeQL/badge.svg)](https://github.com/golobby/orm/actions/workflows/codeql-analysis.yml)
+[![Go Report Card](https:// goreportcard.com/badge/github.com/golobby/orm)](https://goreportcard.com/report/github.com/golobby/orm)
+[![Coverage Status](https:// coveralls.io/repos/github/golobby/orm/badge.svg)](https://coveralls.io/github/golobby/orm?branch=master)
 
 # Golobby ORM
 
@@ -187,7 +187,7 @@ import "github.com/golobby/orm"
 
 func main() {
   orm.Initialize(orm.ConnectionConfig{
-    //Name:             "default", You should specify connection name if you have multiple connections
+    // Name:             "default", You should specify connection name if you have multiple connections
     Driver:           "sqlite3",
     ConnectionString: ":memory:",
   })
@@ -219,7 +219,7 @@ it will go for an update query; otherwise, it goes for the insert.
 err := orm.Save(&User{Name: "Amirreza"}) // INSERT INTO users (name) VALUES (?) , "Amirreza"
 ```
 ```go
-//this will update entity with id = 1
+// this will update entity with id = 1
 orm.Save(&User{ID: 1, Name: "Amirreza2"}) // UPDATE users SET name=? WHERE id=?, "Amirreza2", 1
 ```
 Also, you can do custom update queries using query builder or raw SQL again as well.
@@ -413,4 +413,4 @@ Same as Select and Update.
 Same as Select and Update.
 ## License
 
-GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).
+GoLobby ORM is released under the [MIT License](http:// opensource.org/licenses/mit-license.php).

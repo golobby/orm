@@ -28,7 +28,7 @@ func Schematic() {
 }
 
 type Config struct {
-	//LogLevel
+	// LogLevel
 	LogLevel LogLevel
 }
 
@@ -54,9 +54,9 @@ type ConnectionConfig struct {
 	Entities []Entity
 }
 
-//Initialize gets list of ConnectionConfig and builds up ORM for you.
+// Initialize gets list of ConnectionConfig and builds up ORM for you.
 func Initialize(ormConfig Config, configs ...ConnectionConfig) error {
-	//configure logger
+	// configure logger
 	var err error
 	if ormConfig.LogLevel == 0 {
 		ormConfig.LogLevel = LogLevelDev
@@ -121,12 +121,12 @@ func initialize(config ConnectionConfig) (*connection, error) {
 	return s, nil
 }
 
-//Entity defines the interface that each of your structs that
-//you want to use as database entities should have,
-//it's a simple one and its ConfigureEntity.
+// Entity defines the interface that each of your structs that
+// you want to use as database entities should have,
+// it's a simple one and its ConfigureEntity.
 type Entity interface {
-	//ConfigureEntity should be defined for all of your database entities
-	//and it can define Table, Connection and also relations of your Entity.
+	// ConfigureEntity should be defined for all of your database entities
+	// and it can define Table, Connection and also relations of your Entity.
 	ConfigureEntity(e *EntityConfigurator)
 }
 
@@ -283,9 +283,9 @@ func bind[T Entity](output interface{}, q string, args []interface{}) error {
 	return newBinder[T](outputMD).bind(rows, output)
 }
 
-//HasManyConfig contains all information we need for querying HasMany relationships.
-//We can infer both fields if you have them in standard way but you
-//can specify them if you want custom ones.
+// HasManyConfig contains all information we need for querying HasMany relationships.
+// We can infer both fields if you have them in standard way but you
+// can specify them if you want custom ones.
 type HasManyConfig struct {
 	// PropertyTable is table of the property of HasMany relationship,
 	// consider `Comment` in Post and Comment relationship,
@@ -320,8 +320,8 @@ func HasMany[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 		Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
-//HasOneConfig contains all information we need for a HasOne relationship,
-//it's similar to HasManyConfig.
+// HasOneConfig contains all information we need for a HasOne relationship,
+// it's similar to HasManyConfig.
 type HasOneConfig struct {
 	// PropertyTable is table of the property of HasOne relationship,
 	// consider `HeaderPicture` in Post and HeaderPicture relationship,
@@ -347,7 +347,7 @@ func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 		q.err = fmt.Errorf("wrong config passed for HasOne")
 	}
 
-	//settings default config Values
+	// settings default config Values
 	return q.
 		SetDialect(property.getDialect()).
 		Table(c.PropertyTable).
@@ -355,28 +355,28 @@ func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
 		Where(c.PropertyForeignKey, genericGetPKValue(owner))
 }
 
-//BelongsToConfig contains all information we need for a BelongsTo relationship
-//BelongsTo is a relationship between a Comment and it's Post,
-//A Comment BelongsTo Post.
+// BelongsToConfig contains all information we need for a BelongsTo relationship
+// BelongsTo is a relationship between a Comment and it's Post,
+// A Comment BelongsTo Post.
 type BelongsToConfig struct {
-	//OwnerTable is the table that contains owner of a BelongsTo
-	//relationship.
+	// OwnerTable is the table that contains owner of a BelongsTo
+	// relationship.
 	OwnerTable string
-	//LocalForeignKey is name of the field that links property
-	//to its owner in BelongsTo relation. for example when
-	//a Comment BelongsTo Post, LocalForeignKey is
-	//post_id of Comment.
+	// LocalForeignKey is name of the field that links property
+	// to its owner in BelongsTo relation. for example when
+	// a Comment BelongsTo Post, LocalForeignKey is
+	// post_id of Comment.
 	LocalForeignKey string
-	//ForeignColumnName is name of the field that LocalForeignKey
-	//field value will point to it, for example when
-	//a Comment BelongsTo Post, ForeignColumnName is
-	//id of Post.
+	// ForeignColumnName is name of the field that LocalForeignKey
+	// field value will point to it, for example when
+	// a Comment BelongsTo Post, ForeignColumnName is
+	// id of Post.
 	ForeignColumnName string
 }
 
-//BelongsTo configures a QueryBuilder for a BelongsTo relationship between
-//OWNER type parameter and property argument, so
-//property BelongsTo OWNER.
+// BelongsTo configures a QueryBuilder for a BelongsTo relationship between
+// OWNER type parameter and property argument, so
+// property BelongsTo OWNER.
 func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	q := NewQueryBuilder[OWNER]()
 	owner := getSchemaFor(*new(OWNER))
@@ -401,40 +401,40 @@ func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 
 }
 
-//BelongsToManyConfig contains information that we
-//need for creating many to many queries.
+// BelongsToManyConfig contains information that we
+// need for creating many to many queries.
 type BelongsToManyConfig struct {
-	//IntermediateTable is the name of the middle table
-	//in a BelongsToMany (Many to Many) relationship.
-	//for example when we have Post BelongsToMany
-	//Category, this table will be post_categories
-	//table, remember that this field cannot be
-	//inferred.
+	// IntermediateTable is the name of the middle table
+	// in a BelongsToMany (Many to Many) relationship.
+	// for example when we have Post BelongsToMany
+	// Category, this table will be post_categories
+	// table, remember that this field cannot be
+	// inferred.
 	IntermediateTable string
-	//IntermediatePropertyID is the name of the field name
-	//of property foreign key in intermediate table,
-	//for example when we have Post BelongsToMany
-	//Category, in post_categories table, it would
-	//be post_id.
+	// IntermediatePropertyID is the name of the field name
+	// of property foreign key in intermediate table,
+	// for example when we have Post BelongsToMany
+	// Category, in post_categories table, it would
+	// be post_id.
 	IntermediatePropertyID string
-	//IntermediateOwnerID is the name of the field name
-	//of property foreign key in intermediate table,
-	//for example when we have Post BelongsToMany
-	//Category, in post_categories table, it would
-	//be category_id.
+	// IntermediateOwnerID is the name of the field name
+	// of property foreign key in intermediate table,
+	// for example when we have Post BelongsToMany
+	// Category, in post_categories table, it would
+	// be category_id.
 	IntermediateOwnerID string
-	//Table name of the owner in BelongsToMany relation,
-	//for example in Post BelongsToMany Category
-	//Owner table is name of Category table
-	//for example `categories`.
+	// Table name of the owner in BelongsToMany relation,
+	// for example in Post BelongsToMany Category
+	// Owner table is name of Category table
+	// for example `categories`.
 	OwnerTable string
-	//OwnerLookupColumn is name of the field in the owner
-	//table that is used in query, for example in Post BelongsToMany Category
-	//Owner lookup field would be Category primary key which is id.
+	// OwnerLookupColumn is name of the field in the owner
+	// table that is used in query, for example in Post BelongsToMany Category
+	// Owner lookup field would be Category primary key which is id.
 	OwnerLookupColumn string
 }
 
-//BelongsToMany configures a QueryBuilder for a BelongsToMany relationship
+// BelongsToMany configures a QueryBuilder for a BelongsToMany relationship
 func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 	q := NewQueryBuilder[OWNER]()
 	out := new(OWNER)
@@ -450,7 +450,7 @@ func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 			c.IntermediateTable, c.IntermediatePropertyID), genericGetPKValue(property)))
 }
 
-//Add adds `items` to `to` using relations defined between items and to in ConfigureEntity method of `to`.
+// Add adds `items` to `to` using relations defined between items and to in ConfigureEntity method of `to`.
 func Add(to Entity, items ...Entity) error {
 	if len(items) == 0 {
 		return nil
@@ -544,7 +544,7 @@ func addBelongsToMany(to Entity, items ...Entity) error {
 	return nil
 }
 
-//Query creates a new QueryBuilder for given type parameter, sets dialect and table as well.
+// Query creates a new QueryBuilder for given type parameter, sets dialect and table as well.
 func Query[E Entity]() *QueryBuilder[E] {
 	q := NewQueryBuilder[E]()
 	s := getSchemaFor(*new(E))
@@ -552,7 +552,7 @@ func Query[E Entity]() *QueryBuilder[E] {
 	return q
 }
 
-//ExecRaw executes given query string and arguments on given type parameter database connection.
+// ExecRaw executes given query string and arguments on given type parameter database connection.
 func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
 	e := new(E)
 
@@ -574,7 +574,7 @@ func ExecRaw[E Entity](q string, args ...interface{}) (int64, int64, error) {
 	return id, affected, nil
 }
 
-//QueryRaw queries given query string and arguments on given type parameter database connection.
+// QueryRaw queries given query string and arguments on given type parameter database connection.
 func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 	o := new(OUTPUT)
 	rows, err := getSchemaFor(*o).getSQLDB().Query(q, args...)
