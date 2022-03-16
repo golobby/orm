@@ -93,9 +93,9 @@ func (c Category) Posts() ([]Post, error) {
 
 func setup(t *testing.T) {
 	err := orm.SetupConnection(orm.ConnectionConfig{
-		Driver:           "sqlite3",
-		ConnectionString: ":memory:",
-		Entities:         []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+		Driver:   "sqlite3",
+		DSN:      ":memory:",
+		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 	})
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
 	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)

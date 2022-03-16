@@ -39,10 +39,10 @@ type ConnectionConfig struct {
 	Name string
 	// Which driver to be used for your connection, you can name [mysql, sqlite3, postgres]
 	Driver string
-	// Which connection string to be passed as second argument to sql.Open(driver, connectionString)
-	ConnectionString string
+	// Which connection string to be passed as second argument to sql.Open(driver, DSN)
+	DSN string
 	// If you already have an active database connection configured pass it in this value and
-	// do not pass Driver and ConnectionString fields.
+	// do not pass Driver and DSN fields.
 	DB *sql.DB
 	// Which dialect of sql to generate queries for, you don't need it most of the times when you are using
 	// traditional databases such as mysql, sqlite3, postgres.
@@ -57,6 +57,7 @@ type ConnectionConfig struct {
 // SetupConnection declares a new connection for ORM.
 func SetupConnection(conf ConnectionConfig) error {
 	// configure logger
+	// TODO: remove logger
 	var err error
 	globalLogger, err = newZapLogger(LogLevelDev)
 	if err != nil {
@@ -75,7 +76,7 @@ func SetupConnection(conf ConnectionConfig) error {
 		if err != nil {
 			return err
 		}
-		db, err = getDB(conf.Driver, conf.ConnectionString)
+		db, err = sql.Open(conf.Driver, conf.DSN)
 		if err != nil {
 			return err
 		}
@@ -122,10 +123,6 @@ type Entity interface {
 	// ConfigureEntity should be defined for all of your database entities
 	// and it can define Table, Connection and also relations of your Entity.
 	ConfigureEntity(e *EntityConfigurator)
-}
-
-func getDB(driver string, connectionString string) (*sql.DB, error) {
-	return sql.Open(driver, connectionString)
 }
 
 func getDialect(driver string) (*Dialect, error) {
@@ -531,11 +528,6 @@ func addProperty(to Entity, items ...Entity) error {
 
 	return err
 
-}
-
-// addBelongsToMany(Post, Category)
-func addBelongsToMany(to Entity, items ...Entity) error {
-	return nil
 }
 
 // Query creates a new QueryBuilder for given type parameter, sets dialect and table as well.

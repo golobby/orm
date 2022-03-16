@@ -8,8 +8,8 @@ import (
 
 func setup(t *testing.T) {
 	err := SetupConnection(ConnectionConfig{
-		Driver:           "sqlite3",
-		ConnectionString: ":memory:",
+		Driver: "sqlite3",
+		DSN:    ":memory:",
 	})
 	// orm.Schematic()
 	_, err = GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
