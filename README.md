@@ -132,7 +132,7 @@ func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 ```
 As you see, our user entity is nothing else than a simple struct and two methods.
-Entities in GolobbyORM are implementations of `Entity` interface, which defines two methods:
+Entities in GoLobby ORM are implementations of `Entity` interface, which defines two methods:
 - ConfigureEntity: configures table, fields, and also relations to other entities.
 #### Conventions
 ##### Timestamps
@@ -161,7 +161,7 @@ type User struct {
 ```
 You can use the `orm` struct tag, and there is a key for each timestamp that you can use on any time-compatible struct field.
 ##### Column names
-GolobbyORM for each struct field(except slice, arrays, maps, and other nested structs) assumes a respective column named using snake case syntax.
+GoLobby ORM for each struct field(except slice, arrays, maps, and other nested structs) assumes a respective column named using snake case syntax.
 If you want a custom column name, you should specify it in the entity struct.
 ```go
 package main
@@ -170,7 +170,7 @@ type User struct {
 }
 ```
 ##### Primary Key
-GolobbyORM assumes that each entity has a primary key named `id`; if you want a custom primary key called, you need to specify it in entity struct.
+GoLobby ORM assumes that each entity has a primary key named `id`; if you want a custom primary key called, you need to specify it in entity struct.
 ```go
 package main
 type User struct {
@@ -179,7 +179,7 @@ type User struct {
 ```
 
 ### Initializing ORM
-After creating our entities, we need to initialize GolobbyORM.
+After creating our entities, we need to initialize GoLobby ORM.
 ```go
 package main
 
@@ -195,7 +195,7 @@ func main() {
 ```
 After this step, we can start using ORM.
 ### Fetching an entity from a database
-GolobbyORM makes it trivial to fetch entities from a database using its primary key.
+GoLobby ORM makes it trivial to fetch entities from a database using its primary key.
 ```go
 user, err := orm.Find[User](1)
 ```
@@ -206,13 +206,13 @@ You can also use custom queries to get entities from the database.
 user, err := orm.Query[User]().Where("id", 1).First()
 user, err := orm.Query[User]().WherePK(1).First()
 ```
-GolobbyORM contains a powerful query builder, which you can use to build `Select`, `Update`, and `Delete` queries, but if you want to write a raw SQL query, you can.
+GoLobby ORM contains a powerful query builder, which you can use to build `Select`, `Update`, and `Delete` queries, but if you want to write a raw SQL query, you can.
 ```go
 users, err := orm.QueryRaw[User](`SELECT * FROM users`)
 ```
 
 ### Saving entities or Insert/Update
-GolobbyORM makes it easy to persist an `Entity` to the database using `Save` method, it's an UPSERT method, if the primary key field is not zero inside the entity
+GoLobby ORM makes it easy to persist an `Entity` to the database using `Save` method, it's an UPSERT method, if the primary key field is not zero inside the entity
 it will go for an update query; otherwise, it goes for the insert.
 ```go
 // this will insert entity into the table
@@ -249,7 +249,7 @@ _, affected, err := orm.Query[Post]().Where("id", 1).Delete()
 _, affected, err := orm.ExecRaw[Post](`DELETE FROM posts WHERE id=?`, 1)
 ```
 ### Relationships
-GolobbyORM makes it easy to have entities that have relationships with each other. Configuring relations is using `ConfigureEntity` method, as you will see.
+GoLobby ORM makes it easy to have entities that have relationships with each other. Configuring relations is using `ConfigureEntity` method, as you will see.
 #### HasMany
 ```go
 type Post struct {}
@@ -258,12 +258,12 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
     e.Table("posts").HasMany(&Comment{}, orm.HasManyConfig{})
 }
 ```
-As you can see, we are defining a `Post` entity that has a `HasMany` relation with `Comment`. You can configure how GolobbyORM queries `HasMany` relation with `orm.HasManyConfig` object; by default, it will infer all fields for you.
+As you can see, we are defining a `Post` entity that has a `HasMany` relation with `Comment`. You can configure how GoLobby ORM queries `HasMany` relation with `orm.HasManyConfig` object; by default, it will infer all fields for you.
 Now you can use this relationship anywhere in your code.
 ```go
 comments, err := orm.HasMany[Comment](post).All()
 ```
-`HasMany` and other related functions in GolobbyORM return `QueryBuilder`, and you can use them like other query builders and create even more
+`HasMany` and other related functions in GoLobby ORM return `QueryBuilder`, and you can use them like other query builders and create even more
 complex queries for relationships. for example, you can start a query to get all comments of a post made today.
 ```go
 todayComments, err := orm.HasMany[Comment](post).Where("created_at", "CURDATE()").All()
@@ -277,7 +277,7 @@ func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
     e.Table("posts").HasOne(&HeaderPicture{}, orm.HasOneConfig{})
 }
 ```
-As you can see, we are defining a `Post` entity that has a `HasOne` relation with `HeaderPicture`. You can configure how GolobbyORM queries `HasOne` relation with `orm.HasOneConfig` object; by default, it will infer all fields for you.
+As you can see, we are defining a `Post` entity that has a `HasOne` relation with `HeaderPicture`. You can configure how GoLobby ORM queries `HasOne` relation with `orm.HasOneConfig` object; by default, it will infer all fields for you.
 Now you can use this relationship anywhere in your code.
 ```go
 picture, err := orm.HasOne[HeaderPicture](post)
@@ -291,7 +291,7 @@ func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
     e.Table("comments").BelongsTo(&Post{}, orm.BelongsToConfig{})
 }
 ```
-As you can see, we are defining a `Comment` entity that has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GolobbyORM queries `BelongsTo` relation with `orm.BelongsToConfig` object; by default, it will infer all fields for you.
+As you can see, we are defining a `Comment` entity that has a `BelongsTo` relation with `Post` that we saw earlier. You can configure how GoLobby ORM queries `BelongsTo` relation with `orm.BelongsToConfig` object; by default, it will infer all fields for you.
 Now you can use this relationship anywhere in your code.
 ```go
 post, err := orm.BelongsTo[Post](comment).First()
@@ -310,7 +310,7 @@ func(c Category) ConfigureEntity(r *orm.EntityConfigurator) {
 }
 
 ```
-We are defining a `Post` entity and a `Category` entity with a `many2many` relationship; as you can see, we must configure the IntermediateTable name, which GolobbyORM cannot infer.
+We are defining a `Post` entity and a `Category` entity with a `many2many` relationship; as you can see, we must configure the IntermediateTable name, which GoLobby ORM cannot infer.
 Now you can use this relationship anywhere in your code.
 ```go
 categories, err := orm.BelongsToMany[Category](post).All()
@@ -322,7 +322,7 @@ orm.Add(post, comments...) // inserts all comments passed in and also sets all p
 ```
 
 ### Query Builder
-GolobbyORM contains a powerful query builder to help you build complex queries with ease. QueryBuilder is accessible from `orm.Query[Entity]` method
+GoLobby ORM contains a powerful query builder to help you build complex queries with ease. QueryBuilder is accessible from `orm.Query[Entity]` method
 which will create a new query builder for you with given type parameter.
 Query builder can build `SELECT`,`UPDATE`,`DELETE` queries for you.
 #### Select

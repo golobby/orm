@@ -48,7 +48,7 @@ type ConnectionConfig struct {
 	// traditional databases such as mysql, sqlite3, postgres.
 	Dialect *Dialect
 	// List of entities that you want to use for this connection, remember that you can ignore this field
-	// and GolobbyORM will build our metadata cache incrementally but you will lose schematic
+	// and GoLobby ORM will build our metadata cache incrementally but you will lose schematic
 	// information that we can provide you and also potentialy validations that we
 	// can do with the database
 	Entities []Entity

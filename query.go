@@ -12,7 +12,7 @@ const (
 	queryTypeDelete
 )
 
-// QueryBuilder is our query builder, almost all methods and functions in GolobbyORM
+// QueryBuilder is our query builder, almost all methods and functions in GoLobby ORM
 // create or configure instance of QueryBuilder.
 type QueryBuilder[E Entity] struct {
 	typ int
