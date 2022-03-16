@@ -125,9 +125,8 @@ type User struct {
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
-    e.
-		Table("users").
-		Connection("default") // You can omit connection name if you only have one.
+    e.Table("users").
+      Connection("default") // You can omit connection name if you only have one.
 	
 }
 ```
@@ -174,6 +173,7 @@ type User struct {
 GoLobby ORM assumes that each entity has a primary key named `id`; if you want a custom primary key called, you need to specify it in entity struct.
 ```go
 package main
+
 type User struct {
 	PK int64 `orm:"pk=true"`
 }
@@ -233,8 +233,7 @@ res, err := orm.Query[User]().Where("id", 1).Update(orm.KV{"name": "amirreza2"})
 ```go
 _, affected, err := orm.ExecRaw[User](`UPDATE users SET name=? WHERE id=?`, "amirreza", 1)
 ```
-```
-### Deleting entities
+### Deleting entities  
 It is also easy to delete entities from a database.
 ```go
 err := orm.Delete(user)
