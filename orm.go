@@ -37,10 +37,6 @@ type ConnectionConfig struct {
 	// just remember that having a connection name is mandatory if
 	// you have multiple connections
 	Name string
-	// Which driver to be used for your connection, you can name [mysql, sqlite3, postgres]
-	Driver string
-	// Which connection string to be passed as second argument to sql.Open(driver, DSN)
-	DSN string
 	// If you already have an active database connection configured pass it in this value and
 	// do not pass Driver and DSN fields.
 	DB *sql.DB
@@ -63,27 +59,6 @@ func SetupConnection(conf ConnectionConfig) error {
 	if err != nil {
 		return err
 	}
-
-	var dialect *Dialect
-	var db *sql.DB
-	if conf.DB != nil && conf.Dialect != nil {
-		globalLogger.Infof("Configuring an open connection")
-		dialect = conf.Dialect
-		db = conf.DB
-	} else {
-		globalLogger.Infof("Opening and configuring a connection using %s", conf.Driver)
-		dialect, err = getDialect(conf.Driver)
-		if err != nil {
-			return err
-		}
-		db, err = sql.Open(conf.Driver, conf.DSN)
-		if err != nil {
-			return err
-		}
-	}
-	conf.DB = db
-	conf.Dialect = dialect
-
 	_, err = initialize(conf)
 	if err != nil {
 		return err
@@ -123,19 +98,6 @@ type Entity interface {
 	// ConfigureEntity should be defined for all of your database entities
 	// and it can define Table, Connection and also relations of your Entity.
 	ConfigureEntity(e *EntityConfigurator)
-}
-
-func getDialect(driver string) (*Dialect, error) {
-	switch driver {
-	case "mysql":
-		return Dialects.MySQL, nil
-	case "sqlite", "sqlite3":
-		return Dialects.SQLite3, nil
-	case "postgres":
-		return Dialects.PostgreSQL, nil
-	default:
-		return nil, fmt.Errorf("err no dialect matched with driver")
-	}
 }
 
 // Insert given entities into database based on their ConfigureEntity

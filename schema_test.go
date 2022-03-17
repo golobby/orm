@@ -1,15 +1,18 @@
 package orm
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func setup(t *testing.T) {
-	err := SetupConnection(ConnectionConfig{
-		Driver: "sqlite3",
-		DSN:    ":memory:",
+	db, err := sql.Open("sqlite3", ":memory:")
+	err = SetupConnection(ConnectionConfig{
+		Name:    "default",
+		DB:      db,
+		Dialect: Dialects.SQLite3,
 	})
 	// orm.Schematic()
 	_, err = GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
