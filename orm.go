@@ -86,6 +86,13 @@ func Setup(configs ...ConnectionConfig) error {
 			}
 		}
 
+		if conn.ValidateTablesSchemas {
+			err = conn.validateTablesSchemas()
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 
 	return nil
