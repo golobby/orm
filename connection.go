@@ -39,6 +39,15 @@ func (c *connection) validateAllTablesArePresent() error {
 	return nil
 }
 
+func (c *connection) validateTablesSchemas() error {
+	// check for entity tables: there should not be any struct field that does not have a coresponding column
+
+	// check for relation tables: for HasMany,HasOne relations check if OWNER pk column is in PROPERTY,
+	// for BelongsToMany check intermediate table has 2 pk for two entities
+
+	return nil
+}
+
 func (c *connection) Schematic() {
 	fmt.Printf("SQL Dialect: %s\n", c.Dialect.DriverName)
 	for t, schema := range c.Schemas {
