@@ -85,10 +85,10 @@ func setupConnection(config ConnectionConfig) error {
 	}
 
 	s := &connection{
-		Name:       config.Name,
-		Connection: config.DB,
-		Schemas:    schemas,
-		Dialect:    config.Dialect,
+		Name:    config.Name,
+		DB:      config.DB,
+		Dialect: config.Dialect,
+		Schemas: schemas,
 	}
 
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s
@@ -103,12 +103,12 @@ func setupConnection(config ConnectionConfig) error {
 // it's a simple one and its ConfigureEntity.
 type Entity interface {
 	// ConfigureEntity should be defined for all of your database entities
-	// and it can define Table, Connection and also relations of your Entity.
+	// and it can define Table, DB and also relations of your Entity.
 	ConfigureEntity(e *EntityConfigurator)
 }
 
 // Insert given entities into database based on their ConfigureEntity
-// we can find table and also Connection name.
+// we can find table and also DB name.
 func Insert(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
@@ -490,7 +490,7 @@ func addProperty(to Entity, items ...Entity) error {
 
 	q, args := i.ToSql()
 
-	_, err := getConnectionFor(items[0]).Connection.Exec(q, args...)
+	_, err := getConnectionFor(items[0]).DB.Exec(q, args...)
 	if err != nil {
 		return err
 	}

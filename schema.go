@@ -12,7 +12,7 @@ func getConnectionFor(e Entity) *connection {
 	e.ConfigureEntity(configurator)
 
 	if len(globalConnections) > 1 && (configurator.connection == "" || configurator.table == "") {
-		panic("need table and Connection name when having more than 1 Connection registered")
+		panic("need table and DB name when having more than 1 DB registered")
 	}
 	if len(globalConnections) == 1 {
 		for _, db := range globalConnections {
@@ -278,12 +278,12 @@ func (s *schema) getTable() string {
 }
 
 func (s *schema) getSQLDB() *sql.DB {
-	return s.getConnection().Connection
+	return s.getConnection().DB
 }
 
 func (s *schema) getConnection() *connection {
 	if len(globalConnections) > 1 && (s.Connection == "" || s.Table == "") {
-		panic("need table and Connection name when having more than 1 Connection registered")
+		panic("need table and DB name when having more than 1 DB registered")
 	}
 	if len(globalConnections) == 1 {
 		for _, db := range globalConnections {

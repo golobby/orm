@@ -99,12 +99,12 @@ func setup(t *testing.T) {
 		Dialect:  orm.Dialects.SQLite3,
 		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 	})
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
-	_, err = orm.GetConnection("default").Connection.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 	assert.NoError(t, err)
 }
 
@@ -132,7 +132,7 @@ func TestInsert(t *testing.T) {
 	assert.Equal(t, int64(1), post.ID)
 	var p Post
 	assert.NoError(t,
-		orm.GetConnection("default").Connection.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.BodyText))
+		orm.GetConnection("default").DB.QueryRow(`SELECT id, body FROM posts where id = ?`, 1).Scan(&p.ID, &p.BodyText))
 
 	assert.Equal(t, "my body for insert", p.BodyText)
 }
@@ -153,7 +153,7 @@ func TestInsertAll(t *testing.T) {
 	err := orm.Insert(post1, post2, post3)
 	assert.NoError(t, err)
 	var counter int
-	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))
+	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))
 	assert.Equal(t, 3, counter)
 
 }
@@ -171,7 +171,7 @@ func TestUpdateORM(t *testing.T) {
 
 	var body string
 	assert.NoError(t,
-		orm.GetConnection("default").Connection.QueryRow(`SELECT body FROM posts where id = ?`, post.ID).Scan(&body))
+		orm.GetConnection("default").DB.QueryRow(`SELECT body FROM posts where id = ?`, post.ID).Scan(&body))
 
 	assert.Equal(t, "my body for insert update text", body)
 }
@@ -189,7 +189,7 @@ func TestDeleteORM(t *testing.T) {
 
 	var count int
 	assert.NoError(t,
-		orm.GetConnection("default").Connection.QueryRow(`SELECT count(id) FROM posts where id = ?`, post.ID).Scan(&count))
+		orm.GetConnection("default").DB.QueryRow(`SELECT count(id) FROM posts where id = ?`, post.ID).Scan(&count))
 
 	assert.Equal(t, 0, count)
 }
@@ -213,7 +213,7 @@ func TestAdd(t *testing.T) {
 	// orm.Query(qm.WhereBetween())
 	assert.NoError(t, err)
 	var count int
-	assert.NoError(t, orm.GetConnection("default").Connection.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))
+	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT COUNT(id) FROM comments`).Scan(&count))
 	assert.Equal(t, 2, count)
 
 	comment, err := orm.Find[Comment](1)
@@ -364,7 +364,7 @@ func TestAddProperty(t *testing.T) {
 
 		var comment Comment
 		assert.NoError(t, orm.GetConnection("default").
-			Connection.
+			DB.
 			QueryRow(`SELECT id, post_id, body FROM comments WHERE post_id=?`, post.ID).
 			Scan(&comment.ID, &comment.PostID, &comment.Body))
 
