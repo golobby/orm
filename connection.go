@@ -8,21 +8,15 @@ import (
 )
 
 type connection struct {
-	Name     string
-	Dialect  *Dialect
-	DB       *sql.DB
-	Schemas  map[string]*schema
-	DBSchema map[string][]columnSpec
+	Name                    string
+	Dialect                 *Dialect
+	DB                      *sql.DB
+	Schemas                 map[string]*schema
+	DBSchema                map[string][]columnSpec
+	ValidateTablesExistence bool
+	ValidateTablesSchemas   bool
 }
 
-func (c *connection) validateDatabaseSchema() error {
-	err := c.validateAllTablesArePresent()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 func (c *connection) inferedTables() []string {
 	var tables []string
 	for t, s := range c.Schemas {
