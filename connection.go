@@ -8,10 +8,15 @@ import (
 )
 
 type connection struct {
-	Name    string
-	Dialect *Dialect
-	DB      *sql.DB
-	Schemas map[string]*schema
+	Name     string
+	Dialect  *Dialect
+	DB       *sql.DB
+	Schemas  map[string]*schema
+	DBSchema map[string][]columnSpec
+}
+
+func (c *connection) validateDatabaseSchema() error {
+	return nil
 }
 
 func (c *connection) Schematic() {

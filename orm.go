@@ -68,9 +68,15 @@ func SetupConnections(configs ...ConnectionConfig) error {
 			if err != nil {
 				return err
 			}
+			conn.DBSchema[table] = spec
 			globalLogger.Infof("%s: %+v", table, spec)
 		}
 		globalLogger.Infof("Database tables are: %v", tables)
+
+		err = conn.validateDatabaseSchema()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
