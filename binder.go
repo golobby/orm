@@ -82,7 +82,7 @@ func (b *binder[T]) bind(rows *sql.Rows, obj interface{}) error {
 		t = t.Elem()
 		for rows.Next() {
 			var rowValue reflect.Value
-			// Since reflect.SetupConnection returns a pointer to the type, we need to unwrap it to get actual
+			// Since reflect.SetupConnections returns a pointer to the type, we need to unwrap it to get actual
 			rowValue = reflect.New(t).Elem()
 			// till we reach a not pointer type continue newing the underlying type.
 			for rowValue.IsZero() && rowValue.Type().Kind() == reflect.Ptr {

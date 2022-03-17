@@ -93,7 +93,7 @@ func (c Category) Posts() ([]Post, error) {
 
 func setup(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
-	err = orm.SetupConnection(orm.ConnectionConfig{
+	err = orm.SetupConnections(orm.ConnectionConfig{
 		Name:     "default",
 		DB:       db,
 		Dialect:  orm.Dialects.SQLite3,
