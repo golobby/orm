@@ -59,12 +59,12 @@ func SetupConnections(configs ...ConnectionConfig) error {
 	}
 	for _, conn := range globalConnections {
 		globalLogger.Infof("For database connection: %s", conn.Name)
-		tables, err := getListOfTables(conn.Dialect.QueryListTables)(conn.Connection)
+		tables, err := getListOfTables(conn.Dialect.QueryListTables)(conn.DB)
 		if err != nil {
 			return err
 		}
 		for _, table := range tables {
-			spec, err := getTableSchema(conn.Dialect.QueryTableSchema)(conn.Connection, table)
+			spec, err := getTableSchema(conn.Dialect.QueryTableSchema)(conn.DB, table)
 			if err != nil {
 				return err
 			}
