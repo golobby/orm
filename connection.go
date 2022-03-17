@@ -12,7 +12,6 @@ type connection struct {
 	Dialect *Dialect
 	DB      *sql.DB
 	Schemas map[string]*schema
-	Logger  Logger
 }
 
 func (c *connection) Schematic() {
@@ -58,19 +57,13 @@ func GetConnection(name string) *connection {
 }
 
 func (c *connection) exec(q string, args ...any) (sql.Result, error) {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
 	return c.DB.Exec(q, args...)
 }
 
 func (c *connection) query(q string, args ...any) (*sql.Rows, error) {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
 	return c.DB.Query(q, args...)
 }
 
 func (c *connection) queryRow(q string, args ...any) *sql.Row {
-	globalLogger.Debugf(q)
-	globalLogger.Debugf("%v", args)
 	return c.DB.QueryRow(q, args...)
 }

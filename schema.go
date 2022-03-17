@@ -38,12 +38,13 @@ func getSchemaFor(e Entity) *schema {
 }
 
 type schema struct {
-	Connection string
-	Table      string
-	fields     []*field
-	relations  map[string]interface{}
-	setPK      func(o Entity, value interface{})
-	getPK      func(o Entity) interface{}
+	Connection        string
+	Table             string
+	fields            []*field
+	relations         map[string]interface{}
+	setPK             func(o Entity, value interface{})
+	getPK             func(o Entity) interface{}
+	columnConstraints []*FieldConfigurator
 }
 
 func (s *schema) getField(sf reflect.StructField) *field {
@@ -254,6 +255,7 @@ func schemaOfHeavyReflectionStuff(v Entity) *schema {
 		panic("you need to have table name for getting schema.")
 	}
 
+	schema.columnConstraints = userSchema.columnConstraints
 	if schema.Connection == "" {
 		schema.Connection = "default"
 	}

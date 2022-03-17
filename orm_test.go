@@ -71,7 +71,7 @@ func (c Comment) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 func (c *Comment) Post() (Post, error) {
-	return orm.BelongsTo[Post](c).One()
+	return orm.BelongsTo[Post](c).Get()
 }
 
 type Category struct {
@@ -292,7 +292,7 @@ func TestBelongsTo(t *testing.T) {
 	}
 	assert.NoError(t, orm.Save(comment))
 
-	post2, err := orm.BelongsTo[Post](comment).One()
+	post2, err := orm.BelongsTo[Post](comment).Get()
 	assert.NoError(t, err)
 
 	assert.Equal(t, post.BodyText, post2.BodyText)
@@ -312,7 +312,7 @@ func TestHasOne(t *testing.T) {
 	}
 	assert.NoError(t, orm.Save(headerPicture))
 
-	c1, err := orm.HasOne[HeaderPicture](post).One()
+	c1, err := orm.HasOne[HeaderPicture](post).Get()
 	assert.NoError(t, err)
 
 	assert.Equal(t, headerPicture.PostID, c1.PostID)
@@ -393,7 +393,7 @@ func TestQuery(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		// post, err := orm.Query[Post]().Where("id", 1).First()
-		post, err := orm.Query[Post]().WherePK(1).First()
+		post, err := orm.Query[Post]().WherePK(1).First().Get()
 		assert.NoError(t, err)
 		assert.EqualValues(t, "body 1", post.BodyText)
 		assert.EqualValues(t, 1, post.ID)
@@ -428,15 +428,22 @@ func TestQuery(t *testing.T) {
 		assert.Equal(t, "body jadid", post.BodyText)
 	})
 
-	t.Run("deleting a row using query interface", func(s *testing.T) {
+	t.Run("deleting a row using query interface", func(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
 		_, err := orm.Query[Post]().WherePK(1).Delete()
-		assert.NoError(s, err)
-		count, err := orm.Query[Post]().WherePK(1).Count()
-		assert.NoError(s, err)
-		assert.EqualValues(s, 0, count)
+		assert.NoError(t, err)
+		count, err := orm.Query[Post]().WherePK(1).Count().Get()
+		assert.NoError(t, err)
+		assert.EqualValues(t, 0, count)
+	})
+
+	t.Run("count", func(t *testing.T) {
+		setup(t)
+		count, err := orm.Query[Post]().WherePK(1).Count().Get()
+		assert.NoError(t, err)
+		assert.EqualValues(t, 0, count)
 	})
 
 	t.Run("latest", func(t *testing.T) {
@@ -444,7 +451,7 @@ func TestQuery(t *testing.T) {
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 2"}))
 
-		post, err := orm.Query[Post]().Latest()
+		post, err := orm.Query[Post]().Latest().Get()
 		assert.NoError(t, err)
 
 		assert.EqualValues(t, "body 2", post.BodyText)

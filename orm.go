@@ -13,7 +13,6 @@ import (
 )
 
 var globalConnections = map[string]*connection{}
-var globalLogger Logger
 
 // Schematic prints all information ORM inferred from your entities in startup, remember to pass
 // your entities in Entities when you call SetupConnections if you want their data inferred
@@ -25,11 +24,6 @@ func Schematic() {
 		connObj.Schematic()
 		fmt.Println("-----------------------------------")
 	}
-}
-
-type Config struct {
-	// LogLevel
-	LogLevel LogLevel
 }
 
 type ConnectionConfig struct {
@@ -54,7 +48,6 @@ type ConnectionConfig struct {
 func SetupConnections(configs ...ConnectionConfig) error {
 	// configure logger
 	var err error
-	globalLogger, err = newZapLogger(LogLevelDev)
 	if err != nil {
 		return err
 	}
@@ -74,9 +67,6 @@ func setupConnection(config ConnectionConfig) error {
 		config.Name = "default"
 	}
 
-	globalLogger.Infof("Generating schema definitions for connection %s entities", config.Name)
-	globalLogger.Infof("Entities are: %v", entitiesAsList(config.Entities))
-
 	for _, entity := range config.Entities {
 		s := schemaOfHeavyReflectionStuff(entity)
 		var configurator EntityConfigurator
@@ -92,8 +82,6 @@ func setupConnection(config ConnectionConfig) error {
 	}
 
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s
-
-	globalLogger.Infof("%s registered successfully.", config.Name)
 
 	return nil
 }
@@ -113,7 +101,6 @@ func Insert(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
 	}
-	globalLogger.Debugf("Going to insert %d objects", len(objs))
 	s := getSchemaFor(objs[0])
 	cols := s.Columns(false)
 	var values [][]interface{}
@@ -166,10 +153,8 @@ func isZero(val interface{}) bool {
 // insert it.
 func Save(obj Entity) error {
 	if isZero(getSchemaFor(obj).getPK(obj)) {
-		globalLogger.Debugf("Given object has no primary key set, going to insert it.")
 		return Insert(obj)
 	} else {
-		globalLogger.Debugf("Given object has primary key set, going for update.")
 		return Update(obj)
 	}
 }
@@ -179,7 +164,7 @@ func Find[T Entity](id interface{}) (T, error) {
 	var q string
 	out := new(T)
 	md := getSchemaFor(*out)
-	q, args, err := NewQueryBuilder[T]().
+	q, args, err := NewQueryBuilder[T](md).
 		SetDialect(md.getDialect()).
 		Table(md.Table).
 		Select(md.Columns(true)...).
@@ -213,7 +198,7 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 // Update given Entity in database.
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
-	q, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
+	q, args, err := NewQueryBuilder[Entity](s).SetDialect(s.getDialect()).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
 
 	if err != nil {
 		return err
@@ -226,7 +211,7 @@ func Update(obj Entity) error {
 func Delete(obj Entity) error {
 	s := getSchemaFor(obj)
 	genericSet(obj, "deleted_at", sql.NullTime{Time: time.Now(), Valid: true})
-	query, args, err := NewQueryBuilder[Entity]().SetDialect(s.getDialect()).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
+	query, args, err := NewQueryBuilder[Entity](s).SetDialect(s.getDialect()).Table(s.Table).Where(s.pkName(), genericGetPKValue(obj)).SetDelete().ToSql()
 	if err != nil {
 		return err
 	}
@@ -240,7 +225,7 @@ func bind[T Entity](output interface{}, q string, args []interface{}) error {
 	if err != nil {
 		return err
 	}
-	return newBinder[T](outputMD).bind(rows, output)
+	return newBinder(outputMD).bind(rows, output)
 }
 
 // HasManyConfig contains all information we need for querying HasMany relationships.
@@ -264,8 +249,9 @@ type HasManyConfig struct {
 // HasMany[Comment](&Post{})
 // is for Post HasMany Comment relationship.
 func HasMany[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
-	q := NewQueryBuilder[PROPERTY]()
 	outSchema := getSchemaFor(*new(PROPERTY))
+
+	q := NewQueryBuilder[PROPERTY](outSchema)
 	// getting config from our cache
 	c, ok := getSchemaFor(owner).relations[outSchema.Table].(HasManyConfig)
 	if !ok {
@@ -300,8 +286,8 @@ type HasOneConfig struct {
 // HasOne[HeaderPicture](&Post{})
 // is for Post HasOne HeaderPicture relationship.
 func HasOne[PROPERTY Entity](owner Entity) *QueryBuilder[PROPERTY] {
-	q := NewQueryBuilder[PROPERTY]()
 	property := getSchemaFor(*new(PROPERTY))
+	q := NewQueryBuilder[PROPERTY](property)
 	c, ok := getSchemaFor(owner).relations[property.Table].(HasOneConfig)
 	if !ok {
 		q.err = fmt.Errorf("wrong config passed for HasOne")
@@ -338,8 +324,8 @@ type BelongsToConfig struct {
 // OWNER type parameter and property argument, so
 // property BelongsTo OWNER.
 func BelongsTo[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
-	q := NewQueryBuilder[OWNER]()
 	owner := getSchemaFor(*new(OWNER))
+	q := NewQueryBuilder[OWNER](owner)
 	c, ok := getSchemaFor(property).relations[owner.Table].(BelongsToConfig)
 	if !ok {
 		q.err = fmt.Errorf("wrong config passed for BelongsTo")
@@ -396,15 +382,16 @@ type BelongsToManyConfig struct {
 
 // BelongsToMany configures a QueryBuilder for a BelongsToMany relationship
 func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
-	q := NewQueryBuilder[OWNER]()
-	out := new(OWNER)
-	c, ok := getSchemaFor(property).relations[getSchemaFor(*out).Table].(BelongsToManyConfig)
+	out := *new(OWNER)
+	outSchema := getSchemaFor(out)
+	q := NewQueryBuilder[OWNER](outSchema)
+	c, ok := getSchemaFor(property).relations[outSchema.Table].(BelongsToManyConfig)
 	if !ok {
 		q.err = fmt.Errorf("wrong config passed for HasMany")
 	}
 	return q.
-		Select(getSchemaFor(*out).Columns(true)...).
-		Table(getSchemaFor(*out).Table).
+		Select(outSchema.Columns(true)...).
+		Table(outSchema.Table).
 		WhereIn(c.OwnerLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
 			c.IntermediateOwnerID,
 			c.IntermediateTable, c.IntermediatePropertyID), genericGetPKValue(property)))
@@ -501,8 +488,8 @@ func addProperty(to Entity, items ...Entity) error {
 
 // Query creates a new QueryBuilder for given type parameter, sets dialect and table as well.
 func Query[E Entity]() *QueryBuilder[E] {
-	q := NewQueryBuilder[E]()
 	s := getSchemaFor(*new(E))
+	q := NewQueryBuilder[E](s)
 	q.SetDialect(s.getDialect()).Table(s.Table)
 	return q
 }
@@ -537,7 +524,7 @@ func QueryRaw[OUTPUT Entity](q string, args ...interface{}) ([]OUTPUT, error) {
 		return nil, err
 	}
 	var output []OUTPUT
-	err = newBinder[OUTPUT](getSchemaFor(*o)).bind(rows, &output)
+	err = newBinder(getSchemaFor(*o)).bind(rows, &output)
 	if err != nil {
 		return nil, err
 	}

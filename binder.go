@@ -10,30 +10,32 @@ import (
 
 // makeNewPointersOf creates a map of [field name] -> pointer to fill it
 // recursively. it will go down until reaches a driver.Valuer implementation, it will stop there.
-func (b *binder[T]) makeNewPointersOf(v reflect.Value) map[string]interface{} {
+func (b *binder) makeNewPointersOf(v reflect.Value) interface{} {
 	m := map[string]interface{}{}
 	actualV := v
 	for actualV.Type().Kind() == reflect.Ptr {
 		actualV = actualV.Elem()
 	}
-	for i := 0; i < actualV.NumField(); i++ {
-		f := actualV.Field(i)
-		if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
-			f = reflect.NewAt(actualV.Type().Field(i).Type, unsafe.Pointer(actualV.Field(i).UnsafeAddr()))
-			fm := b.makeNewPointersOf(f)
-			for k, p := range fm {
-				m[k] = p
+	if actualV.Type().Kind() == reflect.Struct {
+		for i := 0; i < actualV.NumField(); i++ {
+			f := actualV.Field(i)
+			if (f.Type().Kind() == reflect.Struct || f.Type().Kind() == reflect.Ptr) && !f.Type().Implements(reflect.TypeOf((*driver.Valuer)(nil)).Elem()) {
+				f = reflect.NewAt(actualV.Type().Field(i).Type, unsafe.Pointer(actualV.Field(i).UnsafeAddr()))
+				fm := b.makeNewPointersOf(f).(map[string]interface{})
+				for k, p := range fm {
+					m[k] = p
+				}
+			} else {
+				var fm *field
+				fm = b.s.getField(actualV.Type().Field(i))
+				if fm == nil {
+					fm = fieldMetadata(actualV.Type().Field(i), b.s.columnConstraints)[0]
+				}
+				m[fm.Name] = reflect.NewAt(actualV.Field(i).Type(), unsafe.Pointer(actualV.Field(i).UnsafeAddr())).Interface()
 			}
-		} else {
-			var fm *field
-			fm = b.s.getField(actualV.Type().Field(i))
-			if fm == nil {
-				var ec EntityConfigurator
-				(*new(T)).ConfigureEntity(&ec)
-				fm = fieldMetadata(actualV.Type().Field(i), ec.columnConstraints)[0]
-			}
-			m[fm.Name] = reflect.NewAt(actualV.Field(i).Type(), unsafe.Pointer(actualV.Field(i).UnsafeAddr())).Interface()
 		}
+	} else {
+		return v.Addr().Interface()
 	}
 
 	return m
@@ -42,28 +44,33 @@ func (b *binder[T]) makeNewPointersOf(v reflect.Value) map[string]interface{} {
 // ptrsFor first allocates for all struct fields recursively until reaches a driver.Value impl
 // then it will put them in a map with their correct field name as key, then loops over cts
 // and for each one gets appropriate one from the map and adds it to pointer list.
-func (b *binder[T]) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
-	nameToPtr := b.makeNewPointersOf(v)
+func (b *binder) ptrsFor(v reflect.Value, cts []*sql.ColumnType) []interface{} {
+	ptrs := b.makeNewPointersOf(v)
 	var scanInto []interface{}
-	for _, ct := range cts {
-		if nameToPtr[ct.Name()] != nil {
-			scanInto = append(scanInto, nameToPtr[ct.Name()])
+	if reflect.TypeOf(ptrs).Kind() == reflect.Map {
+		nameToPtr := ptrs.(map[string]interface{})
+		for _, ct := range cts {
+			if nameToPtr[ct.Name()] != nil {
+				scanInto = append(scanInto, nameToPtr[ct.Name()])
+			}
 		}
+	} else {
+		scanInto = append(scanInto, ptrs)
 	}
 
 	return scanInto
 }
 
-type binder[T Entity] struct {
+type binder struct {
 	s *schema
 }
 
-func newBinder[T Entity](s *schema) *binder[T] {
-	return &binder[T]{s: s}
+func newBinder(s *schema) *binder {
+	return &binder{s: s}
 }
 
 // bind binds given rows to the given object at obj. obj should be a pointer
-func (b *binder[T]) bind(rows *sql.Rows, obj interface{}) error {
+func (b *binder) bind(rows *sql.Rows, obj interface{}) error {
 	cts, err := rows.ColumnTypes()
 	if err != nil {
 		return err
