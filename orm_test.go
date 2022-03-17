@@ -91,26 +91,30 @@ func (c Category) Posts() ([]Post, error) {
 // Entities is mandatory
 // Errors should be carried
 
-func setup(t *testing.T) {
+func setup() error {
 	db, err := sql.Open("sqlite3", ":memory:")
-	err = orm.SetupConnections(orm.ConnectionConfig{
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
+
+	return orm.SetupConnections(orm.ConnectionConfig{
 		Name:     "default",
 		DB:       db,
 		Dialect:  orm.Dialects.SQLite3,
 		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 	})
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
-	_, err = orm.GetConnection("default").DB.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
-	assert.NoError(t, err)
 }
 
 func TestFind(t *testing.T) {
-	setup(t)
-	err := orm.Insert(&Post{
+	err := setup()
+	assert.NoError(t, err)
+	err = orm.Insert(&Post{
 		BodyText: "my body for insert",
 	})
 
@@ -123,11 +127,12 @@ func TestFind(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
 	post := &Post{
 		BodyText: "my body for insert",
 	}
-	err := orm.Insert(post)
+	err = orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 	var p Post
@@ -137,8 +142,8 @@ func TestInsert(t *testing.T) {
 	assert.Equal(t, "my body for insert", p.BodyText)
 }
 func TestInsertAll(t *testing.T) {
-	setup(t)
-
+	err := setup()
+	assert.NoError(t, err)
 	post1 := &Post{
 		BodyText: "Body1",
 	}
@@ -150,7 +155,7 @@ func TestInsertAll(t *testing.T) {
 		BodyText: "Body3",
 	}
 
-	err := orm.Insert(post1, post2, post3)
+	err = orm.Insert(post1, post2, post3)
 	assert.NoError(t, err)
 	var counter int
 	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))
@@ -158,11 +163,12 @@ func TestInsertAll(t *testing.T) {
 
 }
 func TestUpdateORM(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
 	post := &Post{
 		BodyText: "my body for insert",
 	}
-	err := orm.Insert(post)
+	err = orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
@@ -177,11 +183,12 @@ func TestUpdateORM(t *testing.T) {
 }
 
 func TestDeleteORM(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
 	post := &Post{
 		BodyText: "my body for insert",
 	}
-	err := orm.Insert(post)
+	err = orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
@@ -194,11 +201,12 @@ func TestDeleteORM(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 func TestAdd(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
 	post := &Post{
 		BodyText: "my body for insert",
 	}
-	err := orm.Insert(post)
+	err = orm.Insert(post)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), post.ID)
 
@@ -225,7 +233,8 @@ func TestAdd(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	t.Run("save should insert", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
 		post := &Post{
 			BodyText: "1",
 		}
@@ -234,7 +243,9 @@ func TestSave(t *testing.T) {
 	})
 
 	t.Run("save should update", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		post := &Post{
 			BodyText: "1",
 		}
@@ -253,7 +264,9 @@ func TestSave(t *testing.T) {
 }
 
 func TestHasMany(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
+
 	post := &Post{
 		BodyText: "first post",
 	}
@@ -279,7 +292,9 @@ func TestHasMany(t *testing.T) {
 }
 
 func TestBelongsTo(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
+
 	post := &Post{
 		BodyText: "first post",
 	}
@@ -299,7 +314,9 @@ func TestBelongsTo(t *testing.T) {
 }
 
 func TestHasOne(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
+
 	post := &Post{
 		BodyText: "first post",
 	}
@@ -319,7 +336,8 @@ func TestHasOne(t *testing.T) {
 }
 
 func TestBelongsToMany(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
 
 	post := &Post{
 		BodyText: "first Post",
@@ -334,7 +352,7 @@ func TestBelongsToMany(t *testing.T) {
 	assert.NoError(t, orm.Save(category))
 	assert.Equal(t, int64(1), category.ID)
 
-	_, _, err := orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
+	_, _, err = orm.ExecRaw[Category](`INSERT INTO post_categories (post_id, category_id) VALUES (?,?)`, post.ID, category.ID)
 	assert.NoError(t, err)
 
 	categories, err := orm.BelongsToMany[Category](post).All()
@@ -344,13 +362,16 @@ func TestBelongsToMany(t *testing.T) {
 }
 
 func TestSchematic(t *testing.T) {
-	setup(t)
+	err := setup()
+	assert.NoError(t, err)
+
 	orm.Schematic()
 }
 
 func TestAddProperty(t *testing.T) {
 	t.Run("having pk value", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
 
 		post := &Post{
 			BodyText: "first post",
@@ -359,7 +380,7 @@ func TestAddProperty(t *testing.T) {
 		assert.NoError(t, orm.Save(post))
 		assert.EqualValues(t, 1, post.ID)
 
-		err := orm.Add(post, &Comment{PostID: post.ID, Body: "firstComment"})
+		err = orm.Add(post, &Comment{PostID: post.ID, Body: "firstComment"})
 		assert.NoError(t, err)
 
 		var comment Comment
@@ -371,14 +392,16 @@ func TestAddProperty(t *testing.T) {
 		assert.EqualValues(t, post.ID, comment.PostID)
 	})
 	t.Run("not having PK value", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		post := &Post{
 			BodyText: "first post",
 		}
 		assert.NoError(t, orm.Save(post))
 		assert.EqualValues(t, 1, post.ID)
 
-		err := orm.Add(post, &AuthorEmail{Email: "myemail"})
+		err = orm.Add(post, &AuthorEmail{Email: "myemail"})
 		assert.NoError(t, err)
 
 		emails, err := orm.QueryRaw[AuthorEmail](`SELECT id, email FROM emails WHERE post_id=?`, post.ID)
@@ -390,7 +413,9 @@ func TestAddProperty(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	t.Run("querying single row", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		// post, err := orm.Query[Post]().Where("id", 1).First()
 		post, err := orm.Query[Post]().WherePK(1).First().Get()
@@ -400,7 +425,9 @@ func TestQuery(t *testing.T) {
 
 	})
 	t.Run("querying multiple rows", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 2"}))
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 3"}))
@@ -411,7 +438,9 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("updating a row using query interface", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
 		affected, err := orm.Query[Post]().Where("id", 1).Set("body", "body jadid").Update()
@@ -424,7 +453,9 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("deleting a row using query interface", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
 		affected, err := orm.Query[Post]().WherePK(1).Delete()
@@ -436,14 +467,18 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("count", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		count, err := orm.Query[Post]().WherePK(1).Count().Get()
 		assert.NoError(t, err)
 		assert.EqualValues(t, 0, count)
 	})
 
 	t.Run("latest", func(t *testing.T) {
-		setup(t)
+		err := setup()
+		assert.NoError(t, err)
+
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 2"}))
 
@@ -452,4 +487,22 @@ func TestQuery(t *testing.T) {
 
 		assert.EqualValues(t, "body 2", post.BodyText)
 	})
+}
+
+func TestSetup(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
+
+	err = orm.SetupConnections(orm.ConnectionConfig{
+		Name:     "default",
+		DB:       db,
+		Dialect:  orm.Dialects.SQLite3,
+		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+	})
+	assert.Error(t, err)
 }

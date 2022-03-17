@@ -93,10 +93,11 @@ func setupConnection(config ConnectionConfig) error {
 	}
 
 	s := &connection{
-		Name:    config.Name,
-		DB:      config.DB,
-		Dialect: config.Dialect,
-		Schemas: schemas,
+		Name:     config.Name,
+		DB:       config.DB,
+		Dialect:  config.Dialect,
+		Schemas:  schemas,
+		DBSchema: make(map[string][]columnSpec),
 	}
 
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s
