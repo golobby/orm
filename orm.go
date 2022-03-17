@@ -73,22 +73,28 @@ func setupConnection(config ConnectionConfig) error {
 	if config.Name == "" {
 		config.Name = "default"
 	}
+
 	globalLogger.Infof("Generating schema definitions for connection %s entities", config.Name)
 	globalLogger.Infof("Entities are: %v", entitiesAsList(config.Entities))
+
 	for _, entity := range config.Entities {
 		s := schemaOfHeavyReflectionStuff(entity)
 		var configurator EntityConfigurator
 		entity.ConfigureEntity(&configurator)
 		schemas[configurator.table] = s
 	}
+
 	s := &connection{
 		Name:       config.Name,
 		Connection: config.DB,
 		Schemas:    schemas,
 		Dialect:    config.Dialect,
 	}
+
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s
+
 	globalLogger.Infof("%s registered successfully.", config.Name)
+
 	return nil
 }
 
