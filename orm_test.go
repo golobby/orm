@@ -414,12 +414,7 @@ func TestQuery(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
-		res, err := orm.Query[Post]().Where("id", 1).Update(orm.KV{
-			"body": "body jadid",
-		})
-		assert.NoError(t, err)
-
-		affected, err := res.RowsAffected()
+		affected, err := orm.Query[Post]().Where("id", 1).Set("body", "body jadid").Update()
 		assert.NoError(t, err)
 		assert.EqualValues(t, 1, affected)
 
@@ -432,8 +427,9 @@ func TestQuery(t *testing.T) {
 		setup(t)
 		assert.NoError(t, orm.Save(&Post{BodyText: "body 1"}))
 
-		_, err := orm.Query[Post]().WherePK(1).Delete()
+		affected, err := orm.Query[Post]().WherePK(1).Delete()
 		assert.NoError(t, err)
+		assert.EqualValues(t, 1, affected)
 		count, err := orm.Query[Post]().WherePK(1).Count().Get()
 		assert.NoError(t, err)
 		assert.EqualValues(t, 0, count)
@@ -455,11 +451,5 @@ func TestQuery(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.EqualValues(t, "body 2", post.BodyText)
-	})
-
-	t.Run("use .Execute when query type is select", func(t *testing.T) {
-		setup(t)
-		_, err := orm.Query[Post]().SetSelect().Execute()
-		assert.Error(t, err)
 	})
 }

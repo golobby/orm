@@ -28,6 +28,11 @@ GoLobby ORM is a lightweight yet powerful, fast, customizable, type-safe object-
       - [BelongsToMany](#belongstomany)
       - [Saving with relation](#saving-with-relation)
     + [Query Builder](#query-builder)
+      - [Finishers](#finishers)
+        * [All](#all)
+        * [Get](#get)
+        * [Update](#update)
+        * [Delete](#delete)
       - [Select](#select)
         * [Column names](#column-names-1)
         * [Table](#table)
@@ -326,6 +331,30 @@ orm.Add(post, comments...) // inserts all comments passed in and also sets all p
 GoLobby ORM contains a powerful query builder to help you build complex queries with ease. QueryBuilder is accessible from `orm.Query[Entity]` method
 which will create a new query builder for you with given type parameter.
 Query builder can build `SELECT`,`UPDATE`,`DELETE` queries for you.
+
+#### Finishers
+Finishers are methods on QueryBuilder that will some how touch database, so use them with caution.
+##### All
+All will generate a `SELECT` query from QueryBuilder, execute it on database and return results in a slice of OUTPUT. It's useful for queries that have multiple results.
+```go
+posts, err := orm.Query[Post]().All() 
+```
+##### Get
+Get will generate a `SELECT` query from QueryBuilder, execute it on database and return results in an instance of type parameter `OUTPUT`. It's useful for when you know your query has single result.
+have multiple results.
+```go
+post, err := orm.Query[Post]().All()
+```
+##### Update
+Update will generate an `UPDATE` query from QueryBuilder and executes it, returns rows affected by query and any possible error.
+```go
+rowsAffected, err := orm.Query[Post]().WherePK(1).Set("body", "body jadid").Update()
+```
+##### Delete
+Delete will generate a `DELETE` query from QueryBuilder and executes it, returns rows affected by query and any possible error.
+```go
+rowsAffected, err := orm.Query[Post]().WherePK(1).Delete()
+```
 #### Select
 Let's start with `Select` queries.
 Each `Select` query consists of following:
