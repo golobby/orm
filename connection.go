@@ -23,9 +23,21 @@ func (c *connection) validateDatabaseSchema() error {
 
 	return nil
 }
+func (c *connection) inferedTables() []string {
+	var tables []string
+	for t, s := range c.Schemas {
+		tables = append(tables, t)
+		for _, relC := range s.relations {
+			if belongsToManyConfig, is := relC.(BelongsToManyConfig); is {
+				tables = append(tables, belongsToManyConfig.IntermediateTable)
+			}
+		}
+	}
+	return tables
+}
 
 func (c *connection) validateAllTablesArePresent() error {
-	for inferedTable := range c.Schemas {
+	for _, inferedTable := range c.inferedTables() {
 		if _, exists := c.DBSchema[inferedTable]; !exists {
 			return fmt.Errorf("orm infered %s but it's not found in your database, your database is out of sync", inferedTable)
 		}
