@@ -707,17 +707,20 @@ func (q *QueryBuilder[OUTPUT]) SetUpdate() *QueryBuilder[OUTPUT] {
 	return q
 }
 
-func (q *QueryBuilder[OUTPUT]) Set(name string, value interface{}) *QueryBuilder[OUTPUT] {
+func (q *QueryBuilder[OUTPUT]) Set(keyValues ...any) *QueryBuilder[OUTPUT] {
+	if len(keyValues)%2 != 0 {
+		q.err = fmt.Errorf("when using Set, passed argument count should be even: %w", q.err)
+		return q
+	}
 	q.SetUpdate()
-	q.sets = append(q.sets, [2]interface{}{name, value})
+	for i := 0; i < len(keyValues); i++ {
+		if i != 0 && i%2 == 1 {
+			q.sets = append(q.sets, [2]any{keyValues[i-1], keyValues[i]})
+		}
+	}
 	return q
 }
 
-func (q *QueryBuilder[OUTPUT]) Sets(tuples ...[2]interface{}) *QueryBuilder[OUTPUT] {
-	q.SetUpdate()
-	q.sets = append(q.sets, tuples...)
-	return q
-}
 func (q *QueryBuilder[OUTPUT]) SetDialect(dialect *Dialect) *QueryBuilder[OUTPUT] {
 	q.placeholderGenerator = dialect.PlaceHolderGenerator
 	return q

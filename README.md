@@ -423,13 +423,12 @@ Just like select where stuff, same code.
 Same as select.
 
 ##### Set
-You can use `Set`, `Sets`, `Update` method to set values.
+You can use `Set` method to set value.
 ```go
-orm.Query[Post]().Where("id", 1).Set("read", true).Update() // UPDATE posts SET read=? WHERE id = ?, [true, 1]
-orm.Query[Post]().Where("id", 1).Sets([2]interface{}{"read", true}).Update() // UPDATE posts SET read=? WHERE id = ?, [true, 1]
-orm.Query[Post]().Where("id", 1).Update(orm.KV{
-"read": true,
-}) // UPDATE posts SET read=? WHERE id = ?, [true, 1]
+orm.Query[Message]().
+  Where("id", 1).
+  Set("read", true, "seen", true).
+  Update() // UPDATE posts SET read=?, seen=? WHERE id = ?, [true, true, 1]
 ```
 
 #### Delete

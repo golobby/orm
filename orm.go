@@ -182,15 +182,12 @@ func Find[T Entity](id interface{}) (T, error) {
 	return *out, nil
 }
 
-func toTuples(obj Entity, withPK bool) [][2]interface{} {
-	var tuples [][2]interface{}
+func toKeyValues(obj Entity, withPK bool) []any {
+	var tuples []any
 	vs := genericValuesOf(obj, withPK)
 	cols := getSchemaFor(obj).Columns(withPK)
 	for i, col := range cols {
-		tuples = append(tuples, [2]interface{}{
-			col,
-			vs[i],
-		})
+		tuples = append(tuples, col, vs[i])
 	}
 	return tuples
 }
@@ -198,7 +195,10 @@ func toTuples(obj Entity, withPK bool) [][2]interface{} {
 // Update given Entity in database.
 func Update(obj Entity) error {
 	s := getSchemaFor(obj)
-	q, args, err := NewQueryBuilder[Entity](s).SetDialect(s.getDialect()).Sets(toTuples(obj, false)...).Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
+	q, args, err := NewQueryBuilder[Entity](s).
+		SetDialect(s.getDialect()).
+		Set(toKeyValues(obj, false)...).
+		Where(s.pkName(), genericGetPKValue(obj)).Table(s.Table).ToSql()
 
 	if err != nil {
 		return err
