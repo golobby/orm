@@ -42,38 +42,50 @@ type ConnectionConfig struct {
 	// information that we can provide you and also potentialy validations that we
 	// can do with the database
 	Entities []Entity
+	// Check if all infered tables exist in your database
+	ValidateTablesExistence bool
+	// Check if columns we infered are in sync with your database.
+	ValidateTablesSchemas bool
 }
 
-// SetupConnections declares a new connections for ORM.
-func SetupConnections(configs ...ConnectionConfig) error {
-	// configure logger
-	var err error
-	if err != nil {
-		return err
-	}
+// Setup declares a new connections for ORM.
+func Setup(configs ...ConnectionConfig) error {
 
 	for _, c := range configs {
-		if err = setupConnection(c); err != nil {
+		if err := setupConnection(c); err != nil {
 			return err
 		}
 	}
 	for _, conn := range globalConnections {
+		if !conn.ValidateTablesExistence && !conn.ValidateTablesSchemas {
+			continue
+		}
+
 		tables, err := getListOfTables(conn.Dialect.QueryListTables)(conn.DB)
 		if err != nil {
 			return err
 		}
+
 		for _, table := range tables {
-			spec, err := getTableSchema(conn.Dialect.QueryTableSchema)(conn.DB, table)
+			if conn.ValidateTablesSchemas {
+				spec, err := getTableSchema(conn.Dialect.QueryTableSchema)(conn.DB, table)
+				if err != nil {
+					return err
+				}
+				conn.DBSchema[table] = spec
+			} else {
+				conn.DBSchema[table] = nil
+			}
+		}
+
+		// check tables existence
+		if conn.ValidateTablesExistence {
+			err := conn.validateAllTablesArePresent()
 			if err != nil {
 				return err
 			}
-			conn.DBSchema[table] = spec
 		}
 
-		err = conn.validateDatabaseSchema()
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -93,11 +105,13 @@ func setupConnection(config ConnectionConfig) error {
 	}
 
 	s := &connection{
-		Name:     config.Name,
-		DB:       config.DB,
-		Dialect:  config.Dialect,
-		Schemas:  schemas,
-		DBSchema: make(map[string][]columnSpec),
+		Name:                    config.Name,
+		DB:                      config.DB,
+		Dialect:                 config.Dialect,
+		Schemas:                 schemas,
+		DBSchema:                make(map[string][]columnSpec),
+		ValidateTablesExistence: config.ValidateTablesExistence,
+		ValidateTablesSchemas:   config.ValidateTablesSchemas,
 	}
 
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s

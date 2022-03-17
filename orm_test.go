@@ -97,17 +97,35 @@ func setup() error {
 		return err
 	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+	if err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+	if err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+	if err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
+	if err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+	if err != nil {
+		return err
+	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
-
-	return orm.SetupConnections(orm.ConnectionConfig{
-		Name:     "default",
-		DB:       db,
-		Dialect:  orm.Dialects.SQLite3,
-		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+	if err != nil {
+		return err
+	}
+	return orm.Setup(orm.ConnectionConfig{
+		Name:                    "default",
+		DB:                      db,
+		Dialect:                 orm.Dialects.SQLite3,
+		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+		ValidateTablesExistence: true,
 	})
 }
 
@@ -498,11 +516,12 @@ func TestSetup(t *testing.T) {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
-	err = orm.SetupConnections(orm.ConnectionConfig{
-		Name:     "default",
-		DB:       db,
-		Dialect:  orm.Dialects.SQLite3,
-		Entities: []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+	err = orm.Setup(orm.ConnectionConfig{
+		Name:                    "default",
+		DB:                      db,
+		Dialect:                 orm.Dialects.SQLite3,
+		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+		ValidateTablesExistence: true,
 	})
 	assert.Error(t, err)
 }

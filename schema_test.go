@@ -9,7 +9,7 @@ import (
 
 func setup(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
-	err = SetupConnections(ConnectionConfig{
+	err = Setup(ConnectionConfig{
 		Name:    "default",
 		DB:      db,
 		Dialect: Dialects.SQLite3,
