@@ -58,7 +58,6 @@ func SetupConnections(configs ...ConnectionConfig) error {
 		}
 	}
 	for _, conn := range globalConnections {
-		globalLogger.Infof("For database connection: %s", conn.Name)
 		tables, err := getListOfTables(conn.Dialect.QueryListTables)(conn.DB)
 		if err != nil {
 			return err
@@ -69,9 +68,7 @@ func SetupConnections(configs ...ConnectionConfig) error {
 				return err
 			}
 			conn.DBSchema[table] = spec
-			globalLogger.Infof("%s: %+v", table, spec)
 		}
-		globalLogger.Infof("Database tables are: %v", tables)
 
 		err = conn.validateDatabaseSchema()
 		if err != nil {
