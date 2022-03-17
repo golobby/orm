@@ -16,6 +16,20 @@ type connection struct {
 }
 
 func (c *connection) validateDatabaseSchema() error {
+	err := c.validateAllTablesArePresent()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *connection) validateAllTablesArePresent() error {
+	for inferedTable := range c.Schemas {
+		if _, exists := c.DBSchema[inferedTable]; !exists {
+			return fmt.Errorf("orm infered %s but it's not found in your database, your database is out of sync", inferedTable)
+		}
+	}
 	return nil
 }
 
