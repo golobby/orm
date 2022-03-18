@@ -41,9 +41,60 @@ func (c *connection) validateAllTablesArePresent() error {
 
 func (c *connection) validateTablesSchemas() error {
 	// check for entity tables: there should not be any struct field that does not have a coresponding column
+	for table, sc := range c.Schemas {
+		if columns, exists := c.DBSchema[table]; exists {
+			for _, f := range sc.fields {
+				found := false
+				for _, c := range columns {
+					if c.Name == f.Name {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("column %s not found while it was inferred", f.Name)
+				}
+			}
+		} else {
+			return fmt.Errorf("tables are out of sync, %s was inferred but not present in database", table)
+		}
+	}
 
 	// check for relation tables: for HasMany,HasOne relations check if OWNER pk column is in PROPERTY,
 	// for BelongsToMany check intermediate table has 2 pk for two entities
+
+	for table, sc := range c.Schemas {
+		for _, rel := range sc.relations {
+			switch rel.(type) {
+			case BelongsToConfig:
+				columns := c.DBSchema[table]
+				var found bool
+				for _, col := range columns {
+					if col.Name == rel.(BelongsToConfig).LocalForeignKey {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("cannot find local foreign key %s for relation", rel.(BelongsToConfig).LocalForeignKey)
+				}
+			case BelongsToManyConfig:
+				columns := c.DBSchema[rel.(BelongsToManyConfig).IntermediateTable]
+				var foundOwner bool
+				var foundProperty bool
+
+				for _, col := range columns {
+					if col.Name == rel.(BelongsToManyConfig).IntermediateOwnerID {
+						foundOwner = true
+					}
+					if col.Name == rel.(BelongsToManyConfig).IntermediatePropertyID {
+						foundProperty = true
+					}
+				}
+				if !foundOwner || !foundProperty {
+					return fmt.Errorf("table schema for %s is not correct one of foreign keys is not present", rel.(BelongsToManyConfig).IntermediateTable)
+				}
+			}
+		}
+	}
 
 	return nil
 }
@@ -58,18 +109,18 @@ func (c *connection) Schematic() {
 			w.AppendRow(table.Row{field.Name, field.Type, field.IsPK, field.Virtual})
 		}
 		fmt.Println(w.Render())
-		for t, rel := range schema.relations {
+		for _, rel := range schema.relations {
 			switch rel.(type) {
 			case HasOneConfig:
-				fmt.Printf("%s 1-1 %s => %+v\n", t, t, rel)
+				fmt.Printf("%s 1-1 %s => %+v\n", t, rel.(HasOneConfig).PropertyTable, rel)
 			case HasManyConfig:
-				fmt.Printf("%s 1-N %s => %+v\n", t, t, rel)
+				fmt.Printf("%s 1-N %s => %+v\n", t, rel.(HasManyConfig).PropertyTable, rel)
 
 			case BelongsToConfig:
-				fmt.Printf("%s N-1 %s => %+v\n", t, t, rel)
+				fmt.Printf("%s N-1 %s => %+v\n", t, rel.(BelongsToConfig).OwnerTable, rel)
 
 			case BelongsToManyConfig:
-				fmt.Printf("%s N-N %s => %+v\n", t, t, rel)
+				fmt.Printf("%s N-N %s => %+v\n", t, rel.(BelongsToManyConfig).IntermediateTable, rel)
 			}
 		}
 		fmt.Println("")
