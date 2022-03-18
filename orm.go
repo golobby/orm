@@ -48,8 +48,8 @@ type ConnectionConfig struct {
 	ValidateTablesSchemas bool
 }
 
-// Setup declares a new connections for ORM.
-func Setup(configs ...ConnectionConfig) error {
+// SetupConnections declares a new connections for ORM.
+func SetupConnections(configs ...ConnectionConfig) error {
 
 	for _, c := range configs {
 		if err := setupConnection(c); err != nil {

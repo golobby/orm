@@ -120,7 +120,7 @@ func setup() error {
 	if err != nil {
 		return err
 	}
-	return orm.Setup(orm.ConnectionConfig{
+	return orm.SetupConnections(orm.ConnectionConfig{
 		Name:                    "default",
 		DB:                      db,
 		Dialect:                 orm.Dialects.SQLite3,
@@ -518,7 +518,7 @@ func TestSetup(t *testing.T) {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 		// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
-		err = orm.Setup(orm.ConnectionConfig{
+		err = orm.SetupConnections(orm.ConnectionConfig{
 			Name:                    "default",
 			DB:                      db,
 			Dialect:                 orm.Dialects.SQLite3,
@@ -538,7 +538,7 @@ func TestSetup(t *testing.T) {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
-		err = orm.Setup(orm.ConnectionConfig{
+		err = orm.SetupConnections(orm.ConnectionConfig{
 			Name:                    "default",
 			DB:                      db,
 			Dialect:                 orm.Dialects.SQLite3,
