@@ -509,20 +509,44 @@ func TestQuery(t *testing.T) {
 }
 
 func TestSetup(t *testing.T) {
-	db, err := sql.Open("sqlite3", ":memory:")
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
-	// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
+	t.Run("tables are out of sync", func(t *testing.T) {
+		db, err := sql.Open("sqlite3", ":memory:")
+		// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, post_id INTEGER, body text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+		// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
-	err = orm.Setup(orm.ConnectionConfig{
-		Name:                    "default",
-		DB:                      db,
-		Dialect:                 orm.Dialects.SQLite3,
-		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
-		ValidateTablesExistence: true,
+		err = orm.Setup(orm.ConnectionConfig{
+			Name:                    "default",
+			DB:                      db,
+			Dialect:                 orm.Dialects.SQLite3,
+			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+			ValidateTablesExistence: true,
+			ValidateTablesSchemas:   true,
+		})
+		assert.Error(t, err)
+
 	})
-	assert.Error(t, err)
+	t.Run("schemas are wrong", func(t *testing.T) {
+		db, err := sql.Open("sqlite3", ":memory:")
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, body text, created_at TIMESTAMP, updated_at TIMESTAMP, deleted_at TIMESTAMP)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, post_id INTEGER, email text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS header_pictures (id INTEGER PRIMARY KEY, post_id INTEGER, link text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, body text)`) // missing post_id
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, title text)`)
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
+
+		err = orm.Setup(orm.ConnectionConfig{
+			Name:                    "default",
+			DB:                      db,
+			Dialect:                 orm.Dialects.SQLite3,
+			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+			ValidateTablesExistence: true,
+			ValidateTablesSchemas:   true,
+		})
+		assert.Error(t, err)
+
+	})
 }
