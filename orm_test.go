@@ -126,6 +126,7 @@ func setup() error {
 		Dialect:                 orm.Dialects.SQLite3,
 		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 		ValidateTablesExistence: true,
+		ValidateTablesSchemas:   true,
 	})
 }
 
