@@ -48,6 +48,7 @@ GoLobby ORM is a lightweight yet powerful, fast, customizable, type-safe object-
       - [Delete](#delete)
         * [Table](#table-2)
         * [Where](#where-2)
+    + [Database Validations](#database-validations)
   * [License](#license)
 
 ## Introduction
