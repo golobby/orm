@@ -10,7 +10,7 @@ import (
 
 type AuthorEmail struct {
 	ID    int64
-	Email string `orm:"field=email"`
+	Email string
 }
 
 func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
@@ -21,7 +21,7 @@ func (a AuthorEmail) ConfigureEntity(e *orm.EntityConfigurator) {
 }
 
 type HeaderPicture struct {
-	ID     int64 `orm:"field=id pk=true"`
+	ID     int64
 	PostID int64
 	Link   string
 }
@@ -33,22 +33,20 @@ func (h HeaderPicture) ConfigureEntity(e *orm.EntityConfigurator) {
 type Post struct {
 	ID        int64
 	BodyText  string
-	CreatedAt sql.NullTime `orm:"created_at=true"`
-	UpdatedAt sql.NullTime `orm:"updated_at=true"`
-	DeletedAt sql.NullTime `orm:"deleted_at=true"`
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+	DeletedAt sql.NullTime
 }
 
 func (p Post) ConfigureEntity(e *orm.EntityConfigurator) {
+	e.Field("BodyText").ColumnName("body")
+	e.Field("ID").ColumnName("id")
 	e.
 		Table("posts").
 		HasMany(Comment{}, orm.HasManyConfig{}).
 		HasOne(HeaderPicture{}, orm.HasOneConfig{}).
 		HasOne(AuthorEmail{}, orm.HasOneConfig{}).
-		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"}).
-		Fields().
-		Field("ID").IsPrimaryKey().ColumnName("id").
-		Also().
-		Field("BodyText").ColumnName("body")
+		BelongsToMany(Category{}, orm.BelongsToManyConfig{IntermediateTable: "post_categories"})
 
 }
 

@@ -140,6 +140,25 @@ As you see, our user entity is nothing else than a simple struct and two methods
 Entities in GoLobby ORM are implementations of `Entity` interface, which defines two methods:
 - ConfigureEntity: configures table, fields, and also relations to other entities.
 #### Conventions
+We have standard conventions and we encourage you to follow, but if you want to change them for any reason you can use `Field` method to customize how ORM
+inferres meta data from your `Entity`.
+
+##### Column names
+GoLobby ORM for each struct field(except slice, arrays, maps, and other nested structs) assumes a respective column named using snake case syntax.
+If you want a custom column name, you should specify it in `ConfigureEntity` method using `Field()` method.
+```go
+package main
+
+type User struct {
+  Name string
+}
+
+func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.Field("Name").ColumnName("custom_name_for_column")
+
+    e.Table("users")
+}
+```
 ##### Timestamps
 for having `created_at`, `updated_at`, `deleted_at` timestamps in your entities you can embed `orm.Timestamps` struct in your entity,
 ```go
@@ -159,29 +178,31 @@ type User struct {
     Name     string
     LastName string
     Email    string
-    MyCreatedAt sql.NullTime `orm:"created_at=true"`
-    MyUpdatedAt sql.NullTime `orm:"updated_at=true"`
-    MyDeletedAt sql.NullTime `orm:"deleted_at=true"`
+    MyCreatedAt sql.NullTime
+    MyUpdatedAt sql.NullTime
+    MyDeletedAt sql.NullTime
 }
-```
-You can use the `orm` struct tag, and there is a key for each timestamp that you can use on any time-compatible struct field.
-##### Column names
-GoLobby ORM for each struct field(except slice, arrays, maps, and other nested structs) assumes a respective column named using snake case syntax.
-If you want a custom column name, you should specify it in the entity struct.
-```go
-package main
+func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.Field("MyCreatedAt").IsCreatedAt() // this will make ORM to use MyCreatedAt as created_at column
+    e.Field("MyUpdatedAt").IsUpdatedAt() // this will make ORM to use MyUpdatedAt as created_at column
+    e.Field("MyDeletedAt").IsDeletedAt() // this will make ORM to use MyDeletedAt as created_at column
 
-type User struct {
-	Name string `orm:"column=username"` // now this field will be mapped to `username` column in sql database. 
+    e.Table("users")
 }
 ```
+As always you use `Field` method for configuring how ORM behaves to your struct field.
+
 ##### Primary Key
 GoLobby ORM assumes that each entity has a primary key named `id`; if you want a custom primary key called, you need to specify it in entity struct.
 ```go
 package main
 
 type User struct {
-	PK int64 `orm:"pk=true"`
+	PK int64
+}
+func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
+    e.Field("PK").IsPrimaryKey() // this will make ORM use PK field as primary key.
+    e.Table("users")
 }
 ```
 

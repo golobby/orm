@@ -71,34 +71,32 @@ func getFieldConfiguratorFor(fieldConfigurators []*FieldConfigurator, name strin
 }
 
 func fieldMetadata(ft reflect.StructField, fieldConfigurators []*FieldConfigurator) []*field {
-	tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
+	// tagParsed := fieldMetadataFromTag(ft.Tag.Get("orm"))
 	var fms []*field
 	fc := getFieldConfiguratorFor(fieldConfigurators, ft.Name)
 	baseFm := &field{}
 	baseFm.Type = ft.Type
 	fms = append(fms, baseFm)
-	if tagParsed.Name != "" {
-		baseFm.Name = tagParsed.Name
-	} else if fc.column != "" {
+	if fc.column != "" {
 		baseFm.Name = fc.column
 	} else {
 		baseFm.Name = strcase.ToSnake(ft.Name)
 	}
-	if tagParsed.PK || strings.ToLower(ft.Name) == "id" || fc.primaryKey {
+	if strings.ToLower(ft.Name) == "id" || fc.primaryKey {
 		baseFm.IsPK = true
 	}
-	if tagParsed.IsCreatedAt || strings.ToLower(ft.Name) == "createdat" || fc.isCreatedAt {
+	if strings.ToLower(ft.Name) == "createdat" || fc.isCreatedAt {
 		baseFm.IsCreatedAt = true
 	}
-	if tagParsed.IsUpdatedAt || strings.ToLower(ft.Name) == "updatedat" || fc.isUpdatedAt {
+	if strings.ToLower(ft.Name) == "updatedat" || fc.isUpdatedAt {
 		baseFm.IsUpdatedAt = true
 	}
-	if tagParsed.IsDeletedAt || strings.ToLower(ft.Name) == "deletedat" || fc.isDeletedAt {
+	if strings.ToLower(ft.Name) == "deletedat" || fc.isDeletedAt {
 		baseFm.IsDeletedAt = true
 	}
-	if tagParsed.Virtual {
-		baseFm.Virtual = true
-	}
+	// if tagParsed.Virtual {
+	// 	baseFm.Virtual = true
+	// }
 	if ft.Type.Kind() == reflect.Struct || ft.Type.Kind() == reflect.Ptr {
 		t := ft.Type
 		if ft.Type.Kind() == reflect.Ptr {

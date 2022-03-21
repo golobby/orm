@@ -143,17 +143,8 @@ func (ec *EntityConfigurator) BelongsToMany(owner Entity, config BelongsToManyCo
 	return ec
 }
 
-type FieldsConfigurator struct {
-	ec *EntityConfigurator
-}
-
-func (ec *EntityConfigurator) Fields() *FieldsConfigurator {
-	return &FieldsConfigurator{ec: ec}
-}
-
 type FieldConfigurator struct {
 	fieldName   string
-	fc          *FieldsConfigurator
 	nullable    sql.NullBool
 	primaryKey  bool
 	column      string
@@ -162,20 +153,11 @@ type FieldConfigurator struct {
 	isDeletedAt bool
 }
 
-// func (fc *FieldConfigurator) CanBeNull() *FieldConfigurator {
-//	fc.nullable = sql.NullBool{
-//		Bool:  true,
-//		Valid: true,
-//	}
-//	return fc
-//}
-// func (fc *FieldConfigurator) CannotBeNull() *FieldConfigurator {
-//	fc.nullable = sql.NullBool{
-//		Bool:  false,
-//		Valid: true,
-//	}
-//	return fc
-//}
+func (ec *EntityConfigurator) Field(name string) *FieldConfigurator {
+	cc := &FieldConfigurator{fieldName: name}
+	ec.columnConstraints = append(ec.columnConstraints, cc)
+	return cc
+}
 
 func (fc *FieldConfigurator) IsPrimaryKey() *FieldConfigurator {
 	fc.primaryKey = true
@@ -200,13 +182,4 @@ func (fc *FieldConfigurator) IsDeletedAt() *FieldConfigurator {
 func (fc *FieldConfigurator) ColumnName(name string) *FieldConfigurator {
 	fc.column = name
 	return fc
-}
-
-func (fc *FieldsConfigurator) Field(name string) *FieldConfigurator {
-	cc := &FieldConfigurator{fc: fc, fieldName: name}
-	fc.ec.columnConstraints = append(fc.ec.columnConstraints, cc)
-	return cc
-}
-func (fc *FieldConfigurator) Also() *FieldsConfigurator {
-	return fc.fc
 }
