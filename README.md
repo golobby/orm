@@ -342,7 +342,7 @@ posts, err := orm.Query[Post]().All()
 ##### Get
 Get will generate a `SELECT` query from QueryBuilder, execute it on database and return results in an instance of type parameter `OUTPUT`. It's useful for when you know your query has single result.
 ```go
-post, err := orm.Query[Post]().Get()
+post, err := orm.Query[Post]().First().Get()
 ```
 ##### Update
 Update will generate an `UPDATE` query from QueryBuilder and executes it, returns rows affected by query and any possible error.
