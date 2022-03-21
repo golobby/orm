@@ -240,22 +240,22 @@ func genericSet(obj Entity, name string, value interface{}) {
 	val.(reflect.Value).Set(reflect.ValueOf(value))
 }
 func schemaOfHeavyReflectionStuff(v Entity) *schema {
-	userSchema := newEntityConfigurator()
-	v.ConfigureEntity(userSchema)
-	for _, relation := range userSchema.resolveRelations {
+	userEntityConfigurator := newEntityConfigurator()
+	v.ConfigureEntity(userEntityConfigurator)
+	for _, relation := range userEntityConfigurator.resolveRelations {
 		relation()
 	}
 	schema := &schema{}
-	if userSchema.connection != "" {
-		schema.Connection = userSchema.connection
+	if userEntityConfigurator.connection != "" {
+		schema.Connection = userEntityConfigurator.connection
 	}
-	if userSchema.table != "" {
-		schema.Table = userSchema.table
+	if userEntityConfigurator.table != "" {
+		schema.Table = userEntityConfigurator.table
 	} else {
 		panic("you need to have table name for getting schema.")
 	}
 
-	schema.columnConstraints = userSchema.columnConstraints
+	schema.columnConstraints = userEntityConfigurator.columnConstraints
 	if schema.Connection == "" {
 		schema.Connection = "default"
 	}
@@ -270,7 +270,7 @@ func schemaOfHeavyReflectionStuff(v Entity) *schema {
 		schema.setPK = genericSetPkValue
 	}
 
-	schema.relations = userSchema.relations
+	schema.relations = userEntityConfigurator.relations
 
 	return schema
 }

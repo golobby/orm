@@ -2,6 +2,7 @@ package orm
 
 import (
 	"database/sql"
+
 	"github.com/gertd/go-pluralize"
 )
 

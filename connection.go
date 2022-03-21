@@ -13,8 +13,7 @@ type connection struct {
 	DB                      *sql.DB
 	Schemas                 map[string]*schema
 	DBSchema                map[string][]columnSpec
-	ValidateTablesExistence bool
-	ValidateTablesSchemas   bool
+	DatabaseValidations bool
 }
 
 func (c *connection) inferedTables() []string {

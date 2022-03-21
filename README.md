@@ -440,6 +440,20 @@ DELETE FROM [table name] WHERE [cond1 AND/OR cond2 AND/OR ...]
 Same as Select and Update.
 ##### Where
 Same as Select and Update.
+### Database Validations
+Golobby ORM can validate your database state and compare it to your entities and if your database and code are not in sync give you error.
+Currently there are two database validations possible:
+1. Validate all necessary tables exists.
+2. Validate all tables contain necessary columns.
+You can enable database validations feature by enabling `DatabaseValidations` flag in your ConnectionConfig.
+```go
+return orm.SetupConnections(orm.ConnectionConfig{
+    Name:                    "default",
+    DB:                      db,
+    Dialect:                 orm.Dialects.SQLite3,
+    Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+    DatabaseValidations: true,
+  })
+```
 ## License
-
-GoLobby ORM is released under the [MIT License](http:// opensource.org/licenses/mit-license.php).
+GoLobby ORM is released under the [MIT License](http://opensource.org/licenses/mit-license.php).

@@ -125,8 +125,7 @@ func setup() error {
 		DB:                      db,
 		Dialect:                 orm.Dialects.SQLite3,
 		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
-		ValidateTablesExistence: true,
-		ValidateTablesSchemas:   true,
+		DatabaseValidations: true,
 	})
 }
 
@@ -523,8 +522,7 @@ func TestSetup(t *testing.T) {
 			DB:                      db,
 			Dialect:                 orm.Dialects.SQLite3,
 			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
-			ValidateTablesExistence: true,
-			ValidateTablesSchemas:   true,
+			DatabaseValidations: true,
 		})
 		assert.Error(t, err)
 
@@ -543,8 +541,7 @@ func TestSetup(t *testing.T) {
 			DB:                      db,
 			Dialect:                 orm.Dialects.SQLite3,
 			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
-			ValidateTablesExistence: true,
-			ValidateTablesSchemas:   true,
+			DatabaseValidations: true,
 		})
 		assert.Error(t, err)
 

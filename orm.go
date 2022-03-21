@@ -42,10 +42,9 @@ type ConnectionConfig struct {
 	// information that we can provide you and also potentialy validations that we
 	// can do with the database
 	Entities []Entity
+	// Database validations, check if all tables exists and also table schemas contains all necessary columns.
 	// Check if all infered tables exist in your database
-	ValidateTablesExistence bool
-	// Check if columns we infered are in sync with your database.
-	ValidateTablesSchemas bool
+	DatabaseValidations bool
 }
 
 // SetupConnections declares a new connections for ORM.
@@ -57,7 +56,7 @@ func SetupConnections(configs ...ConnectionConfig) error {
 		}
 	}
 	for _, conn := range globalConnections {
-		if !conn.ValidateTablesExistence && !conn.ValidateTablesSchemas {
+		if !conn.DatabaseValidations {
 			continue
 		}
 
@@ -67,7 +66,7 @@ func SetupConnections(configs ...ConnectionConfig) error {
 		}
 
 		for _, table := range tables {
-			if conn.ValidateTablesSchemas {
+			if conn.DatabaseValidations {
 				spec, err := getTableSchema(conn.Dialect.QueryTableSchema)(conn.DB, table)
 				if err != nil {
 					return err
@@ -79,14 +78,14 @@ func SetupConnections(configs ...ConnectionConfig) error {
 		}
 
 		// check tables existence
-		if conn.ValidateTablesExistence {
+		if conn.DatabaseValidations {
 			err := conn.validateAllTablesArePresent()
 			if err != nil {
 				return err
 			}
 		}
 
-		if conn.ValidateTablesSchemas {
+		if conn.DatabaseValidations {
 			err = conn.validateTablesSchemas()
 			if err != nil {
 				return err
@@ -117,8 +116,7 @@ func setupConnection(config ConnectionConfig) error {
 		Dialect:                 config.Dialect,
 		Schemas:                 schemas,
 		DBSchema:                make(map[string][]columnSpec),
-		ValidateTablesExistence: config.ValidateTablesExistence,
-		ValidateTablesSchemas:   config.ValidateTablesSchemas,
+		DatabaseValidations: config.DatabaseValidations,
 	}
 
 	globalConnections[fmt.Sprintf("%s", config.Name)] = s
