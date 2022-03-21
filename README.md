@@ -93,10 +93,11 @@ func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
 
 func main() {
   // Setup ORM
-  err := orm.Initialize(orm.ORMConfig{LogLevel: orm.LogLevelDev}, orm.ConnectionConfig{
+  err := orm.Initialize(orm.ConnectionConfig{
     // Name:          "default",  // Optional. Specify connection names if you have more than on database.
     Driver:           "sqlite3",  // Database type. Currently supported sqlite3, mysql, mariadb, postgresql. 
     ConnectionString: ":memory:", // Database DSN.
+    DatabaseValidations: true,    // Validates your database tables and each table schema
   })
   
   if err != nil {
