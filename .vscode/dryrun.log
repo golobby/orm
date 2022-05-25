@@ -1,0 +1,5 @@
+make: Entering directory `/Users/amirreza/src/github.com/golobby/orm'
+go test -coverprofile=cover.out ./...
+go tool cover -html=cover.out
+make: Leaving directory `/Users/amirreza/src/github.com/golobby/orm'
+ 
