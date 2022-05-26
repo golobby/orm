@@ -154,12 +154,17 @@ func Insert(objs ...Entity) error {
 		values = append(values, genericValuesOf(obj, false))
 	}
 
-	q, args := insertStmt{
+	is := insertStmt{
 		PlaceHolderGenerator: s.getDialect().PlaceHolderGenerator,
 		Table:                s.getTable(),
 		Columns:              cols,
 		Values:               values,
-	}.ToSql()
+	}
+
+	if s.getDialect().DriverName == "postgres" {
+		is.Returning = s.pkName()
+	}
+	q, args := is.ToSql()
 
 	res, err := s.getConnection().exec(q, args...)
 	if err != nil {

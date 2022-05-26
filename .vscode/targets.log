@@ -7,8 +7,10 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 
 # This program built for i386-apple-darwin11.3.0
  
+make: *** No rule to make target `all'.  Stop.
 
-# Make data base, printed on Wed May 25 21:13:51 2022
+
+# Make data base, printed on Fri May 27 01:52:16 2022
 
 # Variables
 
@@ -36,9 +38,6 @@ FZF_DEFAULT_COMMAND = rg --files
 VSCODE_NLS_CONFIG = {"locale":"en-us","availableLanguages":{},"_languagePackSupport":true}
 # environment
 _ = /usr/bin/make
- 
-make: *** No rule to make target `all'.  Stop.
-
 # makefile (from `Makefile', line 1)
 MAKEFILE_LIST :=  Makefile
 # environment
@@ -50,7 +49,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 __CFBundleIdentifier = com.microsoft.VSCode
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /var/folders/hb/y34qrz9s5bb0_3csl5dn6m600000gn/T/vscode-ipc-80293e5e-d035-4120-8f38-a52192a892f2.sock
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/hb/y34qrz9s5bb0_3csl5dn6m600000gn/T/vscode-ipc-65c5fbec-d0c4-4968-aa3f-0cf650f6fb31.sock
 # environment
 VSCODE_CWD = /
 # environment
@@ -58,7 +57,7 @@ GOPROXY = https://proxy.golang.org,direct
 # environment
 PATH = /Users/amirreza/.emacs.d/bin/:/Applications/Emacs.app/Contents/MacOS:/Users/amirreza/src/github.com/amirrezaask/dotfiles/bin:/Users/amirreza/bin:/opt/homebrew/bin:/bin:/Users/amirreza/.luarocks/bin:/Users/amirreza/.config/composer/vendor/bin:/bin:/Users/amirreza/.cargo/bin:/Users/amirreza/.local/bin:/usr/local/Postman:/Users/amirreza/.local/elixir-ls/:/Users/amirreza/.cache/rebar3/bin:/home/amirreza/.fzf/bin:/opt/homebrew/opt/fzf/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/VMware Fusion.app/Contents/Public:/usr/local/share/dotnet:~/.dotnet/tools:/usr/local/go/bin:/Users/amirreza/.composer/vendor/bin
 # environment
-LOG_DST = /Users/amirreza/Library/Application Support/Code/logs/20220524T175645/exthost9/dendron.dendron/dendron.log
+LOG_DST = /Users/amirreza/Library/Application Support/Code/logs/20220524T175645/exthost14/dendron.dendron/dendron.log
 # environment
 GOPATH = /Users/amirreza
 # environment
@@ -248,6 +247,6 @@ bench:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Wed May 25 21:13:51 2022
+# Finished Make data base on Fri May 27 01:52:16 2022
 
  

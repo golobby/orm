@@ -750,6 +750,7 @@ type insertStmt struct {
 	Table                string
 	Columns              []string
 	Values               [][]interface{}
+	Returning 			 string
 }
 
 func (i insertStmt) flatValues() []interface{} {
@@ -777,6 +778,9 @@ func (i insertStmt) ToSql() (string, []interface{}) {
 		strings.Join(i.Columns, ","),
 		i.getValuesStr(),
 	)
+	if i.Returning != "" {
+		base += "RETURNING " + i.Returning
+	}
 	return base, i.flatValues()
 }
 
