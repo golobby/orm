@@ -53,10 +53,7 @@ func setupGORM() {
 }
 
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
-	e.Table("users").PKSetter(func(o orm.Entity, pk interface{}) {
-		user := o.(*User)
-		user.ID = pk.(int64)
-	})
+	e.Table("users")
 }
 
 func BenchmarkGolobby(t *testing.B) {
