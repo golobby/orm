@@ -366,6 +366,7 @@ categories, err := orm.BelongsToMany[Category](post).All()
 You may need to save an entity that has some kind of relationship with another entity; in that case, you can use `Add` method.
 ```go
 orm.Add(post, comments...) // inserts all comments passed in and also sets all post_id to the primary key of the given post.
+orm.Add(post, categories...) // inserts all categories and also insert intermediate post_categories records.
 ```
 
 ### Query Builder
