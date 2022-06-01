@@ -216,7 +216,7 @@ func TestDeleteORM(t *testing.T) {
 
 	assert.Equal(t, 0, count)
 }
-func TestAdd(t *testing.T) {
+func TestAdd_HasMany(t *testing.T) {
 	err := setup()
 	assert.NoError(t, err)
 	post := &Post{
@@ -244,6 +244,40 @@ func TestAdd(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, int64(1), comment.PostID)
+
+}
+
+func TestAdd_ManyToMany(t *testing.T) {
+	err := setup()
+	assert.NoError(t, err)
+	post := &Post{
+		BodyText: "my body for insert",
+	}
+	err = orm.Insert(post)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), post.ID)
+
+	err = orm.Add(post, []orm.Entity{
+		&Category{
+			Title: "cat 1",
+		},
+		&Category{
+			Title: "cat 2",
+		},
+	}...)
+	assert.NoError(t, err)
+	var count int
+	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT COUNT(post_id) FROM post_categories`).Scan(&count))
+	assert.Equal(t, 2, count)
+	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT COUNT(id) FROM categories`).Scan(&count))
+	assert.Equal(t, 2, count)
+
+	categories, err := post.Categories()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(categories))
+	assert.Equal(t, int64(1), categories[0].ID)
+	assert.Equal(t, int64(2), categories[1].ID)
 
 }
 

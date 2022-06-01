@@ -207,7 +207,10 @@ func Insert(o Entity) error {
 		return err
 	}
 
-	s.setPK(o, id)
+	if s.pkName() != "" {
+		// intermediate tables usually have no single pk column.
+		s.setPK(o, id)
+	}
 	return nil
 }
 
@@ -470,8 +473,8 @@ func BelongsToMany[OWNER Entity](property Entity) *QueryBuilder[OWNER] {
 		Select(outSchema.Columns(true)...).
 		Table(outSchema.Table).
 		WhereIn(c.OwnerLookupColumn, Raw(fmt.Sprintf(`SELECT %s FROM %s WHERE %s = ?`,
-			c.IntermediateOwnerID,
-			c.IntermediateTable, c.IntermediatePropertyID), genericGetPKValue(property)))
+			c.IntermediatePropertyID,
+			c.IntermediateTable, c.IntermediateOwnerID), genericGetPKValue(property)))
 }
 
 // Add adds `items` to `to` using relations defined between items and to in ConfigureEntity method of `to`.
@@ -491,10 +494,45 @@ func Add(to Entity, items ...Entity) error {
 	case HasOneConfig:
 		return addProperty(to, items[0])
 	case BelongsToManyConfig:
-		return fmt.Errorf("adding to a belongs to many relation is not implemented yet")
+		return addM2M(to, items...)
 	default:
 		return fmt.Errorf("cannot add for relation: %T", rels[getSchemaFor(items[0]).Table])
 	}
+}
+
+func addM2M(to Entity, items ...Entity) error {
+	//TODO: Optimize this
+	rels := getSchemaFor(to).relations
+	tname := getSchemaFor(items[0]).Table
+	c := rels[tname].(BelongsToManyConfig)
+	var values [][]interface{}
+	ownerPk := genericGetPKValue(to)
+	for _, item := range items {
+		pk := genericGetPKValue(item)
+		if isZero(pk) {
+			err := Insert(item)
+			if err != nil {
+				return err
+			}
+			pk = genericGetPKValue(item)
+		}
+		values = append(values, []interface{}{ownerPk, pk})
+	}
+	i := insertStmt{
+		PlaceHolderGenerator: getSchemaFor(to).getDialect().PlaceHolderGenerator,
+		Table:                c.IntermediateTable,
+		Columns:              []string{c.IntermediateOwnerID, c.IntermediatePropertyID},
+		Values:               values,
+	}
+
+	q, args := i.ToSql()
+
+	_, err := getConnectionFor(items[0]).DB.Exec(q, args...)
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 // addHasMany(Post, comments)
