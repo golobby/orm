@@ -256,9 +256,6 @@ func schemaOfHeavyReflectionStuff(v Entity) *schema {
 	}
 
 	schema.columnConstraints = userEntityConfigurator.columnConstraints
-	if userEntityConfigurator.setPK != nil {
-		schema.setPK = userEntityConfigurator.setPK
-	}
 	if schema.Connection == "" {
 		schema.Connection = "default"
 	}
