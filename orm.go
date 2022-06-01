@@ -133,9 +133,9 @@ type Entity interface {
 	ConfigureEntity(e *EntityConfigurator)
 }
 
-// Insert given entities into database based on their ConfigureEntity
+// InsertAll given entities into database based on their ConfigureEntity
 // we can find table and also DB name.
-func Insert(objs ...Entity) error {
+func InsertAll(objs ...Entity) error {
 	if len(objs) == 0 {
 		return nil
 	}
@@ -161,6 +161,38 @@ func Insert(objs ...Entity) error {
 		Values:               values,
 	}
 
+	q, args := is.ToSql()
+
+	_, err := s.getConnection().exec(q, args...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Insert given entity into database based on their ConfigureEntity
+// we can find table and also DB name.
+func Insert(o Entity) error {
+	s := getSchemaFor(o)
+	cols := s.Columns(false)
+	var values [][]interface{}
+	createdAtF := s.createdAt()
+	if createdAtF != nil {
+		genericSet(o, createdAtF.Name, sql.NullTime{Time: time.Now(), Valid: true})
+	}
+	updatedAtF := s.updatedAt()
+	if updatedAtF != nil {
+		genericSet(o, updatedAtF.Name, sql.NullTime{Time: time.Now(), Valid: true})
+	}
+	values = append(values, genericValuesOf(o, false))
+
+	is := insertStmt{
+		PlaceHolderGenerator: s.getDialect().PlaceHolderGenerator,
+		Table:                s.getTable(),
+		Columns:              cols,
+		Values:               values,
+	}
+
 	if s.getDialect().DriverName == "postgres" {
 		is.Returning = s.pkName()
 	}
@@ -175,12 +207,7 @@ func Insert(objs ...Entity) error {
 		return err
 	}
 
-	schm := getSchemaFor(objs[len(objs)-1])
-	if schm.setPK != nil {
-		schm.setPK(objs[len(objs)-1], id)
-	} else {
-		schm.setPK(objs[len(objs)-1], id)
-	}
+	s.setPK(o, id)
 	return nil
 }
 
@@ -190,6 +217,8 @@ func isZero(val interface{}) bool {
 		return val.(int64) == 0
 	case int:
 		return val.(int) == 0
+	case string:
+		return val.(string) == ""
 	default:
 		return reflect.ValueOf(val).Elem().IsZero()
 	}
@@ -286,7 +315,7 @@ type HasManyConfig struct {
 	// `comments`.
 	PropertyTable string
 	// PropertyForeignKey is the foreign key field name in the property table,
-	// forexample in Post HasMany Comment, if comment has `post_id` field,
+	// for example in Post HasMany Comment, if comment has `post_id` field,
 	// it's the PropertyForeignKey field.
 	PropertyForeignKey string
 }

@@ -65,7 +65,7 @@ func BenchmarkGolobby(t *testing.B) {
 	for i := 0; i < t.N; i++ {
 		var user User
 		user.Username = "amir" + fmt.Sprint(i)
-		err := orm.Insert(&user)
+		err := orm.InsertAll(&user)
 		if err != nil {
 			panic(err)
 		}

@@ -119,10 +119,10 @@ func setup() error {
 		return err
 	}
 	return orm.SetupConnections(orm.ConnectionConfig{
-		Name:                    "default",
-		DB:                      db,
-		Dialect:                 orm.Dialects.SQLite3,
-		Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+		Name:                "default",
+		DB:                  db,
+		Dialect:             orm.Dialects.SQLite3,
+		Entities:            []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 		DatabaseValidations: true,
 	})
 }
@@ -130,7 +130,7 @@ func setup() error {
 func TestFind(t *testing.T) {
 	err := setup()
 	assert.NoError(t, err)
-	err = orm.Insert(&Post{
+	err = orm.InsertAll(&Post{
 		BodyText: "my body for insert",
 	})
 
@@ -171,7 +171,7 @@ func TestInsertAll(t *testing.T) {
 		BodyText: "Body3",
 	}
 
-	err = orm.Insert(post1, post2, post3)
+	err = orm.InsertAll(post1, post2, post3)
 	assert.NoError(t, err)
 	var counter int
 	assert.NoError(t, orm.GetConnection("default").DB.QueryRow(`SELECT count(id) FROM posts`).Scan(&counter))
@@ -516,10 +516,10 @@ func TestSetup(t *testing.T) {
 		// _, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
 		err = orm.SetupConnections(orm.ConnectionConfig{
-			Name:                    "default",
-			DB:                      db,
-			Dialect:                 orm.Dialects.SQLite3,
-			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+			Name:                "default",
+			DB:                  db,
+			Dialect:             orm.Dialects.SQLite3,
+			Entities:            []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 			DatabaseValidations: true,
 		})
 		assert.Error(t, err)
@@ -535,10 +535,10 @@ func TestSetup(t *testing.T) {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER, category_id INTEGER, PRIMARY KEY(post_id, category_id))`)
 
 		err = orm.SetupConnections(orm.ConnectionConfig{
-			Name:                    "default",
-			DB:                      db,
-			Dialect:                 orm.Dialects.SQLite3,
-			Entities:                []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
+			Name:                "default",
+			DB:                  db,
+			Dialect:             orm.Dialects.SQLite3,
+			Entities:            []orm.Entity{&Post{}, &Comment{}, &Category{}, &HeaderPicture{}},
 			DatabaseValidations: true,
 		})
 		assert.Error(t, err)
