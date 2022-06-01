@@ -70,8 +70,7 @@ When using Golobby ORM, each database table has a corresponding "Entity" to inte
 ## Performance
 You can run performance benchmark against `GORM` using
 ```bash
-cd benchmark
-go test -v -bench=.
+make bench
 ```
 here are results from my laptop
 ```
