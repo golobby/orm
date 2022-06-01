@@ -15,11 +15,13 @@ type User struct {
 }
 
 var (
+	db     *sql.DB
 	gormDB *gorm.DB
 )
 
 func setupGolobby() {
-	db, err := sql.Open("sqlite3", ":memory:")
+	var err error
+	db, err = sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		panic(err)
 	}
@@ -63,6 +65,19 @@ func BenchmarkGolobby(t *testing.B) {
 		var user User
 		user.Username = "amir" + fmt.Sprint(i)
 		err := orm.Insert(&user)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func BenchmarkStdSQL(t *testing.B) {
+	setupGolobby()
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		var user User
+		user.Username = "amir" + fmt.Sprint(i)
+		_, err := db.Exec(`INSERT INTO users (username) VALUES (?)`, user.Username)
 		if err != nil {
 			panic(err)
 		}
