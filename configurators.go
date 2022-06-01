@@ -10,6 +10,7 @@ type EntityConfigurator struct {
 	connection        string
 	table             string
 	this              Entity
+	setPK             func(o Entity, pk interface{})
 	relations         map[string]interface{}
 	resolveRelations  []func()
 	columnConstraints []*FieldConfigurator
@@ -17,6 +18,11 @@ type EntityConfigurator struct {
 
 func newEntityConfigurator() *EntityConfigurator {
 	return &EntityConfigurator{}
+}
+
+func (ec *EntityConfigurator) PKSetter(setter func(o Entity, pk interface{})) *EntityConfigurator {
+	ec.setPK = setter
+	return ec
 }
 
 func (ec *EntityConfigurator) Table(name string) *EntityConfigurator {

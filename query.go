@@ -589,6 +589,8 @@ func (w whereClause) ToSql() (string, []interface{}, error) {
 	return base, args, nil
 }
 
+//func (q *QueryBuilder[OUTPUT]) WhereKeyValue(m map) {}
+
 // WhereIn adds a where clause to QueryBuilder using In operator.
 func (q *QueryBuilder[OUTPUT]) WhereIn(column string, values ...interface{}) *QueryBuilder[OUTPUT] {
 	return q.Where(append([]interface{}{column, In}, values...)...)
@@ -750,7 +752,7 @@ type insertStmt struct {
 	Table                string
 	Columns              []string
 	Values               [][]interface{}
-	Returning 			 string
+	Returning            string
 }
 
 func (i insertStmt) flatValues() []interface{} {
@@ -783,7 +785,6 @@ func (i insertStmt) ToSql() (string, []interface{}) {
 	}
 	return base, i.flatValues()
 }
-
 
 func postgresPlaceholder(n int) []string {
 	output := []string{}

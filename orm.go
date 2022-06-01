@@ -111,11 +111,11 @@ func setupConnection(config ConnectionConfig) error {
 	}
 
 	s := &connection{
-		Name:                    config.Name,
-		DB:                      config.DB,
-		Dialect:                 config.Dialect,
-		Schemas:                 schemas,
-		DBSchema:                make(map[string][]columnSpec),
+		Name:                config.Name,
+		DB:                  config.DB,
+		Dialect:             config.Dialect,
+		Schemas:             schemas,
+		DBSchema:            make(map[string][]columnSpec),
 		DatabaseValidations: config.DatabaseValidations,
 	}
 
@@ -175,7 +175,12 @@ func Insert(objs ...Entity) error {
 		return err
 	}
 
-	getSchemaFor(objs[len(objs)-1]).setPK(objs[len(objs)-1], id)
+	schm := getSchemaFor(objs[len(objs)-1])
+	if schm.setPK != nil {
+		schm.setPK(objs[len(objs)-1], id)
+	} else {
+		schm.setPK(objs[len(objs)-1], id)
+	}
 	return nil
 }
 

@@ -67,6 +67,25 @@ When using Golobby ORM, each database table has a corresponding "Entity" to inte
     - One to Many
     - Many to Many
 
+## Performance
+You can run performance benchmark against `GORM` using
+```bash
+cd benchmark
+go test -v -bench=.
+```
+here are results from my laptop
+```
+goos: darwin
+goarch: arm64
+pkg: github.com/golobby/orm/benchmark
+BenchmarkGolobby
+BenchmarkGolobby-8        235956              4992 ns/op            2192 B/op         66 allocs/op
+BenchmarkGorm
+BenchmarkGorm-8            54498             21308 ns/op            7208 B/op        147 allocs/op
+PASS
+ok      github.com/golobby/orm/benchmark        3.118s
+```
+
 ## Quick Start
 
 The following example demonstrates how to use the GoLobby ORM.
