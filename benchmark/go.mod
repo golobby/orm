@@ -2,7 +2,11 @@ module github.com/golobby/orm/benchmark
 
 go 1.18
 
-require github.com/golobby/orm v1.2.2
+require (
+	github.com/golobby/orm v1.2.2
+	gorm.io/driver/sqlite v1.3.2
+	gorm.io/gorm v1.23.5
+)
 
 replace github.com/golobby/orm => ../
 
@@ -24,7 +28,5 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.7.5 // indirect
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
-	gorm.io/driver/sqlite v1.3.2 // indirect
-	gorm.io/gorm v1.23.5 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 )
