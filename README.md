@@ -203,8 +203,8 @@ type User struct {
 }
 func (u User) ConfigureEntity(e *orm.EntityConfigurator) {
     e.Field("MyCreatedAt").IsCreatedAt() // this will make ORM to use MyCreatedAt as created_at column
-    e.Field("MyUpdatedAt").IsUpdatedAt() // this will make ORM to use MyUpdatedAt as created_at column
-    e.Field("MyDeletedAt").IsDeletedAt() // this will make ORM to use MyDeletedAt as created_at column
+    e.Field("MyUpdatedAt").IsUpdatedAt() // this will make ORM to use MyUpdatedAt as updated_at column
+    e.Field("MyDeletedAt").IsDeletedAt() // this will make ORM to use MyDeletedAt as deleted_at column
 
     e.Table("users")
 }
